@@ -368,7 +368,7 @@ function startGame(cont, id) {
 // ---------------------------------------------------------------- hostile spawning
 let spawnT = 0, cropT = 1;
 function trySpawnHostile() {
-  if (game.difficulty <= 0) return;
+  if (game.difficulty <= 0 || player.creative) return;
   const w = game.world; let n = 0; for (const m of game.mobs) if (!m.sp.passive && !m.dead) n++;
   if (n >= 8 * game.difficulty) return;
   for (let tries = 0; tries < 6; tries++) {

@@ -83,6 +83,8 @@ test('custom game systems are connected', () => {
   assert.match(readFileSync('js/adventure.js','utf8'),/function initAdventure/);
   assert.match(readFileSync('js/adventure-core.js','utf8'),/function trialWaves/);
   assert.match(readFileSync('js/mobs.js','utf8'),/function winterCreature/);
+  assert.match(readFileSync('js/mobs.js','utf8'),/textures\.add\(m\.map\)/);
+  assert.match(readFileSync('js/adventure.js','utf8'),/Track Frost Ruins/);
   assert.match(readFileSync('js/blocks.js','utf8'),/FROST_BRICK = 79/);
   assert.match(main,/adventure:game\.adventure/);
   assert.match(main,/game\.adventure\?\.trackBlock/);

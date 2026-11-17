@@ -211,6 +211,7 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
       make('p','X '+progress.den.x+' · Z '+progress.den.z+' · '+progress.clears+' clears',den);
       if(!progress.denBuilt){
         make('p',denPending?'Preparing the ruins…':'Visit the area to finish preparing the ruins.',den);
+        button('Track Frost Ruins',guide,den);
         if(!denPending)button('Prepare Ruins',()=>{buildRuins(true);closeDialog();},den);
       }else if(trial){
         make('p','Wave '+(trial.wave+1)+' / 3 in progress',den);
@@ -244,6 +245,12 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
   function update(dt){
     const play=game.state==='play'&&!game.paused;
     pill.style.display=play&&!game.player.creative&&!game.ui.isOpen?'flex':'none';
+    if(play&&!trial){
+      const target=game.player.mobTarget;
+      const creature=target&&!target.dead?FROST_CREATURES[target.kind]:null;
+      const label=creature?creature.name+' · Lv '+target.level:'';
+      if(activeLabel.textContent!==label)activeLabel.textContent=label;
+    }
     if(!play)return;
     if(denPending)buildTick();
     if(!trial)return;

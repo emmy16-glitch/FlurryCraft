@@ -190,7 +190,28 @@ export class Mob {
     game.scene.add(this.shadow);
     if (kind === 'sheep') this.wool = true;
   }
-  remove() { this.dead = true; this.game.scene.remove(this.group); this.game.scene.remove(this.shadow); this.shadow.geometry.dispose(); this.shadow.material.dispose(); }
+  remove() {
+    if(this.dead)return;
+    this.dead=true;
+    this.game.scene.remove(this.group);
+    this.game.scene.remove(this.shadow);
+    // Mob textures/geometries are per creature. Release them on despawn so
+    // hours of roaming do not accumulate GPU memory on Android devices.
+    const geometries=new Set(),materials=new Set(),textures=new Set();
+    this.group.traverse(o=>{
+      if(o.geometry)geometries.add(o.geometry);
+      const m=o.material;
+      if(Array.isArray(m))for(const material of m)materials.add(material);
+      else if(m)materials.add(m);
+    });
+    for(const m of materials){
+      if(m.map)textures.add(m.map);
+      m.dispose();
+    }
+    for(const t of textures)t.dispose();
+    for(const g of geometries)g.dispose();
+    this.shadow.geometry.dispose();this.shadow.material.dispose();
+  }
   hurt(dmg, sx, sz, byPlayer) {
     if (this.dead || this.deadT > 0) return;
     this.hp -= dmg; this.hurtT = 0.4;
