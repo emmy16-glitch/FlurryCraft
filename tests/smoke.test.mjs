@@ -41,6 +41,10 @@ test('custom game systems are connected', () => {
   assert.match(flurry,/nativeRightAction/);
   assert.match(flurry,/nativeBreakBlock/);
   assert.match(flurry,/editHistory\.push\(world/);
+  assert.match(flurry,/function runBuildBatch/);
+  assert.match(flurry,/const budget=game\.touchMode\?10:24/);
+  assert.match(flurry,/fcBuildProgress/);
+  assert.match(main,/buildInProgress\(\)/);
   assert.match(readFileSync('js/edit-history.js','utf8'),/class EditHistory/);
   assert.match(main,/game\.flurry\.recordChange/);
   assert.match(main,/visibilitychange/);
@@ -80,7 +84,7 @@ test('custom game systems are connected', () => {
   assert.match(readFileSync('js/creator-studio-ui.js','utf8'),/function initCreatorStudioUI/);
   assert.match(flurry,/function refreshPreview/);
   assert.match(flurry,/function installBlueprint/);
-  assert.match(flurry,/requestAnimationFrame\(installBatch\)/);
+  assert.match(flurry,/requestAnimationFrame\(tick\)/);
   assert.match(flurry,/function checkPlacement/);
   assert.match(flurry,/function installBlueprint/); // replaces the old instant-placement function
   assert.match(readFileSync('js/worldgen.js','utf8'), /All open lakes, rivers and seas freeze/);

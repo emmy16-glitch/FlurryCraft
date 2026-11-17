@@ -150,6 +150,10 @@ export function initFlurry(game) {
     '.flurryLibraryHint{color:#b7dbe9;font-size:12px;margin:7px 0}',
 
     '#flurryModal .flurryTile{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;padding:9px 3px;margin:0;min-height:74px;background:#16465e;box-shadow:inset 0 0 0 1px #5bb3c8}',
+    '#fcBuildProgress{position:fixed;z-index:32;left:50%;top:10px;transform:translateX(-50%);width:160px;max-width:34vw;padding:6px 8px;border:1px solid #4f98b4;border-radius:10px;background:#0c3246ee;color:#c3edfc;font:700 10px/1.2 system-ui;pointer-events:none;box-shadow:0 4px 14px #001b297a}',
+    '#fcBuildProgress[hidden]{display:none!important}',
+    '#fcBuildProgress .fc-progress-track{height:3px;border-radius:3px;background:#305c70;margin-top:4px;overflow:hidden}',
+    '#fcBuildProgress .fc-progress-fill{width:0;height:100%;border-radius:3px;background:#a3f0f9;transition:width .1s linear}',
     '.flurryTile img{width:36px;height:36px;object-fit:contain;image-rendering:pixelated}',
     '#flurryHelp{position:fixed;left:50%;bottom:69px;transform:translateX(-50%);width:max-content;max-width:78vw;z-index:14;padding:7px 13px;border:1px solid #a4e9ff;border-radius:12px;background:#082b40d9;color:#f0fcff;font:700 12px/1.3 system-ui;pointer-events:none;text-align:center;text-shadow:1px 1px #012;display:none}',
     '#flurryQuest{position:fixed;z-index:14;left:12px;top:58px;max-width:250px;padding:10px 12px;border-radius:12px;color:#e7faff;background:rgba(9,36,50,.74);font:600 12px/1.5 system-ui;pointer-events:none;display:none}',
@@ -209,7 +213,7 @@ export function initFlurry(game) {
   };
   // Three clear entry points. All other actions remain accessible in Menu.
   const buildAction=action('▦ Blocks',()=>showBuildMenu());buildAction.classList.add('build');
-  let toolState=null,selectionState=null,previewState=null;
+  let toolState=null,selectionState=null,previewState=null,buildJob=null;
   const markAction=action('Mark first',()=>selectionState?markCapturePoint():markToolPoint());
   const stopTool=action('✕ Cancel',()=>{toolState=null;selectionState=null;refreshToolActions();notify(game,'Cancelled.');});
   markAction.style.display=stopTool.style.display='none';
@@ -297,6 +301,14 @@ export function initFlurry(game) {
   document.body.appendChild(actions);
   const questView = document.createElement('div'); questView.id='flurryQuest'; document.body.appendChild(questView);
   const helpView = document.createElement('div'); helpView.id='flurryHelp'; document.body.appendChild(helpView);
+  const progress=document.createElement('div');progress.id='fcBuildProgress';progress.hidden=true;
+  progress.setAttribute('role','progressbar');progress.setAttribute('aria-label','Building progress');
+  progress.setAttribute('aria-valuemin','0');progress.setAttribute('aria-valuemax','100');
+  const progressTitle=document.createElement('span');progressTitle.textContent='Building';
+  const progressTrack=document.createElement('div');progressTrack.className='fc-progress-track';
+  const progressFill=document.createElement('div');progressFill.className='fc-progress-fill';
+  progressTrack.appendChild(progressFill);progress.append(progressTitle,progressTrack);
+  document.body.appendChild(progress);
   const overlay = document.createElement('div'); overlay.id='flurryModal'; overlay.setAttribute('role','dialog'); overlay.setAttribute('aria-modal','true');
   const panel = document.createElement('div'); panel.className='fPanel'; overlay.appendChild(panel); document.body.appendChild(overlay);
 
@@ -540,12 +552,43 @@ export function initFlurry(game) {
     if(!game.player.creative && !game.player.held()?.flurryUnlimited){
       notify(game,'Smart tools require a Creative world or a block equipped from + ALL.');return;
     }
-    const tx=editHistory.begin(world,toolState.kind==='floor'?'Floor':'Wall');
-    for(const [x,y,z,newId] of changes)world.setBlock(x,y,z,newId);
-    if(tx)editHistory.finish();
+    const label=toolState.kind==='floor'?'Floor':'Wall';
     toolState=null;refreshToolActions();
+    runBuildBatch(world,label,changes);
     game.ui.dirtyInv=true;
-    notify(game,'Built '+changes.length+' blocks');
+  }
+  function runBuildBatch(world,label,changes){
+    if(buildJob){notify(game,'Finish the current build first');return false;}
+    if(!changes.length)return false;
+    const job={world,label,changes,at:0,applied:[]};
+    buildJob=job;
+    progress.hidden=false;
+    progressTitle.textContent='Building';
+    progressFill.style.width='0%';
+    progress.setAttribute('aria-valuenow','0');
+    const budget=game.touchMode?10:24;
+    const tick=()=>{
+      if(buildJob!==job)return;
+      if(game.world!==world||game.state!=='play'){
+        buildJob=null;progress.hidden=true;return;
+      }
+      const end=Math.min(changes.length,job.at+budget);
+      for(;job.at<end;job.at++){
+        const [x,y,z,id]=changes[job.at];
+        // Never overwrite terrain or a new edit made since preview.
+        if(world.loaded(x,z)&&world.getBlock(x,y,z)===B.AIR&&world.setBlock(x,y,z,id)!==false)
+          job.applied.push([x,y,z,B.AIR,id]);
+      }
+      const pct=Math.round(100*job.at/changes.length);
+      progressFill.style.width=pct+'%';
+      progress.setAttribute('aria-valuenow',String(pct));
+      if(job.at<changes.length){requestAnimationFrame(tick);return;}
+      buildJob=null;progress.hidden=true;
+      if(job.applied.length)editHistory.push(world,label,job.applied);
+      const skipped=changes.length-job.applied.length;
+      notify(game,'Placed '+job.applied.length+' blocks'+(skipped?' · '+skipped+' skipped':''));
+    };
+    requestAnimationFrame(tick);return true;
   }
   function restoreSafe(x,y,z,newId){
     if(!B.SOLID[newId])return true;
@@ -567,8 +610,14 @@ export function initFlurry(game) {
       reason==='busy'?'Finish your current action first':
       'Cannot '+verb.toLowerCase()+' this build');
   }
-  function undoSmartBuild(){feedbackEdit(editHistory.undo(game.world,restoreSafe),'Undid');}
-  function redoLastEdit(){feedbackEdit(editHistory.redo(game.world,restoreSafe),'Redid');}
+  function undoSmartBuild(){
+    if(buildJob){notify(game,'Finish building first');return;}
+    feedbackEdit(editHistory.undo(game.world,restoreSafe),'Undid');
+  }
+  function redoLastEdit(){
+    if(buildJob){notify(game,'Finish building first');return;}
+    feedbackEdit(editHistory.redo(game.world,restoreSafe),'Redid');
+  }
   function showCustomizer() {
     open('Customize your Yeti');
     const art=make('div');art.className='fc-customize-preview';
@@ -769,7 +818,7 @@ export function initFlurry(game) {
     refreshPreview();
   }
   async function installBlueprint(){
-    if(!previewState||previewState.installing)return;
+    if(!previewState||previewState.installing||buildJob)return;
     const s=previewState;
     s.installing=true;
     const valid=checkPlacement();
@@ -795,34 +844,14 @@ export function initFlurry(game) {
       return [s.origin.x+dx,s.origin.y+y,s.origin.z+dz,id];
     });
     clearPreview();
-    // Spread World.setBlock work over animation frames to avoid a multi-second
-    // freeze when a 3D house contains hundreds of voxels.
-    let at=0,built=0;
-    const installed=[];
-    notify(game,'Placing '+data.name+'…');
-    function installBatch(){
-      if(game.world!==world||game.state!=='play'){notify(game,'Installation interrupted after '+built+' blocks.');return;}
-      const end=Math.min(moves.length,at+22);
-      for(;at<end;at++){
-        const [x,y,z,id]=moves[at];
-        if(world.loaded(x,z)&&world.getBlock(x,y,z)===B.AIR){
-          if(world.setBlock(x,y,z,id)!==false){
-            built++;installed.push([x,y,z,B.AIR,id]);
-          }
-        }
-      }
-      if(at<moves.length)requestAnimationFrame(installBatch);
-      else {
-        if(installed.length)editHistory.push(world,'Install '+data.name,installed);
-        notify(game,'Placed '+built+' building blocks');
-      }
-    }
-    requestAnimationFrame(installBatch);
+    // All 3D placements share the same smooth, bounded-frame builder.
+    // One finished operation is one Undo step (and can be redone).
+    runBuildBatch(world,'Install '+data.name,moves);
   }
   function chooseImport(){creatorStudio.open();}
   function onWorldReady(isNew){
     const p=game.player,w=game.world;
-    toolState=null;selectionState=null;editHistory.reset(w);clearPreview();refreshToolActions();
+    toolState=null;selectionState=null;buildJob=null;progress.hidden=true;editHistory.reset(w);clearPreview();refreshToolActions();
     equipStarterBlocks();
     if (p.creative && brightWorld) game.env.tod=0.25;
     // Existing survival worlds used to start with an empty hotbar. Show
@@ -931,6 +960,7 @@ export function initFlurry(game) {
   // mistakenly added to Undo.
   const nativeRightAction=game.player.rightAction;
   game.player.rightAction=function(...args){
+    if(buildJob)return false;
     const tracked=this.creative||!!this.held()?.flurryUnlimited;
     if(!tracked||!game.world)return nativeRightAction.apply(this,args);
     const started=editHistory.begin(game.world,'Place');
@@ -939,6 +969,7 @@ export function initFlurry(game) {
   };
   const nativeBreakBlock=game.player.breakBlock;
   game.player.breakBlock=function(...args){
+    if(buildJob)return false;
     if(!this.creative||!game.world)return nativeBreakBlock.apply(this,args);
     const started=editHistory.begin(game.world,'Mine');
     try{return nativeBreakBlock.apply(this,args);}
@@ -980,7 +1011,7 @@ export function initFlurry(game) {
   all.style.pointerEvents='auto';
   all.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();showBuildMenu();});
   hotbar.appendChild(all);
-  game.flurry={update,onWorldReady,countPlayerPlacement,recordChange,isApplyingEdit:()=>editHistory.applying,isThird:()=>third,daylightLocked:()=>brightWorld,openBlockLibrary:showBuildMenu,showSmartBuilder,undoEdit:undoSmartBuild,redoEdit:redoLastEdit};
+  game.flurry={update,onWorldReady,countPlayerPlacement,recordChange,isApplyingEdit:()=>editHistory.applying,buildInProgress:()=>!!buildJob,isThird:()=>third,daylightLocked:()=>brightWorld,openBlockLibrary:showBuildMenu,showSmartBuilder,undoEdit:undoSmartBuild,redoEdit:redoLastEdit};
   document.addEventListener('keydown', e=>{
     if(e.target && /INPUT|TEXTAREA/.test(e.target.tagName))return;
     if(e.code==='Escape' && overlay.style.display==='flex'){close();e.stopImmediatePropagation();return;}

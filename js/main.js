@@ -245,7 +245,7 @@ $('pSens').value = settings.sens; $('pSens').oninput = (e) => { settings.sens = 
 sound.volume = settings.vol / 100;
 $('bResume').onclick = () => { showPause(false); game.requestPointer(); };
 $('bSave').onclick = () => { saveGame(); ui.toast('World saved'); };
-$('bQuit').onclick = () => { if(saveGame()) location.reload();else ui.toast('Still in game. Save before exiting.'); };
+$('bQuit').onclick = () => { if(game.flurry?.buildInProgress()){ui.toast('Finish placing your building before exiting');return;}if(saveGame()) location.reload();else ui.toast('Still in game. Save before exiting.'); };
 $('bRespawn').onclick = () => { $('death').style.display = 'none'; player.respawn(); ui.dirtyInv = true; game.requestPointer(); };
 // ---- world list (multiple save slots)
 const IDX_KEY = 'vc_index_v1'; let currentId = null;
