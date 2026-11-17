@@ -84,8 +84,8 @@ test('fresh survival world creates an approachable Frost Ruins dungeon and persi
   assert.equal(h.world.getBlock(data.den.x,data.den.y-1,data.den.z),79);
   assert.equal(h.game.player.countItem(h.B.FROST_SHARD),0);
   h.adventure.open();
-  assert.ok(h.panel.findButton('Track Frost Ruins'));
-  h.panel.findButton('Track Frost Ruins').listeners.click();
+  assert.ok(h.panel.findButton('Guide to Entrance'));
+  h.panel.findButton('Guide to Entrance').listeners.click();
   assert.equal(h.nav[0].name,'Frost Ruins');
  }finally{h.restore();}
 });
