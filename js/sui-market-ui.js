@@ -126,16 +126,14 @@ export function initSuiMarketUI({game,panel,openDialog,closeDialog,notify,startP
     if(options.blueprint)mintTarget=options.blueprint;
     if(game.state!=='play'||!game.world){notify(game,'Enter a world first.');return;}
     title('⛓ Sui Testnet Market');
-    status('TESTNET ONLY · No real-money fees or mainnet transactions. The game remains free without a wallet.');
     if(pendingPackage()){
-      const block=h('div');
-      block.className='fc-sui-notice';
-      h('strong','Smart contract not deployed yet',block);
-      h('p','The Move package is in the GitHub source, but a verified Testnet package ID is required before minting, listing, buying or ownership verification.',block);
-      h('p','Developers: publish move/flurrycraft using Sui CLI, then set SUI_PACKAGE_ID in js/sui-config.js. Do not publish unreviewed code to Mainnet.',block);
-    }else{
-      status('Verified package configuration: '+truncate(id)+' · network '+SUI_NETWORK);
+      const block=h('div');block.className='fc-sui-notice';
+      h('strong','Coming soon',block);
+      h('p','NFT trading is being prepared on Sui Testnet.',block);
+      if(mintTarget)h('p','Selected: '+mintTarget.name,block);
+      return; // Hide wallet and trade actions until contract deployment is verified.
     }
+    status('Sui Testnet · '+truncate(id));
     if(mintTarget){
       const card=h('div');card.className='fc-sui-card';
       h('strong','Selected creation: '+mintTarget.name,card);
@@ -153,7 +151,7 @@ export function initSuiMarketUI({game,panel,openDialog,closeDialog,notify,startP
       b('Clear selected design',()=>{mintTarget=null;open();},card);
     }
     const wallets=h('div','');wallets.className='fc-sui-wallets';
-    status('Wallet features load only when you open this screen. Private keys never enter FlurryCraft.');
+    status('Connect a Testnet wallet to continue.');
     const refresh=b('Connect / Refresh Wallet',()=>run(async()=>{
       const sdk=await loadSDK();
       wallets.replaceChildren();

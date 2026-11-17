@@ -603,13 +603,13 @@ export function initFlurry(game) {
     if(!blocks.length){notify(game,'No building blocks found inside this selection.');return;}
     const blueprint=validateBlueprint({version:1,name,author,size,blocks});
     const status=creatorStudio.add(blueprint);
-    creatorStudio.download(blueprint);
+    // Do not interrupt a successful browser save with a surprise download.
+    if(status==='full'||status==='storage')creatorStudio.download(blueprint);
     close();
     if(quest===3)complete();
-    notify(game,status==='saved' ? 'Saved '+blueprint.name+' · '+blocks.length+' blocks. Open 🏠 Studio to manage it.' :
-      status==='exists' ? 'This build is already saved. A backup JSON was downloaded.' :
-      status==='full' ? 'Your gallery is full. Your JSON file was downloaded.' :
-      'Browser storage is full. Keep the downloaded JSON file.');
+    notify(game,status==='saved'?'Saved to My Builds':
+      status==='exists'?'Already in My Builds':
+      status==='full'?'Gallery full. Blueprint downloaded.':'Storage full. Blueprint downloaded.');
   }
   function clearPreview(){
     if(previewState){

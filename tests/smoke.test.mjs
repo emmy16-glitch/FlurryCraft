@@ -50,11 +50,14 @@ test('custom game systems are connected', () => {
   assert.match(flurry,/initCreatorStudioUI/);
   assert.match(flurry,/id='fcQuickMenu'/);
   assert.match(flurry,/function setMoreMenu/);
+  assert.match(readFileSync('js/creator-studio-ui.js','utf8'),/fc-studio-card-more/);
+  assert.match(readFileSync('js/creator-studio-ui.js','utf8'),/fc-studio-tabs/);
+  assert.match(readFileSync('js/sui-market-ui.js','utf8'),/Coming soon/);
   assert.match(flurry,/fc-dialog-close/);
   assert.match(flurry,/questVisible/);
   assert.doesNotMatch(flurry,/extras\.forEach/);
-  assert.match(html,/fc-pause-settings/);
-  assert.match(html,/Continue Playing/);
+  assert.match(readFileSync('index.html','utf8'),/fc-pause-settings/);
+  assert.match(readFileSync('index.html','utf8'),/Continue Playing/);
   assert.match(flurry,/initSuiMarketUI/);
   assert.match(flurry,/verifyOwnership/);
   assert.match(readFileSync('js/sui-bridge.js','utf8'),/signAndExecuteTransaction/);
