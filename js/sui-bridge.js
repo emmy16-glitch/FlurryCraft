@@ -147,25 +147,34 @@ export async function getListing(pkg,listingId){
 export async function listings(pkg){
   const id=verifiedPackage(pkg),found=[],seen=new Set();
   let page=await client().listEvents({
-    filter:{eventType:id+'::market::Listed'},order:'descending',limit:45,
+    filter:{eventType:id+'::market::Listed'},order:'descending',limit:40,
   });
   const events=[...(page.events||[])];
-  // The event stream is a discovery surface, not an ownership oracle.
-  // Read a bounded number of older pages and validate every listing object.
-  for(let i=0;i<2&&page.hasNextPage&&page.endCursor;i++){
+  // Bounded discovery; production would use a complete marketplace indexer.
+  for(let i=0;i<2&&events.length<90&&page.hasNextPage&&page.endCursor;i++){
     page=await client().listEvents({
       filter:{eventType:id+'::market::Listed'},order:'descending',
-      before:page.endCursor,limit:45,
+      before:page.endCursor,limit:30,
     });
     events.push(...(page.events||[]));
   }
-  for(const e of events){
-    const j=e.json||{},oid=String(j.listing_id||j.listingId||'');
-    if(!oid||seen.has(oid))continue;
+  const candidateIds=[];
+  for(const event of events){
+    const json=event.json||{},oid=String(json.listing_id||json.listingId||'');
+    if(!/^0x[0-9a-fA-F]{1,64}$/.test(oid)||seen.has(oid))continue;
     seen.add(oid);
-    try{const item=await getListing(id,oid);if(item.active)found.push(item);}catch{}
+    candidateIds.push(oid);
   }
-  return found;
+  // Limit to six concurrent integrity checks to keep mobile RPC use bounded.
+  const ids=candidateIds.slice(0,55);
+  for(let i=0;i<ids.length;i+=6){
+    const batch=await Promise.all(ids.slice(i,i+6).map(async oid=>{
+      try{return await getListing(id,oid);}catch{return null;}
+    }));
+    for(const item of batch)if(item?.active)found.push(item);
+    if(found.length>=35)break;
+  }
+  return found.slice(0,35);
 }
 export async function list(pkg,nftId,priceText){
   const id=await checkPackage(pkg);requireAccount();
