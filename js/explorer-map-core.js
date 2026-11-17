@@ -8,8 +8,8 @@ export function mapToWorld(px,py,centerX,centerZ,step=4,side=320){
   if(![px,py,centerX,centerZ,step,side].every(Number.isFinite)||step<=0||side<=0)
     throw new Error('Invalid map position');
   return {
-    x:Math.round(centerX+(px/side-.5)*MAP_CELLS*step),
-    z:Math.round(centerZ+(py/side-.5)*MAP_CELLS*step),
+    x:Math.round(centerX+(px/side-.5)*MAP_CELLS*step)||0,
+    z:Math.round(centerZ+(py/side-.5)*MAP_CELLS*step)||0,
   };
 }
 export function worldToMap(x,z,centerX,centerZ,step=4,side=320){
@@ -25,7 +25,7 @@ export function directionTo(x,z,targetX,targetZ,yaw=0){
   const absolute=Math.atan2(-dx,-dz);
   // Player yaw 0 faces north (-Z); positive yaw faces west (-X).
   const angle=Math.atan2(Math.sin(absolute-yaw),Math.cos(absolute-yaw));
-  return {distance:Math.round(Math.hypot(dx,dz)),angle};
+  return {distance:Math.round(Math.hypot(dx,dz)),angle:angle||0};
 }
 export function markerKey(worldId){
   return 'flurrycraft_places_v1_'+String(worldId||'unknown').replace(/[^a-zA-Z0-9_-]/g,'').slice(0,48);
