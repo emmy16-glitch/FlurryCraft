@@ -30,7 +30,7 @@ fun mint_list_buy_transfers_escrowed_nft_and_exact_payment() {
         let payment = coin::mint_for_testing<SUI>(100, s.ctx());
         market::buy(&mut listing, payment, s.ctx());
         assert!(!market::listing_active(&listing), 105);
-        s.return_shared(listing);
+        ts::return_shared(listing);
     };
     s.next_tx(BOB);
     {
@@ -62,7 +62,7 @@ fun seller_can_cancel_and_get_the_same_nft_back() {
         assert!(market::listing_active(&listing), 201);
         market::cancel(&mut listing, s.ctx());
         assert!(!market::listing_active(&listing), 202);
-        s.return_shared(listing);
+        ts::return_shared(listing);
     };
     s.next_tx(ALICE);
     {
@@ -85,7 +85,7 @@ fun only_seller_can_cancel() {
     s.next_tx(BOB);
     let mut listing = s.take_shared<Listing>();
     market::cancel(&mut listing, s.ctx());
-    s.return_shared(listing);
+    ts::return_shared(listing);
     s.end();
 }
 
@@ -102,7 +102,7 @@ fun wrong_payment_is_rejected() {
     let mut listing = s.take_shared<Listing>();
     let payment = coin::mint_for_testing<SUI>(99, s.ctx());
     market::buy(&mut listing, payment, s.ctx());
-    s.return_shared(listing);
+    ts::return_shared(listing);
     s.end();
 }
 
