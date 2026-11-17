@@ -4,6 +4,7 @@ export const AIR = 0, STONE = 1, GRASS = 2, DIRT = 3, COBBLE = 4, SAND = 5, GRAV
   SNOW = 17, SANDSTONE = 18, GLASS = 19, CRAFTING = 20, FURNACE = 21, TORCH = 22, TALLGRASS = 23, FLOWER_R = 24,
   FLOWER_Y = 25, CACTUS = 26, BRICKS = 27, WOOL = 28, ICE = 29, SNOWGRASS = 30, CHEST = 31, TNT = 32,
   BIRCH_LOG = 33, SPRUCE_LOG = 34, STONE_BRICKS = 35, WOOL_RED = 36, WOOL_YELLOW = 37, SPRUCE_PLANKS = 38, BIRCH_PLANKS = 39,
+  DOOR_CLOSED = 72, DOOR_OPEN = 73, WOOD_TABLE = 74, WOOD_CHAIR = 75, COZY_BED = 76, FIREPLACE = 77, WINDOW_PANE = 78,
   DEAD_BUSH = 40, WHEAT_1 = 47, WHEAT_2 = 48, WHEAT_3 = 49, WHEAT_4 = 50, FARMLAND = 51, STONE_SLAB = 41, COBBLE_SLAB = 42, PLANK_SLAB = 43, BRICK_SLAB = 44, SANDSTONE_SLAB = 45, STONEBRICK_SLAB = 46;
 
 // Non-block items
@@ -395,6 +396,14 @@ def(WOOL_YELLOW, 'Yellow Wool', { top: 'wool_yellow', hardness: 0.8, sound: 'woo
 def(SPRUCE_PLANKS, 'Spruce Planks', { top: 'spruce_planks', hardness: 2, tool: 'axe', sound: 'wood' });
 def(BIRCH_PLANKS, 'Birch Planks', { top: 'birch_planks', hardness: 2, tool: 'axe', sound: 'wood' });
 def(DEAD_BUSH, 'Dead Bush', { top: 'deadbush', hardness: 0, opaque: false, solid: false, opacity: 0, shape: 1, sound: 'grass', drop: STICK });
+// FlurryCraft first house pack; block IDs 72–78 were previously unused.
+def(DOOR_CLOSED, 'Spruce Door', { top:'spruce_planks', opaque:false, opacity:1, shape:7, hardness:1.7, tool:'axe', sound:'wood' });
+def(DOOR_OPEN, 'Open Spruce Door', { top:'spruce_planks', opaque:false, opacity:0, solid:false, shape:7, hardness:1.7, tool:'axe', sound:'wood', drop:DOOR_CLOSED });
+def(WINDOW_PANE, 'Glass Window Pane', { top:'glass', opaque:false, opacity:0, shape:7, hardness:.4, sound:'glass' });
+def(WOOD_TABLE, 'Spruce Table', { top:'spruce_planks', opaque:false, opacity:1, shape:8, hardness:1.5, tool:'axe', sound:'wood' });
+def(WOOD_CHAIR, 'Spruce Chair', { top:'spruce_planks', opaque:false, opacity:1, shape:8, hardness:1.3, tool:'axe', sound:'wood' });
+def(COZY_BED, 'Snowy Bed', { top:'wool', side:'spruce_planks', opaque:false, opacity:1, shape:8, hardness:1.0, tool:'axe', sound:'wool' });
+def(FIREPLACE, 'Stone Fireplace', { top:'stone_bricks', opaque:false, opacity:1, shape:8, hardness:2.4, tool:'pickaxe', need:1, sound:'stone', emit:11 });
 const slab = (id, name, tile, side, snd, tool) => def(id, name, { top: tile, side: side || tile, hardness: 1.8, tool: tool || 'pickaxe', need: tool === 'axe' ? 0 : 1, opaque: false, opacity: 0, shape: 5, sound: snd || 'stone' });
 slab(STONE_SLAB, 'Stone Slab', 'stone'); slab(COBBLE_SLAB, 'Cobblestone Slab', 'cobble'); slab(PLANK_SLAB, 'Oak Slab', 'planks', null, 'wood', 'axe');
 slab(BRICK_SLAB, 'Brick Slab', 'bricks'); slab(SANDSTONE_SLAB, 'Sandstone Slab', 'sandstone_top', 'sandstone_side'); slab(STONEBRICK_SLAB, 'Stone Brick Slab', 'stone_bricks');
@@ -409,6 +418,7 @@ export const ITEMS = {}; // id -> {name, stack, tool?, food?, fuel?}
 for (const b of BLOCKS) if (b && b.id && !(b.id >= STAIR_BASE && b.id < STAIR_BASE + 20 && (b.id - STAIR_BASE) % 4 !== 0) && b.id !== WATER && b.id !== LAVA && b.id !== BEDROCK && b.id !== TALLGRASS && b.id !== SNOWGRASS && !(b.id >= WHEAT_1 && b.id <= WHEAT_4))
   ITEMS[b.id] = { id: b.id, name: b.name, stack: 64, block: true };
 ITEMS[BEDROCK] = { id: BEDROCK, name: 'Bedrock', stack: 64, block: true };
+delete ITEMS[DOOR_OPEN]; // Open door is an in-world state, not a separate inventory item.
 function item(id, name, o = {}) { ITEMS[id] = Object.assign({ id, name, stack: 64 }, o); }
 item(STICK, 'Stick', { fuel: 5 });
 item(COAL, 'Coal', { fuel: 80 });

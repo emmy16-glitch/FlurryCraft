@@ -18,7 +18,8 @@ Performance goals (not benchmarks): smooth 30 FPS on modest Android phones and 6
 ## Phase 2: game polish
 
 - Precise camera targeting, full character editor, animations, warm clothing, snowstorm survival.
-- Furniture, doors, windows, fireplace, blueprint area selection and hologram placement preview.
+- Implemented first house pack: doors, windows, low-poly table/chair/bed/fireplace.
+- Next: full two-high doors, rotation and expanded furniture, blueprint area selection and hologram placement preview.
 - Expand NPC conversations, quests, world progression and creator building tools.
 - Validate high/medium/low Android configurations.
 

@@ -226,10 +226,15 @@ export class Player {
     if (!this.creative) { this.takeItem(B.ARROW); this.useHeld(1); }
     g.sound.play('bow', { vol: 0.9 }); this.swing = 0.6; g.shake = Math.max(g.shake || 0, 0.05);
   }
-  isUsable(b) { return b === B.CRAFTING || b === B.FURNACE || b === B.CHEST; }
+  isUsable(b) { return b === B.CRAFTING || b === B.FURNACE || b === B.CHEST || b === B.DOOR_CLOSED || b === B.DOOR_OPEN; }
   rightAction() {
     const g = this.game, w = g.world, t = this.target; if (!t) return false;
     const held = this.held();
+    if (!this.sneaking && (t.block===B.DOOR_CLOSED || t.block===B.DOOR_OPEN)) {
+      w.setBlock(t.x,t.y,t.z,t.block===B.DOOR_CLOSED?B.DOOR_OPEN:B.DOOR_CLOSED);
+      g.sound.play('place',{sound:'wood',pos:{x:t.x+.5,y:t.y+.5,z:t.z+.5}});
+      return true;
+    }
     if (!this.sneaking && this.isUsable(t.block)) { g.ui.openContainer(t.block, t.x, t.y, t.z); return true; }
     if (t.block === B.TNT && (!held || held.id >= 256)) { g.igniteTNT(t.x, t.y, t.z); if (held && held.id === B.FLINT_STEEL) this.useHeld(1); return true; }
     if (held && B.ITEMS[held.id] && B.ITEMS[held.id].hoe) {

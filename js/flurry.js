@@ -235,7 +235,7 @@ export function initFlurry(game) {
       item.id !== B.BEDROCK && item.id !== B.TNT && item.id !== B.FARMLAND)
     .map(item => [item.id, item.name])
     .sort((a,b) => a[1].localeCompare(b[1]));
-  const utilityIds = new Set([B.CRAFTING,B.FURNACE,B.CHEST,B.TORCH]);
+  const utilityIds = new Set([B.CRAFTING,B.FURNACE,B.CHEST,B.TORCH,B.FIREPLACE]);
   const natureIds = new Set([B.STONE,B.GRASS,B.DIRT,B.COBBLE,B.SAND,B.GRAVEL,
     B.LEAVES,B.LOG,B.BIRCH_LOG,B.SPRUCE_LOG,B.ICE,B.SNOW,B.CACTUS,
     B.COAL_ORE,B.IRON_ORE,B.GOLD_ORE,B.DIAMOND_ORE]);

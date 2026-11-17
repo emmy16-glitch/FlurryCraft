@@ -350,6 +350,7 @@ export class World {
       if (B.SOLID[b]) {
         const sh = B.SHAPE[b];
         if (sh === 5) { if (y < yy + 0.5 - 1e-6) return true; }
+        else if(sh===8){const height=b===B.COZY_BED?.52:b===B.WOOD_CHAIR?.59:b===B.WOOD_TABLE?.86:1;if(y<yy+height-1e-6)return true;}
         else if (sh === 6) {
           if (y < yy + 0.5 - 1e-6) return true;
           const f = (b - B.STAIR_BASE) & 3; let bx0 = xx, bx1 = xx + 1, bz0 = zz, bz1 = zz + 1;
@@ -365,7 +366,7 @@ export class World {
     const x0 = Math.floor(x - hw), x1 = Math.floor(x + hw), z0 = Math.floor(z - hw), z1 = Math.floor(z + hw); let best = -1e9;
     for (let zz = z0; zz <= z1; zz++) for (let xx = x0; xx <= x1; xx++) { const b = this.getBlock(xx, yy, zz);
       if (B.SOLID[b]) {
-        let top = B.SHAPE[b] === 5 ? 0.5 : 1;
+        let top = B.SHAPE[b] === 5 ? 0.5 : B.SHAPE[b] === 8 ? (b===B.COZY_BED?.52:b===B.WOOD_CHAIR?.59:b===B.WOOD_TABLE?.86:1) : 1;
         if (B.SHAPE[b] === 6) { const f = (b - B.STAIR_BASE) & 3; let bx0 = xx, bx1 = xx + 1, bz0 = zz, bz1 = zz + 1; if (f === 0) bz0 += 0.5; else if (f === 1) bz1 -= 0.5; else if (f === 2) bx0 += 0.5; else bx1 -= 0.5; top = (x + hw > bx0 && x - hw < bx1 && z + hw > bz0 && z - hw < bz1) ? 1 : 0.5; }
         best = Math.max(best, yy + top);
       } }

@@ -31,6 +31,11 @@ test('custom game systems are connected', () => {
   assert.match(main,/game\.flurry\.onWorldReady/);
   assert.match(main,/game\.flurry\.update/);
   assert.match(flurry,/function createYeti/);
+  assert.match(readFileSync('js/blocks.js','utf8'),/DOOR_CLOSED = 72/);
+  assert.match(readFileSync('js/blocks.js','utf8'),/FIREPLACE = 77/);
+  assert.match(readFileSync('js/mesher.js','utf8'),/function furnitureBlock/);
+  assert.match(readFileSync('js/mesher.js','utf8'),/function frameBlock/);
+  assert.match(readFileSync('js/player.js','utf8'),/t.block===B.DOOR_CLOSED/);
   assert.match(flurry, /'Face, hands and feet'/);
   assert.match(flurry, /'mouth'/);
   assert.match(readFileSync('js/ui.js','utf8'), /closeButton\.addEventListener\('click'/);

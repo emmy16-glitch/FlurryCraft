@@ -107,6 +107,8 @@ export function meshChunk(world, chunk) {
     else if (shape === 4) cactus(bi, def, P);
     else if (shape === 5) slabBlock(bi, def, P);
     else if (shape === 6) stairBlock(bi, b, def, P);
+    else if (shape === 7) frameBlock(bi, b, def, P);
+    else if (shape === 8) furnitureBlock(bi, b, def, P);
   }
   return { opaque: OPQ.finish(), water: WAT.finish() };
 }
@@ -241,4 +243,47 @@ function cactus(bi, def, P) {
   const side = def.tiles.side, top = def.tiles.top;
   const above = pb[bi + LAY];
   box(bi, P, 1 / 16, 0, 1 / 16, 15 / 16, 1, 15 / 16, side, top, [0, 0, 16, 16], [0, 0, 16, 16], Math.max(sky, (pl[bi + LAY] >> 4) / 15), blk, above === B.CACTUS, false);
+}
+
+// Original low-poly furnishings are assembled into the voxel chunk mesh,
+// not thousands of extra Three.js Mesh objects.
+function decorBox(bi,P,coords,tile,top,sky,blk){
+ const side=B.TILE[tile],cap=B.TILE[top||tile];
+ box(bi,P,...coords,side,cap,[0,0,16,16],[0,0,16,16],sky,blk,false,false);
+}
+function frameBlock(bi,b,def,P){
+ const lv=pl[bi],sky=Math.max(lv>>4,pl[bi+LAY]>>4)/15,blk=Math.max(lv&15,pl[bi+LAY]&15)/15;
+ const draw=(coords,tile)=>decorBox(bi,P,coords,tile,tile,sky,blk);
+ if(b===B.WINDOW_PANE){
+  draw([0,0,.43,1,1,.57],'glass');
+  draw([0,0,.40,.09,1,.60],'spruce_planks');
+  draw([.91,0,.40,1,1,.60],'spruce_planks');
+  draw([0,.89,.40,1,1,.60],'spruce_planks');
+ } else if(b===B.DOOR_OPEN){
+  draw([.06,0,.06,.18,1,.97],'spruce_planks');
+  draw([.08,.43,.83,.23,.55,.94],'iron_ore');
+ } else {
+  draw([0,0,.08,1,1,.23],'spruce_planks');
+  draw([.79,.45,.01,.9,.55,.30],'iron_ore');
+ }
+}
+function furnitureBlock(bi,b,def,P){
+ const lv=pl[bi],sky=Math.max(lv>>4,pl[bi+LAY]>>4)/15,blk=Math.max(lv&15,pl[bi+LAY]&15)/15;
+ const draw=(coords,tile='spruce_planks')=>decorBox(bi,P,coords,tile,tile,sky,blk);
+ if(b===B.WOOD_TABLE){
+  for(const x of [.09,.76])for(const z of [.09,.76])draw([x,0,z,x+.15,.72,z+.15]);
+  draw([.04,.70,.04,.96,.86,.96]);
+ } else if(b===B.WOOD_CHAIR){
+  for(const x of [.14,.69])for(const z of [.13,.68])draw([x,0,z,x+.17,.50,z+.17]);
+  draw([.09,.44,.09,.93,.59,.93]);draw([.10,.54,.82,.92,1,.97]);
+ } else if(b===B.COZY_BED){
+  draw([.02,0,.02,.98,.23,.98]);
+  draw([.04,.23,.02,.96,.48,.98],'wool_red');
+  draw([.06,.44,.65,.94,.52,.92],'wool');
+ } else if(b===B.FIREPLACE){
+  draw([.04,0,.04,.96,.15,.96],'stone_bricks');
+  for(const x of [.04,.80])draw([x,.15,.06,x+.16,.90,.95],'stone_bricks');
+  draw([.04,.84,.04,.96,1,.96],'stone_bricks');
+  draw([.30,.16,.30,.70,.49,.69],'lava');
+ }
 }
