@@ -55,7 +55,7 @@ test('custom game systems are connected', () => {
   assert.match(readFileSync('js/sui-market-ui.js','utf8'),/Sui Testnet Market/);
   assert.match(readFileSync('move/flurrycraft/sources/market.move','utf8'),/public fun buy\(/);
   assert.match(readFileSync('move/flurrycraft/sources/market.move','utf8'),/public fun mint\(/);
-  assert.match(readFileSync('js/sui-config.js','utf8'),/SUI_PACKAGE_ID=''/);
+  assert.match(readFileSync('js/sui-config.js','utf8'),/export const SUI_PACKAGE_ID=/);
   assert.match(readFileSync('js/creator-studio.js','utf8'),/function blueprintFingerprint/);
   assert.match(readFileSync('js/creator-studio-ui.js','utf8'),/function initCreatorStudioUI/);
   assert.match(flurry,/function refreshPreview/);
