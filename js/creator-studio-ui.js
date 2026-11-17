@@ -11,7 +11,7 @@ function downloadJSON(data,name){
  document.body.appendChild(a);a.click();a.remove();
  setTimeout(()=>URL.revokeObjectURL(url),2500);
 }
-export function initCreatorStudioUI({game,B,panel,openDialog,closeDialog,showCapture,startPreview,notify}){
+export function initCreatorStudioUI({game,B,panel,openDialog,closeDialog,showCapture,startPreview,notify,onMintTestnet}){
  const valid=data=>normalizeBlueprint(data,id=>id>0&&id<B.N_BLOCKS&&!!B.BLOCKS[id]&&
   id!==B.WATER&&id!==B.LAVA&&id!==B.BEDROCK&&id!==B.TALLGRASS);
  const demos=makeStarterBlueprints(B);
@@ -122,6 +122,7 @@ export function initCreatorStudioUI({game,B,panel,openDialog,closeDialog,showCap
     btn(actions,'↓ File',()=>download(data));
     btn(actions,'↗ Share',()=>share(data));
     btn(actions,'🔐 ID',()=>proof(data));
+    if(onMintTestnet)btn(actions,'⛓ NFT Testnet',()=>onMintTestnet(data));
     if(kind==='saved'){
      btn(actions,'✕ Delete',()=>{
       if(!confirm('Delete "'+data.name+'" from this device? Download a backup first.'))return;

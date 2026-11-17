@@ -6,6 +6,7 @@ import * as B from './blocks.js';
 import { rotateXZ, rotatedSize, selectionBounds } from './blueprints.js';
 import { normalizeBlueprint } from './creator-studio.js';
 import { initCreatorStudioUI } from './creator-studio-ui.js';
+import { initSuiMarketUI } from './sui-market-ui.js';
 
 const PREFERENCES = 'flurrycraft_yeti_v1';
 const BLUEPRINTS = 'flurrycraft_blueprints_v1';
@@ -179,7 +180,7 @@ export function initFlurry(game) {
     if(selectionState)markAction.textContent=selectionState.start?'📦 Capture Corner 2':'📦 Capture Corner 1';
     else if(toolState)markAction.textContent=toolState.start?'📍 Mark 2 + Build':'📍 Mark 1';
   }
-  let creatorStudio;
+  let creatorStudio, suiMarket;
   action('🏠 Studio',()=>creatorStudio.open());
   action('👁 View', () => { third=!third; notify(game, third ? 'Third-person Yeti view' : 'First-person building view'); });
   let brightWorld = read('flurrycraft_bright_world_v1', true) !== false;
@@ -209,6 +210,7 @@ export function initFlurry(game) {
     action('🎨 Yeti', () => showCustomizer()),
     action('🏠 Save Build', () => showBlueprint()),
     action('📂 Import', () => chooseImport()),
+    action('⛓ Sui Testnet', () => suiMarket.open()),
     action('↗ Unstuck', rescue),
     action('🪽 Fly', () => {
       const p=game.player; enterBuildMode(); p.flying=!p.flying;
@@ -273,8 +275,9 @@ export function initFlurry(game) {
   const complete = () => {quest=Math.min(4,quest+1); save(QUEST,quest); placed=0; lastQuestText=''; notify(game,quest===4?'Lofi: Amazing! You are a true Yeti creator!':'Quest completed! '+questNames[quest]);};
   creatorStudio=initCreatorStudioUI({
     game,B,panel,openDialog:open,closeDialog:close,showCapture:showBlueprint,
-    startPreview,notify
+    startPreview,notify,onMintTestnet:blueprint=>suiMarket.open({blueprint})
   });
+  suiMarket=initSuiMarketUI({game,panel,openDialog:open,closeDialog:close,notify,startPreview});
   // Beginners should be able to build immediately, without finding a recipe book.
   // Derive the library from the engine registry instead of maintaining a
   // hard-coded 12-block selection. All supported placeable inventory blocks
@@ -624,7 +627,7 @@ export function initFlurry(game) {
     bounds.material.color.set(valid.ok?'#8bf8ce':'#ff9caa');
     previewPanel.style.display='block';
   }
-  function startPreview(candidate){
+  function startPreview(candidate,verifyOwnership=null){
     let data;
     try{data=validateBlueprint(candidate);}catch(e){notify(game,'Invalid blueprint: '+e.message);return;}
     if(game.state!=='play'||!game.world){notify(game,'Enter a world before importing.');return;}
@@ -641,7 +644,7 @@ export function initFlurry(game) {
     const bounds=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(1,1,1)),
       new THREE.LineBasicMaterial({color:'#8bf8ce',depthTest:false,transparent:true,opacity:.9}));
     group.add(bounds);
-    previewState={world:game.world,data,turn:0,origin,group,ghost,bounds};
+    previewState={world:game.world,data,turn:0,origin,group,ghost,bounds,verifyOwnership};
     previewName.textContent='📐 '+data.name;
     third=false;
     moreOpen=false;extras.forEach(btn=>btn.style.display='none');more.textContent='⋯ More';
@@ -679,10 +682,28 @@ export function initFlurry(game) {
     previewState.origin.z+=dz;
     refreshPreview();
   }
-  function installBlueprint(){
+  async function installBlueprint(){
+    if(!previewState||previewState.installing)return;
+    const s=previewState;
+    s.installing=true;
     const valid=checkPlacement();
-    if(!valid.ok){notify(game,valid.message);return;}
-    const s=previewState,world=s.world,data=s.data;
+    if(!valid.ok){s.installing=false;notify(game,valid.message);return;}
+    if(s.verifyOwnership){
+      installButton.disabled=true;
+      notify(game,'Verifying current NFT ownership on Sui Testnet…');
+      try{
+        await s.verifyOwnership();
+        if(previewState!==s)return;
+      }catch(err){
+        s.installing=false;
+        if(previewState===s)refreshPreview();
+        notify(game,'NFT ownership check failed: '+err.message);
+        return;
+      }
+    }
+    const renewed=checkPlacement();
+    if(!renewed.ok){s.installing=false;notify(game,renewed.message);return;}
+    const world=s.world,data=s.data;
     const moves=data.blocks.map(([x,y,z,id])=>{
       const [dx,dz]=rotateXZ(x,z,data.size,s.turn);
       return [s.origin.x+dx,s.origin.y+y,s.origin.z+dz,id];

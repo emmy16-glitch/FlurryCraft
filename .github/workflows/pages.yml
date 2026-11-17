@@ -32,10 +32,22 @@ jobs:
       name: github-pages
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install pinned Sui SDK and bundler
+        run: npm install --no-audit --no-fund
+      - name: Build optional Sui Wallet Standard browser module
+        run: npm run build:chain
+      - name: Assemble browser-only site (no node_modules)
+        run: |
+          mkdir -p site
+          cp index.html .nojekyll site/
+          cp -r assets js vendor dist site/
       - uses: actions/configure-pages@v5
         with:
           enablement: true
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: .
+          path: site
       - uses: actions/deploy-pages@v4
