@@ -14,39 +14,75 @@ const save = (key, value) => { try { localStorage.setItem(key, JSON.stringify(va
 const notify = (game, message) => game.ui ? game.ui.toast(message) : alert(message);
 
 function createYeti(colors, isLofi = false) {
-  const group = new THREE.Group();
-  const parts = {};
+  // An original 3D character with the same winter-cartoon design language as
+  // the SVG portraits: white furry silhouette, big blue expressive face,
+  // friendly brows, ears, and a scarf. Low-poly on purpose for mobile WebGL.
+  const group = new THREE.Group(), parts = {};
   const cube = (name, w, h, d, x, y, z, color) => {
-    const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshBasicMaterial({ color, fog: false }));
-    mesh.position.set(x, y, z); mesh.castShadow = false;
-    group.add(mesh); parts[name] = mesh; return mesh;
+    const mesh = new THREE.Mesh(
+      new THREE.BoxGeometry(w, h, d),
+      new THREE.MeshBasicMaterial({ color, fog:false })
+    );
+    mesh.position.set(x,y,z);
+    mesh.castShadow=false;
+    group.add(mesh);
+    parts[name]=mesh;
+    return mesh;
   };
-  const fur = isLofi ? '#f3fbff' : colors.fur;
-  const scarf = isLofi ? '#57d5fa' : colors.scarf;
-  cube('body', .94, .89, .65, 0, 1.01, 0, fur);
-  cube('head', 1.02, .87, .81, 0, 1.73, -.05, fur);
-  cube('leftArm', .3, .88, .54, -.62, 1.0, -.01, fur);
-  cube('rightArm', .3, .88, .54, .62, 1.0, -.01, fur);
-  cube('leftLeg', .36, .57, .52, -.26, .30, 0, fur);
-  cube('rightLeg', .36, .57, .52, .26, .30, 0, fur);
-  cube('hornL', .2, .38, .23, -.34, 2.26, .01, '#dfecf3');
-  cube('hornR', .2, .38, .23, .34, 2.26, .01, '#dfecf3');
-  cube('face', .62, .38, .08, 0, 1.62, -.49, '#d8eafa');
-  cube('eyeL', .12, .15, .07, -.23, 1.83, -.51, '#183248');
-  cube('eyeR', .12, .15, .07, .23, 1.83, -.51, '#183248');
-  cube('nose', .13, .09, .07, 0, 1.59, -.56, '#31546a');
-  cube('scarf', 1.04, .18, .71, 0, 1.36, .0, scarf);
-  cube('scarfTail', .2, .43, .12, .28, 1.1, -.39, scarf);
-  cube('hat', .78, .23, .73, 0, 2.24, -.07, '#344f72');
-  cube('hatPom', .23, .23, .23, 0, 2.43, -.07, '#ecfdff');
+  const fur = isLofi ? '#f7fdff' : (colors.fur || '#f7fdff');
+  const face = isLofi ? '#4e9cd0' : (colors.face || '#4e9cd0');
+  const scarf = isLofi ? '#45cdeb' : (colors.scarf || '#37c5e1');
+  const ivory='#e6f7fc', ice='#b8dce8', dark='#1c3b59';
+  // Boots and legs create a readable shape at a distance.
+  cube('legL',.34,.59,.49,-.26,.28,0,fur);
+  cube('legR',.34,.59,.49,.26,.28,0,fur);
+  cube('footL',.40,.19,.63,-.26,.10,-.13,face);
+  cube('footR',.40,.19,.63,.26,.10,-.13,face);
+  cube('body',.98,1.06,.67,0,1.03,0,fur);
+  cube('belly',.71,.54,.07,0,.88,-.37,ivory);
+  cube('armL',.32,.78,.51,-.64,1.03,0,fur);
+  cube('armR',.32,.78,.51,.64,1.03,0,fur);
+  cube('handL',.29,.23,.51,-.64,.61,-.03,face);
+  cube('handR',.29,.23,.51,.64,.61,-.03,face);
+  // Shaggy silhouette: tiny white fur clumps, without big overlapping meshes.
+  for(const [name,x,y,z] of [
+    ['furL1',-.51,1.36,.02],['furL2',-.58,.86,.06],
+    ['furR1',.51,1.35,.03],['furR2',.57,.85,.06],
+    ['furTopL',-.46,1.98,-.04],['furTopR',.46,1.98,-.04]
+  ]) cube(name,.20,.22,.30,x,y,z,fur);
+  cube('head',1.08,.82,.81,0,1.75,-.04,fur);
+  cube('earL',.25,.35,.20,-.65,1.76,-.09,face);
+  cube('earR',.25,.35,.20,.65,1.76,-.09,face);
+  cube('hornL',.19,.38,.19,-.35,2.27,.01,ice);
+  cube('hornR',.19,.38,.19,.35,2.27,.01,ice);
+  cube('tuftL',.19,.22,.22,-.18,2.18,-.31,fur);
+  cube('tuftR',.19,.23,.22,.19,2.19,-.31,fur);
+  // The thick blue face, white eyes and smiling mouth are readable at phone size.
+  cube('face',.85,.59,.10,0,1.72,-.49,face);
+  cube('cheekL',.19,.18,.11,-.41,1.52,-.49,face);
+  cube('cheekR',.19,.18,.11,.41,1.52,-.49,face);
+  cube('eyeL',.25,.21,.07,-.21,1.84,-.57,'#ffffff');
+  cube('eyeR',.25,.21,.07,.21,1.84,-.57,'#ffffff');
+  cube('pupilL',.10,.15,.05,-.17,1.82,-.62,dark);
+  cube('pupilR',.10,.15,.05,.25,1.82,-.62,dark);
+  cube('browL',.30,.055,.08,-.22,2.0,-.57,'#245983');
+  cube('browR',.30,.055,.08,.22,2.0,-.57,'#245983');
+  cube('nose',.16,.11,.09,0,1.66,-.61,'#255c83');
+  cube('mouth',.44,.08,.07,0,1.49,-.59,'#15334e');
+  cube('smile',.28,.035,.07,0,1.52,-.635,'#d3f8ff');
+  cube('scarf',1.04,.18,.76,0,1.38,.01,scarf);
+  cube('scarfTail',.20,.41,.12,.30,1.14,-.41,scarf);
+  cube('hat',.81,.21,.78,0,2.22,-.04,'#2b607d');
+  cube('hatPom',.20,.20,.21,0,2.37,-.04,ivory);
   function recolor(next) {
-    for (const n of ['body','head','leftArm','rightArm','leftLeg','rightLeg']) parts[n].material.color.set(next.fur);
-    parts.scarf.material.color.set(next.scarf);
-    parts.scarfTail.material.color.set(next.scarf);
-    parts.hat.visible = parts.hatPom.visible = next.hat === 'yes';
+    for(const n of ['body','head','armL','armR','legL','legR','furL1','furL2','furR1','furR2','furTopL','furTopR']) parts[n].material.color.set(next.fur||'#f7fdff');
+    for(const n of ['face','cheekL','cheekR','earL','earR','handL','handR','footL','footR']) parts[n].material.color.set(next.face||'#4e9cd0');
+    for(const n of ['scarf','scarfTail']) parts[n].material.color.set(next.scarf||'#37c5e1');
+    parts.hat.visible=parts.hatPom.visible=next.hat==='yes';
   }
-  if (!isLofi) recolor(colors);
-  return { group, parts, recolor };
+  if(!isLofi)recolor(colors);
+  else {parts.hat.visible=parts.hatPom.visible=false;}
+  return {group,parts,recolor};
 }
 
 function validateBlueprint(candidate) {
@@ -65,7 +101,7 @@ function validateBlueprint(candidate) {
 }
 
 export function initFlurry(game) {
-  let colors = Object.assign({ fur:'#f3f9ff', scarf:'#35c5ee', hat:'yes' }, read(PREFERENCES, {}));
+  let colors = Object.assign({ fur:'#f7fdff', face:'#4e9cd0', scarf:'#37c5e1', hat:'yes' }, read(PREFERENCES, {}));
   let quest = Math.max(0, Math.min(4, Number(read(QUEST, 0)) || 0));
   let placed = 0;
   let npcPosition = null;
@@ -116,7 +152,12 @@ export function initFlurry(game) {
     '#flurryMenuButton{background:linear-gradient(90deg,#2b7797,#4b91ae);border-color:#81d9fa;color:white}',
     '#flurryModal .note{font:12px/1.5 system-ui;color:#b1d3e4;margin:10px 0}',
     '@media(max-height:520px){#flurryHelp{bottom:55px;max-width:65vw;font-size:10px;padding:5px 8px} .flurryTiles{grid-template-columns:repeat(4,minmax(0,1fr))} #flurryModal .flurryTile{min-height:57px;padding:5px 2px}.flurryTile img{width:28px;height:28px}}',
-    '@media(max-height:520px){#flurryActions{top:5px;left:7px;gap:4px} .flurryBtn{padding:6px 7px;font-size:10px}#flurryQuest{top:37px;font-size:10px;padding:5px 7px}#flurryModal .fPanel{padding:10px}}'
+    '@media(max-height:520px){#flurryActions{top:5px;left:7px;gap:4px} .flurryBtn{padding:6px 7px;font-size:10px}#flurryQuest{top:37px;font-size:10px;padding:5px 7px}#flurryModal .fPanel{padding:10px}}',
+    '#flurryQuest{padding-left:54px;min-height:55px;background-image:url("./assets/yeti-guide.svg");background-repeat:no-repeat;background-size:43px 53px;background-position:5px center}',
+    '.fc-customize-preview{display:flex;align-items:center;gap:12px;margin:7px 0;background:#11374d;border:1px solid #397a94;border-radius:14px;padding:9px}',
+    '.fc-customize-preview img{height:110px;width:95px;object-fit:contain;flex-shrink:0}',
+    '.fc-customize-preview p{font-size:12px;color:#daeff8;margin:0}',
+    '@media(max-height:520px){.fc-customize-preview img{height:66px;width:65px}}'
   ].join('\n'); document.head.appendChild(style);
 
   const actions = document.createElement('div'); actions.id = 'flurryActions';
@@ -296,12 +337,16 @@ export function initFlurry(game) {
   }
   function showCustomizer() {
     open('Customize your Yeti');
-    make('p','Design your snowy avatar. Your choices are saved on this device.');
+    const art=make('div');art.className='fc-customize-preview';
+    const img=document.createElement('img');img.src='./assets/yeti-guide.svg';img.alt='Original winter Yeti illustration';
+    art.appendChild(img);
+    const helper=document.createElement('p');helper.textContent='Your choices change your in-game 3D Yeti. The drawing is an illustrated style reference.';art.appendChild(helper);
     label('Fur color'); const fur=input(colors.fur,'color');
+    label('Face, hands and feet'); const face=input(colors.face,'color');
     label('Scarf color'); const scarf=input(colors.scarf,'color');
     label('Wear a winter hat'); const hat=make('select');
     for(const v of ['yes','no']){const op=document.createElement('option');op.value=v;op.textContent=v==='yes'?'Yes — winter hat':'No hat';hat.appendChild(op);}hat.value=colors.hat;
-    button('Save my Yeti',()=>{colors={fur:fur.value,scarf:scarf.value,hat:hat.value}; avatar.recolor(colors); save(PREFERENCES,colors);close();notify(game,'Yeti appearance saved!');});
+    button('Save my Yeti',()=>{colors={fur:fur.value,face:face.value,scarf:scarf.value,hat:hat.value}; avatar.recolor(colors); save(PREFERENCES,colors);close();notify(game,'Yeti appearance saved!');});
     button('Cancel',close,true);
   }
   function showBlueprint() {

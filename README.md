@@ -18,10 +18,10 @@ The address above is a proposed URL and works ONLY after Pages has been configur
 
 - Persistent winter landscape with snow-covered beaches, mountains and frozen seas, plus continual falling snow and periodic blizzards. New worlds start in daylight; Creative defaults to a bright world with a toggle in More. Survival retains a day/night cycle.
 - Mining, block placement, crafting, inventory, tool hotbar, local world save, touch joystick and swipe camera from the upstream engine.
-- Custom Yeti model; change fur and scarf colors and show/hide a winter hat. The model uses unlit materials so its colors remain visible in third-person.
+- Redesigned, expressive low-poly Yeti with a blue face, visible eyes, smile, blue paws and snowy fur; customize fur, face and scarf colors and wear a winter hat. Original illustrated SVG artwork appears in the title screen, loading screen, quests and character editor. The model uses unlit materials so its colors remain visible in third-person.
 - Optional first/third-person camera; default first person for accurate building.
 - Lofi starter shack with a simple four-stage quest.
-- Simplified opening menu: create a world or resume, customize Yeti, and optional game settings tucked away; in-game controls prioritize **BUILD**, camera and More.
+- Illustrated winter-Yeti visual identity and simplified opening menu: create or resume a world, customize your Yeti, and open optional settings. In-game controls prioritize **BUILD**, camera and More.
 - **More → ↗ Unstuck** returns you above your spawn in safe flight mode if you get trapped underground; **More → 🪽 Fly** toggles flight; **More → ☀ Day** controls bright Creative daylight. Placement hints are limited to avoid covering gameplay.
 - **Direct bottom hotbar controls:** tap any filled slot to equip it; tap an empty slot to add a block; hold a filled slot to replace its material; use **+ ALL** next to the hotbar for a searchable, categorized list of every supported block item in the engine (including stairs and slabs). These work in Creative and Survival without changing modes. Library blocks are unlimited in either mode; naturally acquired Survival inventory items are kept when possible. No new furniture blocks have been invented yet.
 - Prominent **🧱 BUILD** menu with the same searchable material collection, starter set, and brief placement hint. Picking a building material automatically returns to first-person aiming. Creative free-building is the default for new worlds. Existing Survival saves can switch to Creative by choosing a material from BUILD.
