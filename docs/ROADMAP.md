@@ -20,7 +20,8 @@ Performance goals (not benchmarks): smooth 30 FPS on modest Android phones and 6
 - Precise camera targeting, full character editor, animations, warm clothing, snowstorm survival.
 - Implemented first house pack: doors, windows, low-poly table/chair/bed/fireplace.
 - Implemented 2-point walls and floors/roofs with safe empty-cell checks, 96-block limit and one-action undo.
-- Implemented adjustable two-corner blueprint selection, JSON v1 export, color-coded 3D hologram preview, 90-degree rotation, safe placement checks and batched installation.
+- Implemented adjustable two-corner blueprint selection, JSON v1 export, color-coded 3D hologram preview, 90-degree rotation, terrain-height snapping, safe placement checks and batched installation.
+- Creator Studio gallery: free starter house blueprints, isometric thumbnails, native file sharing, local backups, JSON import, deletion and deterministic SHA-256 content fingerprints. No NFT minting or trading is available yet.
 - Next: full two-high doors, rotation and expanded furniture, snapping blueprints to terrain and collision-tested device QA.
 - Expand NPC conversations, quests, world progression and creator building tools.
 - Validate high/medium/low Android configurations.

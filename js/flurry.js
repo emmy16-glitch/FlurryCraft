@@ -248,6 +248,7 @@ export function initFlurry(game) {
     previewButtons.appendChild(b);return b;
   };
   previewButton('↺ Rotate',()=>shiftPreview(0,0,0,1));
+  previewButton('⬇ Ground',()=>snapPreviewToTerrain());
   previewButton('← Left',()=>shiftPreview(-1,0,0));
   previewButton('Right →',()=>shiftPreview(1,0,0));
   previewButton('↑ Forward',()=>shiftPreview(0,0,-1));
@@ -644,8 +645,31 @@ export function initFlurry(game) {
     previewName.textContent='📐 '+data.name;
     third=false;
     moreOpen=false;extras.forEach(btn=>btn.style.display='none');more.textContent='⋯ More';
+    if(!snapPreviewToTerrain(true))refreshPreview();
+    notify(game,'Blueprint preview: rotate, move or snap to the ground, then tap Place.');
+  }
+  function snapPreviewToTerrain(initial=false) {
+    if(!previewState||previewState.world!==game.world)return false;
+    const {data,origin,turn,world}=previewState;
+    const [sx,sy,sz]=rotatedSize(data.size,turn);
+    let highest=1;
+    for(let x=0;x<sx;x++)for(let z=0;z<sz;z++){
+      const wx=origin.x+x,wz=origin.z+z;
+      if(!world.loaded(wx,wz)) {
+        if(!initial)notify(game,'Move closer to the target area so the terrain can load.');
+        return false;
+      }
+      // Scan the actual edited world, including snow, existing buildings and trees.
+      // This action never deletes terrain; it only lifts the hologram above it.
+      for(let y=94;y>=0;y--){
+        const id=world.getBlock(wx,y,wz);
+        if(id!==B.AIR && B.SOLID[id]){highest=Math.max(highest,y+1);break;}
+      }
+    }
+    origin.y=Math.min(96-sy,highest);
     refreshPreview();
-    notify(game,'Blueprint preview: rotate or move the ghost, then tap Place.');
+    if(!initial)notify(game,'Blueprint moved above the highest surface in this area.');
+    return true;
   }
   function shiftPreview(dx=0,dy=0,dz=0,rotate=0){
     if(!previewState)return;

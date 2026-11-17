@@ -46,6 +46,10 @@ test('custom game systems are connected', () => {
   assert.match(flurry,/function showBlueprint/);
   assert.match(flurry,/function markCapturePoint/);
   assert.match(flurry,/function startPreview/);
+  assert.match(flurry,/function snapPreviewToTerrain/);
+  assert.match(flurry,/initCreatorStudioUI/);
+  assert.match(readFileSync('js/creator-studio.js','utf8'),/function blueprintFingerprint/);
+  assert.match(readFileSync('js/creator-studio-ui.js','utf8'),/function initCreatorStudioUI/);
   assert.match(flurry,/function refreshPreview/);
   assert.match(flurry,/function installBlueprint/);
   assert.match(flurry,/requestAnimationFrame\(installBatch\)/);
