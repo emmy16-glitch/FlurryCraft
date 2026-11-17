@@ -169,6 +169,11 @@ body.touch #hotbar{bottom:6px}
 }
 @media (prefers-reduced-motion:reduce){#menu *,#menu *:before,#menu *:after{animation:none!important}}
 
+/* Always-visible exit for inventory, chest, furnace and crafting screens */
+#fcClosePanel{position:fixed;z-index:32;top:max(12px,env(safe-area-inset-top));right:max(12px,env(safe-area-inset-right));display:flex;gap:8px;align-items:center;justify-content:center;min-width:98px;min-height:46px;padding:9px 15px;border:2px solid #c3f4ff;border-radius:14px;background:#0c465c;color:#fff;font:800 14px system-ui;cursor:pointer;box-shadow:0 5px 20px #001c2f99;touch-action:manipulation}
+#fcClosePanel:active{background:#147994}
+#screen{overflow:auto;overscroll-behavior:contain;padding:64px 8px 12px}
+@media(max-height:530px){#fcClosePanel{top:6px;right:8px;min-width:80px;min-height:38px;padding:6px 10px;font-size:12px}#screen{padding:46px 6px 6px}}
 </style>
 </head>
 <body>
@@ -189,7 +194,7 @@ body.touch #hotbar{bottom:6px}
 <div id="touch"><div id="lookzone"></div><div id="joyzone"></div><div id="joybase"><div id="joyknob"></div></div>
   <div class="tb" id="tbJump">&#9650;</div><div class="tb" id="tbBreak" title="Hold to mine or remove a block">&#9874;</div><div class="tb" id="tbPlace" title="Tap to place the selected block">&#9635;</div>
   <div class="tb sm" id="tbSneak">&#9660;</div><div class="tb sm" id="tbInv">&#9776;</div><div class="tb sm" id="tbDrop">Q</div><div class="tb sm" id="tbMenu">II</div></div>
-<div class="overlay" id="screen"><div id="panel"></div></div>
+<div class="overlay" id="screen"><div id="panel" role="dialog" aria-label="Inventory or crafting"></div><button id="fcClosePanel" class="fc-close-panel" type="button" aria-label="Close inventory and return to game">✕ <span>Close</span></button></div>
 <div id="cursor"></div><div id="tip"></div>
 <div class="overlay" id="pause"><div class="box"><h2 style="font:900 28px 'Courier New',monospace;margin:0 0 12px">Game Paused</h2>
   <div class="btn" id="bResume">Back to Game</div>

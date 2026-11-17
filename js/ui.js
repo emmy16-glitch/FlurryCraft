@@ -43,6 +43,12 @@ export class UI {
     $('screen').addEventListener('mousedown', (e) => { if (e.target === $('screen') && this.cursor) { this.game.spawnItem(this.cursor.id, this.cursor.n, this.game.player.x, this.game.player.eyeY - 0.3, this.game.player.z, this.cursor.d, this.dirVel()); this.cursor = null; this.renderCursor(); } });
     document.addEventListener('mousemove', (e) => { const c = $('cursor'); c.style.left = e.clientX - 20 + 'px'; c.style.top = e.clientY - 20 + 'px'; const t = $('tip'); t.style.left = e.clientX + 14 + 'px'; t.style.top = e.clientY - 34 + 'px'; });
     document.addEventListener('keydown', (e) => { if (e.target && e.target.tagName === 'INPUT') return; if (this.scr && /^[1-9]$/.test(e.key) && this.hoverSlot) this.hotSwap(this.hoverSlot, +e.key - 1); });
+    // Explicit touch-accessible close: never rely on keyboard Escape on phones.
+    const closeButton = $('fcClosePanel');
+    if (closeButton) {
+      closeButton.addEventListener('pointerdown', event => event.stopPropagation());
+      closeButton.addEventListener('click', event => { event.preventDefault(); event.stopPropagation(); this.close(); });
+    }
     this.namePop = 0;
   }
   dirVel() { const p = this.game.player, cp = Math.cos(p.pitch); return [-Math.sin(p.yaw) * cp * 4, Math.sin(p.pitch) * 4 + 1.5, -Math.cos(p.yaw) * cp * 4]; }
