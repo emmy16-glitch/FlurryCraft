@@ -257,7 +257,7 @@ function loadIndex() {
 }
 function renderWorlds() {
   const el = $('worldlist'), list = loadIndex().sort((a, b) => b.date - a.date);
-  if (!list.length) { el.innerHTML = '<div class="hint">No saved worlds yet. Create a new one below.</div>'; return; }
+  if (!list.length) { el.innerHTML = '<div class="hint">Create your first world.</div>'; return; }
   el.innerHTML = list.map((w) => `<div class="wrow"><div class="wi"><b>${w.name.replace(/</g, '')}</b><span>${w.mode === 'c' ? 'Creative' : 'Survival'} &middot; ${w.played ? Math.floor(w.played / 3600) + 'h ' + Math.floor(w.played % 3600 / 60) + 'm played &middot; ' : ''} ${new Date(w.date).toLocaleDateString()} ${new Date(w.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span></div><div class="wb play" data-id="${w.id}">Play</div><div class="wb del" data-id="${w.id}">&times;</div></div>`).join('');
 }
 $('worldlist').addEventListener('click', (e) => {

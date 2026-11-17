@@ -48,6 +48,13 @@ test('custom game systems are connected', () => {
   assert.match(flurry,/function startPreview/);
   assert.match(flurry,/function snapPreviewToTerrain/);
   assert.match(flurry,/initCreatorStudioUI/);
+  assert.match(flurry,/id='fcQuickMenu'/);
+  assert.match(flurry,/function setMoreMenu/);
+  assert.match(flurry,/fc-dialog-close/);
+  assert.match(flurry,/questVisible/);
+  assert.doesNotMatch(flurry,/extras\.forEach/);
+  assert.match(html,/fc-pause-settings/);
+  assert.match(html,/Continue Playing/);
   assert.match(flurry,/initSuiMarketUI/);
   assert.match(flurry,/verifyOwnership/);
   assert.match(readFileSync('js/sui-bridge.js','utf8'),/signAndExecuteTransaction/);

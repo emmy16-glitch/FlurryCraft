@@ -192,6 +192,35 @@ body.touch #hotbar{bottom:6px}
  #menu .fc-brand-yeti{height:75px;width:66px}
  #menu .fc-brand-copy #logo{font-size:31px}
 }
+
+/* Premium navigation: clear play actions, optional settings and quiet HUD. */
+#menu.fc-menu{background:linear-gradient(155deg,rgba(5,28,45,.85),rgba(9,28,42,.74)),radial-gradient(ellipse at 70% 18%,#8fdaec42,transparent 55%)}
+#menu .fc-menu-card{box-shadow:0 18px 58px #001b2b8c;border-color:#648da27a}
+#menu #worldlist{scrollbar-width:thin;scrollbar-color:#457d95 transparent}
+#menu .fc-start{transition:filter .18s ease,transform .18s ease}
+#menu .fc-start:active{transform:scale(.99)}
+#menu .fc-menu-card .fc-card-heading{margin-bottom:6px}
+#pause{background:rgba(4,17,28,.75);backdrop-filter:blur(8px)}
+#pause .box{width:min(420px,94vw);min-width:0;max-height:95dvh;overflow-y:auto;border:1px solid #477c95;outline:0;border-radius:20px;background:#102e43;color:#e4f4fb;box-shadow:0 18px 56px #001b2bcc;padding:20px}
+#pause .box h2{font:800 23px/1.2 system-ui;margin:0 0 17px;text-align:center}
+#pause .box .btn{font:750 14px/1.2 system-ui;text-shadow:none;border:1px solid #4b8098;background:#1e5269;color:#ecfaff;border-radius:12px;padding:12px;box-shadow:none;margin:8px 0}
+#pause #bResume{background:#89e7f5;color:#07354a;border-color:#bbf6ff}
+#pause #bQuit{background:transparent;border-color:#476b81;color:#bcdbe9}
+#pause .fc-pause-settings{border-top:1px solid #335e77;border-bottom:1px solid #335e77;margin:12px 0;padding:10px 0;color:#d8eaf3;font:650 13px system-ui;text-align:left}
+#pause .fc-pause-settings summary{cursor:pointer;list-style:none;min-height:26px;padding:4px 2px}
+#pause .fc-pause-settings summary::-webkit-details-marker{display:none}
+#pause .fc-pause-settings .opt{font:550 12px system-ui;color:#cae0ed}
+body.touch #tbDrop{display:none}
+body.touch #tbMenu{right:16px}
+body.touch #tbInv{right:74px}
+#hotbar{background:rgba(9,29,44,.66);border:1px solid #4f8594;border-radius:13px;padding:4px;backdrop-filter:blur(8px);box-shadow:0 5px 18px #001b294d}
+#hotbar .slot{border:1px solid #7399a944;border-radius:8px;background:#2450695e;transition:background .12s ease,border-color .12s ease}
+#hotbar .slot.sel{border-color:#b8efff;background:#6cb6ce56;box-shadow:0 0 0 1px #91e2f5;z-index:2}
+#hotbar .fc-hotbar-all{background:#24839d!important;border-color:#81dcec!important}
+#toasts div{font:650 12px/1.35 system-ui;text-shadow:0 2px 4px #001a2b;background:#13374bcf;border:1px solid #4a8398;border-radius:9px;padding:6px 10px;margin:3px}
+@media(max-height:520px){#pause .box{padding:12px 17px}#pause .box h2{margin-bottom:8px;font-size:19px}#pause .box .btn{padding:9px;margin:5px 0}#menu .fc-menu-card{max-height:calc(100dvh - 85px)}}
+@media(prefers-reduced-motion:reduce){#menu .fc-start,#hotbar .slot{transition:none}}
+
 </style>
 </head>
 <body>
@@ -214,20 +243,21 @@ body.touch #hotbar{bottom:6px}
   <div class="tb sm" id="tbSneak">&#9660;</div><div class="tb sm" id="tbInv">&#9776;</div><div class="tb sm" id="tbDrop">Q</div><div class="tb sm" id="tbMenu">II</div></div>
 <div class="overlay" id="screen"><div id="panel" role="dialog" aria-label="Inventory or crafting"></div><button id="fcClosePanel" class="fc-close-panel" type="button" aria-label="Close inventory and return to game">✕ <span>Close</span></button></div>
 <div id="cursor"></div><div id="tip"></div>
-<div class="overlay" id="pause"><div class="box"><h2 style="font:900 28px 'Courier New',monospace;margin:0 0 12px">Game Paused</h2>
-  <div class="btn" id="bResume">Back to Game</div>
+<div class="overlay" id="pause"><div class="box"><h2>Paused</h2>
+  <div class="btn" id="bResume">Continue Playing</div>
+  <details class="fc-pause-settings"><summary>Settings</summary>
   <div class="opt"><span>Render distance</span><input type="range" id="pRender" min="3" max="14" value="7"><b id="pRenderV">7</b></div>
   <div class="opt"><span>Field of view</span><input type="range" id="pFov" min="60" max="110" value="75"><b id="pFovV">75</b></div>
   <div class="opt"><span>Volume</span><input type="range" id="pVol" min="0" max="100" value="70"></div>
   <div class="opt"><span>Music</span><div class="seg" id="pMusic"><span data-v="1" class="on">On</span><span data-v="0">Off</span></div></div>
   <div class="opt"><span>Mouse sensitivity</span><input type="range" id="pSens" min="20" max="250" value="100"></div>
-  <div class="btn" id="bSave">Save</div>
-  <div class="btn" id="bQuit">Save &amp; Quit to Title</div></div></div>
+  </details>
+  <div class="btn" id="bSave">Save World</div>
+  <div class="btn" id="bQuit">Save &amp; Exit</div></div></div>
 <div class="overlay" id="death"><div class="box"><h1>You died!</h1><div id="deathmsg" style="margin-bottom:14px;font:16px 'Courier New',monospace"></div><div class="btn" id="bRespawn">Respawn</div></div></div>
 <div id="loading"><img class="fc-loading-yeti" src="./assets/yeti-guide.svg" alt=""><div id="loadtitle">Building your winter world...</div><div id="bar"><i></i></div><div id="loadmsg">Carving caves, planting trees</div></div>
 <div id="menu" class="fc-menu">
   <div class="fc-menu-inner">
-    <div class="fc-kicker">❄ A WORLD MADE OF WINTER</div>
     <div class="fc-brand">
       <img class="fc-brand-yeti" src="./assets/yeti-guide.svg" alt="FlurryCraft white Yeti with blue face and turquoise scarf">
       <div class="fc-brand-copy">
@@ -248,9 +278,7 @@ body.touch #hotbar{bottom:6px}
           <div class="opt"><span>View distance</span><input type="range" id="mRender" min="3" max="14" value="4"><b id="mRenderV">4</b></div>
         </div>
       </details>
-      <div class="fc-menu-hint">Creative starts with building blocks. No wallet required.</div>
     </div>
-    <div class="fc-menu-foot">FLURRYCRAFT <span>·</span> EARLY ACCESS</div>
   </div>
 </div>
 <script type="importmap">{"imports":{"three":"./vendor/three.module.min.js"}}</script>

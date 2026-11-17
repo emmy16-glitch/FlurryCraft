@@ -161,7 +161,28 @@ export function initFlurry(game) {
     '.fc-customize-preview{display:flex;align-items:center;gap:12px;margin:7px 0;background:#11374d;border:1px solid #397a94;border-radius:14px;padding:9px}',
     '.fc-customize-preview img{height:110px;width:95px;object-fit:contain;flex-shrink:0}',
     '.fc-customize-preview p{font-size:12px;color:#daeff8;margin:0}',
-    '@media(max-height:520px){.fc-customize-preview img{height:66px;width:65px}}'
+    '@media(max-height:520px){.fc-customize-preview img{height:66px;width:65px}}',
+    '#flurryActions{max-width:min(520px,68vw);gap:7px;align-items:flex-start}',
+    '.flurryBtn{border-color:rgba(181,224,244,.25);background:rgba(9,32,48,.87);box-shadow:0 4px 14px #0014;transition:background .16s ease,border-color .16s ease}',
+    '.flurryBtn.build{background:#7adbee;border:1px solid #a9f3ff;box-shadow:0 5px 16px #032b43aa;color:#082f42}',
+    '.flurryBtn.is-open{border-color:#84ddf1;background:#15546a}',
+    '#fcQuickMenu{position:absolute;top:calc(100% + 8px);left:0;width:min(278px,80vw);max-height:calc(100dvh - 65px);overflow:auto;overscroll-behavior:contain;border:1px solid #356c84;border-radius:17px;padding:10px;background:rgba(9,32,47,.98);box-shadow:0 12px 35px #001b29aa;backdrop-filter:blur(12px);touch-action:pan-y}',
+    '#fcQuickMenu[hidden]{display:none!important}',
+    '#fcQuickMenu .fc-menu-section{font:800 10px/1.4 system-ui;letter-spacing:.14em;color:#81b1c5;padding:9px 9px 4px}',
+    '#fcQuickMenu .fc-menu-item{display:block;width:100%;min-height:38px;text-align:left;border:0;border-radius:9px;background:transparent;color:#e4f5fb;padding:9px 11px;font:650 13px/1.2 system-ui;cursor:pointer}',
+    '#fcQuickMenu .fc-menu-item:active{background:#245e76}',
+    '#flurryModal{background:rgba(5,17,29,.69);backdrop-filter:blur(8px);padding:8px}',
+    '#flurryModal .fPanel{width:min(500px,95vw);max-height:92dvh;background:#102e43;border:1px solid #376982;border-radius:20px;padding:17px;box-shadow:0 18px 55px #001b2bcc}',
+    '#flurryModal .fc-dialog-head{position:sticky;top:-17px;z-index:5;display:flex;gap:12px;align-items:center;justify-content:space-between;padding:3px 0 10px;background:#102e43}',
+    '#flurryModal .fc-dialog-head h2{font:800 19px/1.25 system-ui;letter-spacing:-.02em;margin:0;color:#f4fcff}',
+    '#flurryModal button.fc-dialog-close{margin:0;padding:0;flex:none;min-width:42px;width:42px;height:42px;border:1px solid #4a7c93;border-radius:12px;background:#1c445a;color:#e7faff;font:700 18px system-ui}',
+    '#flurryModal .fPanel>p{font:500 12px/1.5 system-ui;color:#b9d1dd;margin:8px 0}',
+    '#flurryModal button{transition:background .14s ease,transform .14s ease;touch-action:manipulation}',
+    '#flurryModal button:active{transform:scale(.98)}',
+    '#flurryModal button:focus-visible,.flurryBtn:focus-visible,#fcQuickMenu button:focus-visible{outline:2px solid #a4f2ff;outline-offset:2px}',
+    '#flurryQuest{top:57px;max-width:220px;padding:8px 8px 8px 44px;min-height:45px;background-size:35px 43px;background-position:4px center;border:1px solid #3b7991;font-size:10px;line-height:1.3}',
+    '@media(max-height:520px){#flurryActions{top:6px;left:7px;gap:5px}.flurryBtn{padding:8px 10px;font-size:11px}.flurryBtn.build{padding:8px 11px}#flurryModal .fPanel{padding:10px 12px}#flurryModal .fc-dialog-head{top:-10px}#fcQuickMenu{max-height:calc(100dvh - 55px);width:245px}}',
+    '@media(prefers-reduced-motion:reduce){#flurryModal *,#flurryActions *{transition:none!important}}',
   ].join('\n'); document.head.appendChild(style);
 
   const actions = document.createElement('div'); actions.id = 'flurryActions';
@@ -169,63 +190,91 @@ export function initFlurry(game) {
     const button = document.createElement('button'); button.className='flurryBtn'; button.textContent=label;
     button.addEventListener('click', e => { e.stopPropagation(); callback(); }); actions.appendChild(button); return button;
   };
-  const buildAction = action('🧱 BUILD', () => showBuildMenu()); buildAction.classList.add('build');
-  let toolState=null, lastBuild=null, selectionState=null, previewState=null;
-  const markAction=action('📍 Mark 1',()=>selectionState ? markCapturePoint() : markToolPoint());
-  const stopTool=action('✕ Cancel Tool',()=>{toolState=null;selectionState=null;refreshToolActions();notify(game,'Selection cancelled.');});
+  // Three clear entry points. All other actions remain accessible in Menu.
+  const buildAction=action('▦ Blocks',()=>showBuildMenu());buildAction.classList.add('build');
+  let toolState=null,lastBuild=null,selectionState=null,previewState=null;
+  const markAction=action('Mark first',()=>selectionState?markCapturePoint():markToolPoint());
+  const stopTool=action('✕ Cancel',()=>{toolState=null;selectionState=null;refreshToolActions();notify(game,'Cancelled.');});
   markAction.style.display=stopTool.style.display='none';
   function refreshToolActions(){
     const showing=!!(toolState||selectionState);
     markAction.style.display=stopTool.style.display=showing?'inline-flex':'none';
-    if(selectionState)markAction.textContent=selectionState.start?'📦 Capture Corner 2':'📦 Capture Corner 1';
-    else if(toolState)markAction.textContent=toolState.start?'📍 Mark 2 + Build':'📍 Mark 1';
+    if(selectionState)markAction.textContent=selectionState.start?'Capture second':'Capture first';
+    else if(toolState)markAction.textContent=toolState.start?'Build second':'Mark first';
   }
-  let creatorStudio, suiMarket;
-  action('🏠 Studio',()=>creatorStudio.open());
-  action('👁 View', () => { third=!third; notify(game, third ? 'Third-person Yeti view' : 'First-person building view'); });
-  let brightWorld = read('flurrycraft_bright_world_v1', true) !== false;
-  const toggleDay = () => {
-    brightWorld = !brightWorld;
-    save('flurrycraft_bright_world_v1', brightWorld);
-    if (brightWorld) game.env.tod = 0.25;
-    daylightBtn.textContent = brightWorld ? '☀ Day: ON' : '🌙 Day: OFF';
-    notify(game, brightWorld ? 'Bright winter daylight enabled!' : 'Natural day/night cycle enabled.');
-  };
-  const rescue = () => {
-    if(game.state !== 'play' || !game.world) return;
-    const p=game.player, sp=p.spawn;
-    if (!sp || !Number.isFinite(sp.x) || !Number.isFinite(sp.z)) {notify(game,'Spawn point is unavailable.');return;}
-    // Hover above the saved spawn; never overwrite existing structures/terrain.
-    // Free-flight avoids trapping the player in the same dug-out hole again.
+  let creatorStudio,suiMarket;
+  action('⌂ My Builds',()=>creatorStudio.open());
+  let brightWorld=read('flurrycraft_bright_world_v1',true)!==false;
+  let questVisible=read('fc_quest_visible_v1',false)===true;
+  const menuToggle=action('☰ Menu',()=>setMoreMenu(menu.hidden));
+  menuToggle.setAttribute('aria-expanded','false');
+  menuToggle.setAttribute('aria-controls','fcQuickMenu');
+  menuToggle.setAttribute('aria-haspopup','menu');
+  const menu=document.createElement('nav');
+  menu.id='fcQuickMenu';menu.hidden=true;menu.setAttribute('aria-label','Game options');
+  function menuSection(name){
+    const title=document.createElement('div');title.className='fc-menu-section';title.textContent=name;menu.appendChild(title);
+  }
+  function menuItem(text,callback){
+    const b=document.createElement('button');b.type='button';b.className='fc-menu-item';b.textContent=text;
+    b.addEventListener('click',e=>{e.stopPropagation();setMoreMenu(false);callback();});
+    menu.appendChild(b);return b;
+  }
+  function setMoreMenu(open){
+    menu.hidden=!open;
+    menuToggle.setAttribute('aria-expanded',String(open));
+    menuToggle.classList.toggle('is-open',open);
+  }
+  function toggleDay(){
+    brightWorld=!brightWorld;
+    save('flurrycraft_bright_world_v1',brightWorld);
+    if(brightWorld)game.env.tod=.25;
+    dayButton.textContent=brightWorld?'Daylight: On':'Daylight: Off';
+    notify(game,brightWorld?'Daylight on':'Day/night cycle on');
+  }
+  function rescue(){
+    if(game.state!=='play'||!game.world)return;
+    const p=game.player,sp=p.spawn;
+    if(!sp||!Number.isFinite(sp.x)||!Number.isFinite(sp.z)){notify(game,'Spawn not available');return;}
     enterBuildMode();
-    const y=Math.min(88, Math.max(8,sp.y+10));
-    game.tp(sp.x,y,sp.z);
-    p.vx=p.vy=p.vz=0;p.onGround=false;p.flying=true;
-    third=false;
-    notify(game,'Back near spawn! Flying enabled: JUMP goes up, DOWN goes down.');
-  };
-  const extras = [
-    action('📐 Walls / Floors',()=>showSmartBuilder()),
-    action('↶ Undo Build',()=>undoSmartBuild()),
-    action('🎨 Yeti', () => showCustomizer()),
-    action('🏠 Save Build', () => showBlueprint()),
-    action('📂 Import', () => chooseImport()),
-    action('⛓ Sui Testnet', () => suiMarket.open()),
-    action('↗ Unstuck', rescue),
-    action('🪽 Fly', () => {
-      const p=game.player; enterBuildMode(); p.flying=!p.flying;
-      if(p.flying) p.vy=0;
-      notify(game,p.flying?'Flying enabled: JUMP ↑ and DOWN ↓.':'Flying disabled.');
-    }),
-    action(brightWorld?'☀ Day: ON':'🌙 Day: OFF', toggleDay)
-  ];
-  const daylightBtn=extras[extras.length-1];
-  extras.forEach(btn => btn.style.display = 'none');
-  let moreOpen = false;
-  const more = action('⋯ More', () => {
-    moreOpen = !moreOpen;
-    extras.forEach(btn => btn.style.display = moreOpen ? 'flex' : 'none');
-    more.textContent = moreOpen ? '✕ Close' : '⋯ More';
+    game.tp(sp.x,Math.min(88,Math.max(8,sp.y+10)),sp.z);
+    p.vx=p.vy=p.vz=0;p.onGround=false;p.flying=true;third=false;
+    notify(game,'Back at spawn. Flying on.');
+  }
+  function dropHeld(){
+    const p=game.player,s=p.held();
+    if(!s){notify(game,'Select an item first');return;}
+    if(s.flurryUnlimited){notify(game,'Choose a different block instead');return;}
+    const cp=Math.cos(p.pitch);
+    game.spawnItem(s.id,1,p.x,p.eyeY-.3,p.z,s.d,[-Math.sin(p.yaw)*cp*5,Math.sin(p.pitch)*5+1.5,-Math.cos(p.yaw)*cp*5]);
+    s.n--;if(s.n<=0)p.inv[p.sel]=null;
+    game.ui.dirtyInv=true;
+  }
+  menuSection('BUILD');
+  menuItem('Walls & Floors',()=>showSmartBuilder());
+  menuItem('Save Building',()=>showBlueprint());
+  menuItem('Undo Last Build',()=>undoSmartBuild());
+  menuSection('WORLD');
+  menuItem('Switch Camera',()=>{third=!third;notify(game,third?'Third person':'First person');});
+  menuItem('My Yeti',()=>showCustomizer());
+  menuItem('Fly On / Off',()=>{
+    const p=game.player;enterBuildMode();p.flying=!p.flying;
+    if(p.flying)p.vy=0;
+    notify(game,p.flying?'Flying on':'Flying off');
+  });
+  const dayButton=menuItem(brightWorld?'Daylight: On':'Daylight: Off',toggleDay);
+  menuItem('Return to Spawn',rescue);
+  const questButton=menuItem(questVisible?'Hide Quest':'Show Quest',()=>{
+    questVisible=!questVisible;
+    save('fc_quest_visible_v1',questVisible);
+    questButton.textContent=questVisible?'Hide Quest':'Show Quest';
+  });
+  menuItem('Drop Item',dropHeld);
+  menuSection('EXPERIMENTAL');
+  menuItem('Sui Testnet',()=>suiMarket.open());
+  actions.appendChild(menu);
+  document.addEventListener('pointerdown',e=>{
+    if(!menu.hidden&&!actions.contains(e.target))setMoreMenu(false);
   });
   document.body.appendChild(actions);
   const questView = document.createElement('div'); questView.id='flurryQuest'; document.body.appendChild(questView);
@@ -265,11 +314,20 @@ export function initFlurry(game) {
   const newWorldButton=$('bNew'); if (newWorldButton) newWorldButton.insertAdjacentElement('afterend',menuButton);
   menuButton.addEventListener('click', () => showCustomizer());
 
-  const close = () => { overlay.style.display='none'; panel.replaceChildren(); panel.classList.remove('fc-studio-wide'); };
+  const close = () => { overlay.style.display='none'; panel.replaceChildren(); panel.classList.remove('fc-studio-wide','fc-sui-panel'); };
   overlay.addEventListener('pointerdown', e => { if(e.target===overlay) close(); });
   const make = (tag,text,parent=panel) => { const el=document.createElement(tag); if(text!==undefined) el.textContent=text; parent.appendChild(el); return el; };
   const button = (title, fn, muted=false) => {const el=make('button',title); if(muted)el.className='muted'; el.addEventListener('click',fn); return el;};
-  const open = title => {panel.replaceChildren(); panel.classList.remove('fc-studio-wide');make('h2',title); overlay.style.display='flex';};
+  const open = title => {
+    setMoreMenu(false);
+    panel.replaceChildren();panel.classList.remove('fc-studio-wide','fc-sui-panel');
+    const head=make('header');head.className='fc-dialog-head';
+    const h=document.createElement('h2');h.textContent=title;
+    const exit=document.createElement('button');exit.className='fc-dialog-close';exit.type='button';
+    exit.textContent='✕';exit.setAttribute('aria-label','Close and return to game');
+    exit.addEventListener('click',close);
+    head.append(h,exit);overlay.style.display='flex';
+  };
   const label = text=>make('label',text);
   const input = (value='',type='text')=>{const el=make('input');el.value=value;el.type=type;return el;};
   const complete = () => {quest=Math.min(4,quest+1); save(QUEST,quest); placed=0; lastQuestText=''; notify(game,quest===4?'Lofi: Amazing! You are a true Yeti creator!':'Quest completed! '+questNames[quest]);};
@@ -336,10 +394,8 @@ export function initFlurry(game) {
   }
   function showBuildMenu(targetSlot=null) {
     if (game.state !== 'play' || !game.world) { notify(game,'Enter a world first!'); return; }
-    open('🧱 ALL BLOCKS');
-    make('p','Tap a block to equip it instantly in your hotbar. This works in Creative and Survival without changing your mode.');
-    const hint=make('div','Use the + ALL button on the bottom bar anytime, or hold any hotbar slot to replace it.');
-    hint.className='flurryLibraryHint';
+    open('Blocks');
+    const hint=make('p','Tap a block to equip it.');hint.className='flurryLibraryHint';
     const search=input('','search');
     search.placeholder='Search blocks: snow, glass, stairs...';
     search.setAttribute('aria-label','Search available blocks');
@@ -385,7 +441,7 @@ export function initFlurry(game) {
       p.sel=0;game.ui.dirtyInv=true;third=false;close();
       notify(game,'Starter blocks equipped — tap a hotbar slot to switch.');
     });
-    button('Close',close,true);
+    // The universal ✕ header closes this panel.
   }
   // Two-point construction: use the same block currently selected in the hotbar.
   // This deliberately avoids new save formats; edits go through World.setBlock.
@@ -411,7 +467,7 @@ export function initFlurry(game) {
       toolState={kind:type.value,height:Math.min(6,Math.max(1,parseInt(height.value,10)||3)),id,world:game.world,start:null};
       third=false;close();refreshToolActions();
       // Collapse the More submenu so the mark button is easy to see on phones.
-      moreOpen=false;extras.forEach(btn=>btn.style.display='none');more.textContent='⋯ More';
+      setMoreMenu(false);
       notify(game,'Aim at a surface, then tap 📍 Mark 1 at the top.');
     });
     button('Cancel',close,true);
@@ -508,7 +564,7 @@ export function initFlurry(game) {
       toolState=null;
       selectionState={world:game.world,start:null};
       third=false;close();refreshToolActions();
-      moreOpen=false;extras.forEach(btn=>btn.style.display='none');more.textContent='⋯ More';
+      setMoreMenu(false);
       notify(game,'Aim at the first block of your building, then tap CAPTURE CORNER 1.');
     });
     button('Cancel',close,true);
@@ -647,7 +703,7 @@ export function initFlurry(game) {
     previewState={world:game.world,data,turn:0,origin,group,ghost,bounds,verifyOwnership};
     previewName.textContent='📐 '+data.name;
     third=false;
-    moreOpen=false;extras.forEach(btn=>btn.style.display='none');more.textContent='⋯ More';
+    setMoreMenu(false);
     if(!snapPreviewToTerrain(true))refreshPreview();
     notify(game,'Blueprint preview: rotate, move or snap to the ground, then tap Place.');
   }
@@ -762,9 +818,10 @@ export function initFlurry(game) {
   }
   function update(dt) {
     const isPlaying=game.state==='play' && !game.paused;
-    actions.style.display=isPlaying&&!game.ui.isOpen&&!previewState?'flex':'none';
-    questView.style.display=isPlaying?'block':'none';
-    helpView.style.display=isPlaying&&!game.ui.isOpen&&overlay.style.display!=='flex'?'block':'none';
+    actions.style.display=isPlaying&&!game.ui.isOpen&&!previewState&&overlay.style.display!=='flex'?'flex':'none';
+    if(!isPlaying||game.ui.isOpen||previewState)setMoreMenu(false);
+    questView.style.display=isPlaying&&questVisible&&overlay.style.display!=='flex'?'block':'none';
+    helpView.style.display=isPlaying&&!game.ui.isOpen&&overlay.style.display!=='flex'&&!!(toolState||selectionState)?'block':'none';
     if(isPlaying){
       const id=game.player.held()?.id;
       const text=previewState ? '📐 Move / rotate hologram → tap Place when green' : selectionState ? (selectionState.start ? '📦 Aim at opposite top block → CAPTURE CORNER 2' : '📦 Aim at first block → CAPTURE CORNER 1') : toolState ? (toolState.start ?
@@ -850,6 +907,7 @@ export function initFlurry(game) {
   document.addEventListener('keydown', e=>{
     if(e.target && /INPUT|TEXTAREA/.test(e.target.tagName))return;
     if(e.code==='Escape' && overlay.style.display==='flex'){close();e.stopImmediatePropagation();return;}
+    if(e.code==='Escape'&&!menu.hidden){setMoreMenu(false);e.stopImmediatePropagation();return;}
     if(game.state!=='play'||game.ui.isOpen||game.paused)return;
     if(e.code==='KeyV'){third=!third;notify(game,third?'Third-person camera':'First-person camera');}
     if(e.code==='KeyB')showBlueprint();
