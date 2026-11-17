@@ -66,7 +66,10 @@ test('custom game systems are connected', () => {
   assert.match(flurry,/function setMoreMenu/);
   assert.match(readFileSync('js/creator-studio-ui.js','utf8'),/fc-studio-card-more/);
   assert.match(readFileSync('js/creator-studio-ui.js','utf8'),/fc-studio-tabs/);
-  assert.match(readFileSync('js/sui-market-ui.js','utf8'),/Coming soon/);
+  assert.match(readFileSync('js/sui-market-ui.js','utf8'),/Testnet launch in preparation/);
+  assert.match(readFileSync('js/sui-market-ui.js','utf8'),/Building Preview/);
+  assert.match(readFileSync('js/sui-market-ui.js','utf8'),/Review NFT Mint/);
+  assert.match(readFileSync('js/sui-market-ui.js','utf8'),/Review Listing/);
   assert.match(flurry,/fc-dialog-close/);
   assert.match(flurry,/questVisible/);
   assert.doesNotMatch(flurry,/extras\.forEach/);
@@ -89,7 +92,10 @@ test('custom game systems are connected', () => {
   assert.match(flurry,/verifyOwnership/);
   assert.match(readFileSync('js/sui-bridge.js','utf8'),/signAndExecuteTransaction/);
   assert.match(readFileSync('js/sui-market-core.js','utf8'),/canonicalBytes/);
-  assert.match(readFileSync('js/sui-market-ui.js','utf8'),/Sui Testnet Market/);
+  assert.match(readFileSync('js/sui-market-ui.js','utf8'),/Sui Marketplace/);
+  assert.match(readFileSync('js/sui-bridge.js','utf8'),/getMoveFunction/);
+  assert.match(readFileSync('js/sui-bridge.js','utf8'),/waitForTransaction/);
+  assert.match(readFileSync('move/flurrycraft/tests/market_tests.move','utf8'),/mint_list_buy_transfers/);
   assert.match(readFileSync('move/flurrycraft/sources/market.move','utf8'),/public fun buy\(/);
   assert.match(readFileSync('move/flurrycraft/sources/market.move','utf8'),/public fun mint\(/);
   assert.match(readFileSync('js/sui-config.js','utf8'),/export const SUI_PACKAGE_ID=/);

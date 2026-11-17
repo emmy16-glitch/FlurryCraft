@@ -35,7 +35,7 @@ export async function checkPackage(value){
   // Reject a syntactically valid but unknown package before any wallet signing.
   for(const name of ['mint','list','buy','cancel']){
     const result=await client().getMoveFunction({packageId:id,moduleName:'market',name});
-    if(!result?.function || result.function.visibility!=='public')
+    if(!result?.function || String(result.function.visibility).toLowerCase()!=='public')
       throw new Error('This is not the expected FlurryCraft marketplace contract.');
   }
   checkedPackage=id;

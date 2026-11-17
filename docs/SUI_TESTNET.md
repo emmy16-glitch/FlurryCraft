@@ -4,10 +4,10 @@
 
 ## Implemented
 
-- Move source: move/flurrycraft/sources/market.move — Blueprint NFT containing real voxel geometry, onchain SHA2-256, mint, shared escrow listing, seller cancellation and atomic exact-price Testnet SUI purchase.
+- Move source: move/flurrycraft/sources/market.move — Blueprint NFT containing real voxel geometry, onchain SHA2-256, mint, shared escrow listing, seller cancellation and atomic exact-price Testnet SUI purchase. Seven Move scenario tests cover successful transfers and invalid actions. Pinned Testnet CLI tests run in .github/workflows/move-validation.yml.
 - Browser: js/sui-bridge.js — official @mysten/sui v2 and @mysten/dapp-kit-core wallet-standard integration, dynamically bundled for GitHub Pages.
-- UI: More → ⛓ Sui Testnet or Studio → ⛓ NFT Testnet. Wallet connection, owned NFTs, recent listings, mint/list/buy/cancel actions, and installation that rechecks owned token data.
-- JS safety: invalid block rejection, max 24KB canonical geometry payload, deterministic hash, integer MIST price conversion, onchain escrow integrity checks, and mandatory wallet approval for transactions.
+- UI: Menu → Sui Testnet or My Builds → More options → NFT Testnet. Three clean tabs for Explore, My NFTs and Create. Verified escrowed voxel geometry is previewable before buying; mint/list/buy/cancel use review screens and explicit wallet approval. Owned buildings are checked again before installation.
+- JS safety: invalid block rejection, max 24KB canonical geometry payload, deterministic hash, integer MIST price conversion, onchain escrow integrity checks, and mandatory wallet approval for transactions. The configured package's Move ABI is checked on Testnet and the client waits for transaction indexing before ownership refresh.
 
 The regular FlurryCraft browser game remains free and playable without a wallet.
 

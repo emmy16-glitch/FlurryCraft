@@ -23,7 +23,7 @@ Performance goals (not benchmarks): smooth 30 FPS on modest Android phones and 6
 - Explorer Map: offline incremental map, home and spawn pins, eight world-specific markers, zoom and an optional guidance arrow; no new map permissions or network requests.
 - Implemented 2-point walls and floors/roofs with safe empty-cell checks, 96-block limit and one-action undo.
 - Implemented adjustable two-corner blueprint selection, JSON v1 export, color-coded 3D hologram preview, 90-degree rotation, terrain-height snapping, safe placement checks and batched installation.
-- Creator Studio gallery: free starter blueprints, isometric thumbnails, native file sharing, local backups, import/deletion and deterministic SHA-256 fingerprints. A separate Sui Testnet NFT implementation exists in source but is not deployed.
+- Creator Studio gallery: free starter blueprints, isometric thumbnails, native sharing, backups, import/deletion and SHA-256 fingerprints. Testnet source now has seven passing Move scenarios, buyer preview and clearer confirmation flows. The package still needs publication and wallet end-to-end tests.
 - Next: full two-high doors, rotation and expanded furniture, snapping blueprints to terrain and collision-tested device QA.
 - Expand NPC conversations, quests, world progression and creator building tools.
 - Validate high/medium/low Android configurations.
