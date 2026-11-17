@@ -10,6 +10,7 @@ import { Mob } from './mobs.js';
 import { ItemEntity, FallingBlock, PrimedTNT } from './entities.js';
 import { Weather } from './weather.js';
 import { initTouch } from './touch.js';
+import { initFlurry } from './flurry.js';
 
 const $ = (id) => document.getElementById(id);
 const SAVE_KEY = 'flurrycraft_save_v1', SET_KEY = 'flurrycraft_settings_v1';
@@ -101,6 +102,7 @@ const game = window.game = {
 game.touchMode = touchMode; game.Mob = Mob; game.sky = sky; game.renderer = renderer; game.weather = weather; weather.game = game;
 const player = game.player = new Player(game);
 const ui = game.ui = new UI(game);
+initFlurry(game);
 sound.musicOn = !!settings.music;
 
 // ---------------------------------------------------------------- advancements
@@ -293,6 +295,14 @@ function startGame(cont, id) {
   if (touchMode) { try { document.documentElement.requestFullscreen && document.documentElement.requestFullscreen(); if (screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(() => {}); } catch (e) {} }
   $('menu').style.display = 'none'; $('loading').style.display = 'flex'; game.state = 'loading'; disposeMenuWorld(); camera.fov = settings.fov; camera.updateProjectionMatrix();
   const world = game.world = new World(seed, scene, mats);
+  // Record actual player block placements for the Lofi building quest.
+  const originalSetBlock = world.setBlock.bind(world);
+  world.setBlock = (x, y, z, id, record = true) => {
+    const old = world.getBlock(x, y, z);
+    const result = originalSetBlock(x, y, z, id, record);
+    if (game.flurry) game.flurry.countPlayerPlacement(x, y, z, old, id);
+    return result;
+  };
   world.setRadius(settings.render); world.maxGen = 40; world.maxMesh = 40;
   world.onFall = (x, y, z, id) => game.falling.push(new FallingBlock(game, id, x, y, z));
   world.onChunkNew = (c) => {
@@ -333,6 +343,7 @@ function startGame(cont, id) {
     let guard = 0; while (world.collides(player.x, player.y, player.z, player.hw, player.h) && guard++ < 100) player.y += 1;
     if (!save) { player.spawn = { x: player.x, y: player.y, z: player.z }; }
     world.maxGen = 1; world.maxMesh = 2;
+    if (game.flurry) game.flurry.onWorldReady(!save);
     $('loading').style.display = 'none'; $('hud').style.display = 'block'; game.state = 'play'; if (touchMode) initTouch(game, player, ui, { pause: () => showPause(true), settings }); last = performance.now();
     ui.dirtyInv = true; game.requestPointer();
     if (!save) ui.toast(player.creative ? 'Welcome to FlurryCraft (Creative)' : 'Welcome to FlurryCraft! Meet Lofi, then build your dream.');
@@ -468,7 +479,8 @@ function frame(now) {
   const under = w.getLight(Math.floor(player.x), Math.floor(player.y + 1), Math.floor(player.z)) >> 4 < 4;
   sound.updateAmbient(game.time, !under, game.env.day < 0.3, under);
   // ---- render
-  renderer.info.reset(); renderer.clear(); renderer.render(scene, camera); renderer.clearDepth(); if (!player.dead && !ui.isOpen) renderer.render(handScene, handCam);
+  if (game.flurry) game.flurry.update(dt);
+  renderer.info.reset(); renderer.clear(); renderer.render(scene, camera); renderer.clearDepth(); if (!player.dead && !ui.isOpen && !(game.flurry && game.flurry.isThird())) renderer.render(handScene, handCam);
   // ---- HUD
   ui.updateHud(dt);
   const tod = game.env.tod, hh = Math.floor(((tod * 24 + 6) % 24)), mm = Math.floor(((tod * 24 + 6) % 1) * 60);
