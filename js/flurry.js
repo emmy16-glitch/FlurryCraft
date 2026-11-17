@@ -158,6 +158,8 @@ export function initFlurry(game) {
   function selectBlock(id) {
     if (game.state !== 'play' || !B.BLOCKS[id]) return;
     enterBuildMode();
+    // Exact placement uses a first-person ray. Third-person obscures the crosshair.
+    third=false;
     const player=game.player;
     let slot=player.inv.findIndex((s,i)=>i<9 && s?.id===id);
     if (slot<0) slot=player.inv.findIndex((s,i)=>i<9 && !s);
@@ -192,7 +194,7 @@ export function initFlurry(game) {
       enterBuildMode();
       const p=game.player;
       [B.SPRUCE_PLANKS,B.GLASS,B.STONE_BRICKS,B.SNOW,B.ICE,B.BRICKS,B.PLANKS,B.TORCH].forEach((id,i)=>{p.inv[i]={id,n:64};});
-      p.sel=0;game.ui.dirtyInv=true;close();
+      p.sel=0;game.ui.dirtyInv=true;third=false;close();
       notify(game,'Starter kit ready! Tap □ on the right to place spruce wood.');
     });
     button('Close',close,true);
