@@ -22,7 +22,7 @@ export function fromMist(value) {
   return whole.toString()+(frac?'.'+frac:'');
 }
 export function canonicalBytes(input) {
-  const blueprint=normalizeBlueprint(input,id=>id>0&&id<128);
+  const blueprint=normalizeBlueprint(input,id=>id>0&&id<128&&![10,11,12,23].includes(id));
   const bytes=new TextEncoder().encode(canonicalBlueprintContent(blueprint));
   if(bytes.length>MAX_CONTENT_BYTES)throw new Error('This house is too large for the Testnet NFT (24 KB limit). Try a smaller selection.');
   return bytes;
@@ -35,7 +35,7 @@ export function parseOnchainContent(bytes,name,creator) {
   const result=normalizeBlueprint({
     version:1,name:String(name||'Onchain building'),author:String(creator||'Sui creator'),
     size:data[1],blocks:data[2],
-  },id=>id>0&&id<128);
+  },id=>id>0&&id<128&&![10,11,12,23].includes(id));
   if(canonicalBlueprintContent(result)!==text)
     throw new Error('NFT geometry is not canonically encoded.');
   return result;

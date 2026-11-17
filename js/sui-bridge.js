@@ -64,14 +64,17 @@ async function submit(tx){
     throw new Error('No confirmed Sui transaction digest returned.');
   return result.Transaction.digest;
 }
-async function decodeNFT(raw,objectId){
-  const nft=nftBcs.parse(raw);
+async function validateParsedNFT(nft){
   const bytes=Uint8Array.from(nft.geometry),digest=toHex(nft.digest);
   if(digest!==(await hashBytes(bytes)))throw new Error('Onchain blueprint digest is invalid.');
   const title=decodeString(nft.name);
   const blueprint=parseOnchainContent(bytes,title,nft.creator);
-  return {objectId,title,creator:nft.creator,digest,blueprint,
+  return {title,creator:nft.creator,digest,blueprint,
     size:blueprint.size,blocks:blueprint.blocks.length};
+}
+async function decodeNFT(raw,objectId){
+  const parsed=await validateParsedNFT(nftBcs.parse(raw));
+  return {objectId,...parsed};
 }
 export async function mint(pkg,blueprint){
   const id=verifiedPackage(pkg),content=canonicalBytes(blueprint);
@@ -105,9 +108,18 @@ export async function getListing(pkg,listingId){
   if(!object?.content)throw new Error('Listing not found on Sui Testnet.');
   if(object.type&&object.type!==listingType(id))throw new Error('Wrong contract package for listing.');
   const parsed=listingBcs.parse(object.content);
+  // Never offer a sale in the UI without verifying the escrowed voxel bytes,
+  // their SHA-256 and the listing's declared digest/title.
+  let blocks=0;
+  if(parsed.nft){
+    const checked=await validateParsedNFT(parsed.nft);
+    if(checked.digest!==toHex(parsed.digest)||checked.title!==decodeString(parsed.name))
+      throw new Error('Listing metadata does not match its NFT.');
+    blocks=checked.blocks;
+  }
   return {listingId,seller:parsed.seller,priceMist:BigInt(parsed.price).toString(),
     priceSui:fromMist(parsed.price),title:decodeString(parsed.name),
-    digest:toHex(parsed.digest),active:!!parsed.nft,nftId:parsed.nft?.id||null};
+    digest:toHex(parsed.digest),active:!!parsed.nft,nftId:parsed.nft?.id||null,blocks};
 }
 export async function listings(pkg){
   const id=verifiedPackage(pkg),found=[],seen=new Set();

@@ -52,6 +52,6 @@ test('reject noncanonical, unsafe, oversized and invalid NFT geometry',()=>{
   })[0];
   assert.ok(canonicalBytes(big).length<MAX_CONTENT_BYTES);
   const huge={version:1,name:'Big',author:'Tester',size:[32,10,32],blocks:[]};
-  for(let y=0;y<6;y++)for(let x=0;x<32;x++)for(let z=0;z<32;z++)huge.blocks.push([x,y,z,38]);
+  for(let y=0;y<5;y++)for(let x=0;x<32;x++)for(let z=0;z<32;z++)huge.blocks.push([x,y,z,38]);
   assert.throws(()=>canonicalBytes(huge),/24 KB limit/);
 });
