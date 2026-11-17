@@ -9,6 +9,7 @@ import { initCreatorStudioUI } from './creator-studio-ui.js';
 import { initSuiMarketUI } from './sui-market-ui.js';
 import { EditHistory } from './edit-history.js';
 import { weatherProfile,cycleWeatherMode } from './winter-weather.js';
+import { initExplorerMap } from './explorer-map.js';
 
 const PREFERENCES = 'flurrycraft_yeti_v1';
 const BLUEPRINTS = 'flurrycraft_blueprints_v1';
@@ -224,7 +225,7 @@ export function initFlurry(game) {
     if(selectionState)markAction.textContent=selectionState.start?'Capture second':'Capture first';
     else if(toolState)markAction.textContent=toolState.start?'Build second':'Mark first';
   }
-  let creatorStudio,suiMarket;
+  let creatorStudio,suiMarket,explorer;
   action('⌂ My Builds',()=>creatorStudio.open());
   let brightWorld=read('flurrycraft_bright_world_v1',true)!==false;
   let winterMode=game.weather.setMode(read('flurrycraft_winter_weather_v1','storm'));
@@ -279,6 +280,7 @@ export function initFlurry(game) {
   menuItem('Undo',()=>undoSmartBuild());
   menuItem('Redo',()=>redoLastEdit());
   menuSection('WORLD');
+  menuItem('World Map',()=>explorer.open());
   menuItem('Switch Camera',()=>{third=!third;notify(game,third?'Third person':'First person');});
   menuItem('My Yeti',()=>showCustomizer());
   menuItem('Fly On / Off',()=>{
@@ -352,13 +354,13 @@ export function initFlurry(game) {
   const newWorldButton=$('bNew'); if (newWorldButton) newWorldButton.insertAdjacentElement('afterend',menuButton);
   menuButton.addEventListener('click', () => showCustomizer());
 
-  const close = () => { overlay.style.display='none'; panel.replaceChildren(); panel.classList.remove('fc-studio-wide','fc-sui-panel'); };
+  const close = () => { overlay.style.display='none'; panel.replaceChildren(); panel.classList.remove('fc-studio-wide','fc-sui-panel','fc-map-panel'); };
   overlay.addEventListener('pointerdown', e => { if(e.target===overlay) close(); });
   const make = (tag,text,parent=panel) => { const el=document.createElement(tag); if(text!==undefined) el.textContent=text; parent.appendChild(el); return el; };
   const button = (title, fn, muted=false) => {const el=make('button',title); if(muted)el.className='muted'; el.addEventListener('click',fn); return el;};
   const open = title => {
     setMoreMenu(false);
-    panel.replaceChildren();panel.classList.remove('fc-studio-wide','fc-sui-panel');
+    panel.replaceChildren();panel.classList.remove('fc-studio-wide','fc-sui-panel','fc-map-panel');
     const head=make('header');head.className='fc-dialog-head';
     const h=document.createElement('h2');h.textContent=title;
     const exit=document.createElement('button');exit.className='fc-dialog-close';exit.type='button';
@@ -374,6 +376,8 @@ export function initFlurry(game) {
     startPreview,notify,onMintTestnet:blueprint=>suiMarket.open({blueprint})
   });
   suiMarket=initSuiMarketUI({game,panel,openDialog:open,closeDialog:close,notify,startPreview});
+  explorer=initExplorerMap({game,panel,openDialog:open,closeDialog:close,notify,
+    dialogOpen:()=>overlay.style.display==='flex'});
   // Beginners should be able to build immediately, without finding a recipe book.
   // Derive the library from the engine registry instead of maintaining a
   // hard-coded 12-block selection. All supported placeable inventory blocks
@@ -860,6 +864,7 @@ export function initFlurry(game) {
   function onWorldReady(isNew){
     const p=game.player,w=game.world;
     toolState=null;selectionState=null;buildJob=null;progress.hidden=true;editHistory.reset(w);clearPreview();refreshToolActions();
+    explorer.reset();
     equipStarterBlocks();
     if (p.creative && brightWorld) game.env.tod=0.25;
     // Existing survival worlds used to start with an empty hotbar. Show
@@ -911,6 +916,7 @@ export function initFlurry(game) {
     placementGhost.visible=true;
   }
   function update(dt) {
+    explorer.update(dt);
     const isPlaying=game.state==='play' && !game.paused;
     actions.style.display=isPlaying&&!game.ui.isOpen&&!previewState&&overlay.style.display!=='flex'?'flex':'none';
     if(!isPlaying||game.ui.isOpen||previewState)setMoreMenu(false);

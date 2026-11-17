@@ -298,6 +298,7 @@ function startGame(cont, id) {
   let seed = save ? save.seed : (seedStr ? (/^-?\d+$/.test(seedStr) ? parseInt(seedStr, 10) : [...seedStr].reduce((a, c) => (Math.imul(a, 31) + c.charCodeAt(0)) | 0, 7)) : Math.floor(Math.random() * 1e9));
   if (save) { settings.mode = save.mode; settings.diff = save.diff; currentId = id; basePlayed = save.played || 0; const m = loadIndex().find((w) => w.id === id); currentName = m ? m.name : 'World'; }
   else { basePlayed = 0; currentId = 'w' + Date.now().toString(36); const n = loadIndex().length + 1; currentName = seedStr ? 'Seed ' + seedStr.slice(0, 18) : 'World ' + n; }
+  game.worldId = currentId;game.worldName = currentName;
   game.difficulty = [0, 1, 1.5][settings.diff];
   if (touchMode) { try { document.documentElement.requestFullscreen && document.documentElement.requestFullscreen(); if (screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(() => {}); } catch (e) {} }
   $('menu').style.display = 'none'; $('loading').style.display = 'flex'; game.state = 'loading'; disposeMenuWorld(); camera.fov = settings.fov; camera.updateProjectionMatrix();

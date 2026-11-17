@@ -73,6 +73,14 @@ test('custom game systems are connected', () => {
   assert.match(readFileSync('index.html','utf8'),/fc-pause-settings/);
   assert.match(readFileSync('index.html','utf8'),/Continue Playing/);
   assert.match(flurry,/initSuiMarketUI/);
+  assert.match(flurry,/initExplorerMap/);
+  assert.match(flurry,/menuItem\('World Map'/);
+  assert.match(flurry,/explorer\.reset\(\)/);
+  assert.match(readFileSync('js/explorer-map.js','utf8'),/function initExplorerMap/);
+  assert.match(readFileSync('js/explorer-map.js','utf8'),/renderTerrain/);
+  assert.match(readFileSync('js/explorer-map.js','utf8'),/fcNavBeacon/);
+  assert.match(readFileSync('js/explorer-map-core.js','utf8'),/function markerKey/);
+  assert.match(main,/game\.worldId = currentId/);
   assert.match(flurry,/verifyOwnership/);
   assert.match(readFileSync('js/sui-bridge.js','utf8'),/signAndExecuteTransaction/);
   assert.match(readFileSync('js/sui-market-core.js','utf8'),/canonicalBytes/);

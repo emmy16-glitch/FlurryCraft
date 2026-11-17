@@ -16,6 +16,7 @@ The address above is a proposed URL and works ONLY after Pages has been configur
 
 ## Current features (pre-alpha)
 
+- **Explorer Map:** a private, offline terrain map under **Menu → World Map**. Set Home at your current location, tap the map to save up to eight named places per world, and select Guide for a minimal directional compass. Zoom and recenter without loading online map tiles or using device location. Custom buildings are not drawn on the terrain preview. Places are stored in the same browser (back up before clearing storage).
 - **Winter World 2.0:** thick snow caps on terrain, frosted spruce leaves, softened near/far snowflakes, animated blizzard gusts and adaptive snow particle counts for Android. Snow is permanent, with Storm the default. Use **Menu → Weather** to switch between Storm, Snowfall and Calm. The terrain and saved world format remain unchanged. New worlds start in daylight; Creative defaults to a bright world, while Survival keeps its day/night cycle.
 - Mining, block placement, crafting, inventory, tool hotbar, local world save, touch joystick and swipe camera from the upstream engine.
 - Redesigned, expressive low-poly Yeti with a blue face, visible eyes, smile, blue paws and snowy fur; customize fur, face and scarf colors and wear a winter hat. Original illustrated SVG artwork appears in the title screen, loading screen, quests and character editor. The model uses unlit materials so its colors remain visible in third-person.
@@ -49,6 +50,12 @@ All saved creations currently live in browser storage. A hash proves only that t
 The codebase includes a Move 2024 contract and a wallet-aware browser UI for experimental Testnet minting, listing, buying, cancellation and verifying ownership. **No contract package ID has been published or configured**, and no onchain sale has happened. The official Sui SDK bundle builds in GitHub Actions, but the Move contract still requires a real Sui CLI build, review and Testnet deployment. See [docs/SUI_TESTNET.md](docs/SUI_TESTNET.md).
 
 Blueprint geometry would be stored publicly inside the onchain NFT, so a buyer could retrieve the actual building. Anyone can still copy public voxel data; the token is not copyright or an exclusivity guarantee. Never enter wallet recovery phrases into the game.
+
+## Finding places in your world
+
+Open **Menu → World Map** in a saved world. The map opens centered on your character and shows surrounding generated winter terrain, Spawn, Home (if set), and your own pins. Use **+ / −** to zoom, tap the terrain to select a position, and save it as a named place. **Set Home Here** saves your current position. Tap **Guide** beside a place to close the map and see a small arrow and straight-line distance. Tap **✕** on that arrow to stop navigation. There is no teleportation, GPS tracking or route planning.
+
+Each world has its own eight-pin limit, stored in your browser. Markers are independent of the NFT blueprint features and are not synced between devices.
 
 ## Controls
 

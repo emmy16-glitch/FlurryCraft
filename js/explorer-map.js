@@ -226,7 +226,7 @@ export function initExplorerMap({game,panel,openDialog,closeDialog,notify,dialog
         const symbol=$('span',icon,row);symbol.className='fc-map-pin-icon';
         const main=$('div',undefined,row);main.className='fc-map-pin-main';
         $('strong',name,main);$('small','X '+where.x+'  ·  Z '+where.z,main);
-        const go=button(row,'Go',()=>startNavigation(where));
+        const go=button(row,'Guide',()=>startNavigation(where));
         go.setAttribute('aria-label','Navigate to '+name);
         if(kind==='mark'){
           const remove=button(row,'✕',()=>{
