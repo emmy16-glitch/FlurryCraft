@@ -30,8 +30,11 @@ const sound = new Sound();
 const weather = new Weather(scene, null);
 
 const touchMode = (window.matchMedia && matchMedia('(pointer: coarse)').matches) || 'ontouchstart' in window || navigator.maxTouchPoints > 1;
-const settings = Object.assign({ render: touchMode ? 5 : 7, fov: 75, vol: 70, music: 1, sens: 100, mode: 's', diff: 1 }, (() => { try { return JSON.parse(localStorage.getItem(SET_KEY) || '{}'); } catch (e) { return {}; } })());
+const settings = Object.assign({ render: touchMode ? 4 : 7, fov: 75, vol: 70, music: 1, sens: 100, mode: 'c', diff: 1 }, (() => { try { return JSON.parse(localStorage.getItem(SET_KEY) || '{}'); } catch (e) { return {}; } })());
 const saveSettings = () => { try { localStorage.setItem(SET_KEY, JSON.stringify(settings)); } catch (e) {} };
+// Introduce free-build as the default for new worlds. Previously saved worlds
+// retain their mode; players can opt into unlimited building with BUILD.
+try { if (!localStorage.getItem('flurrycraft_easybuild_default_v2')) { settings.mode = 'c'; localStorage.setItem('flurrycraft_easybuild_default_v2','yes'); saveSettings(); } } catch {}
 
 // ---------------------------------------------------------------- game object
 const game = window.game = {

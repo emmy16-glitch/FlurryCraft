@@ -28,4 +28,7 @@ test('custom game systems are connected', () => {
   assert.match(flurry,/function createYeti/);
   assert.match(flurry,/function showBlueprint/);
   assert.match(flurry,/function placeBlueprint/);
+  assert.match(flurry,/function showBuildMenu/);
+  assert.match(flurry,/function selectBlock/);
+  assert.match(flurry,/MeshBasicMaterial/);
 });

@@ -17,7 +17,7 @@ function createYeti(colors, isLofi = false) {
   const group = new THREE.Group();
   const parts = {};
   const cube = (name, w, h, d, x, y, z, color) => {
-    const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshLambertMaterial({ color, flatShading: true }));
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshBasicMaterial({ color, fog: false }));
     mesh.position.set(x, y, z); mesh.castShadow = false;
     group.add(mesh); parts[name] = mesh; return mesh;
   };
@@ -87,6 +87,11 @@ export function initFlurry(game) {
     '#flurryActions{position:fixed;z-index:26;top:12px;left:12px;display:none;gap:7px;flex-wrap:wrap;max-width:min(530px,64vw);pointer-events:auto}',
     '.flurryBtn{padding:9px 11px;border:1px solid #b7eafa;border-radius:13px;color:white;background:rgba(17,43,60,.85);font:700 12px system-ui;box-shadow:0 4px 18px #0018;cursor:pointer;touch-action:manipulation}',
     '.flurryBtn:active{background:#1684a5}',
+    '.flurryBtn.build{background:#168c9a;border:2px solid #d2faff;box-shadow:0 0 0 2px #003343,0 3px 16px #0008;font-weight:900;letter-spacing:.04em}',
+    '.flurryTiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin:12px 0}',
+    '#flurryModal .flurryTile{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;padding:9px 3px;margin:0;min-height:74px;background:#16465e;box-shadow:inset 0 0 0 1px #5bb3c8}',
+    '.flurryTile img{width:36px;height:36px;object-fit:contain;image-rendering:pixelated}',
+    '#flurryHelp{position:fixed;left:50%;bottom:69px;transform:translateX(-50%);width:max-content;max-width:78vw;z-index:14;padding:7px 13px;border:1px solid #a4e9ff;border-radius:12px;background:#082b40d9;color:#f0fcff;font:700 12px/1.3 system-ui;pointer-events:none;text-align:center;text-shadow:1px 1px #012;display:none}',
     '#flurryQuest{position:fixed;z-index:14;left:12px;top:65px;max-width:250px;padding:10px 12px;border-radius:12px;color:#e7faff;background:rgba(9,36,50,.74);font:600 12px/1.5 system-ui;pointer-events:none;display:none}',
     '#flurryQuest strong{display:block;color:#90ebff;letter-spacing:.06em;font-size:10px;margin-bottom:2px}',
     '#flurryModal{position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;padding:16px;background:rgba(1,15,28,.85);color:#e7faff;font:14px/1.5 system-ui}',
@@ -99,6 +104,7 @@ export function initFlurry(game) {
     '#flurryModal button.muted{background:#16394d}',
     '#flurryMenuButton{background:linear-gradient(90deg,#2b7797,#4b91ae);border-color:#81d9fa;color:white}',
     '#flurryModal .note{font:12px/1.5 system-ui;color:#b1d3e4;margin:10px 0}',
+    '@media(max-height:520px){#flurryHelp{bottom:55px;max-width:65vw;font-size:10px;padding:5px 8px} .flurryTiles{grid-template-columns:repeat(4,minmax(0,1fr))} #flurryModal .flurryTile{min-height:57px;padding:5px 2px}.flurryTile img{width:28px;height:28px}}',
     '@media(max-height:520px){#flurryActions{top:5px;left:7px;gap:4px} .flurryBtn{padding:6px 7px;font-size:10px}#flurryQuest{top:38px;font-size:10px;padding:5px 7px}#flurryModal .fPanel{padding:10px}}'
   ].join('\n'); document.head.appendChild(style);
 
@@ -107,12 +113,14 @@ export function initFlurry(game) {
     const button = document.createElement('button'); button.className='flurryBtn'; button.textContent=label;
     button.addEventListener('click', e => { e.stopPropagation(); callback(); }); actions.appendChild(button); return button;
   };
+  const buildAction = action('🧱 BUILD', () => showBuildMenu()); buildAction.classList.add('build');
   action('👁 View', () => { third=!third; notify(game, third ? 'Third-person Yeti view' : 'First-person building view'); });
   action('🎨 Yeti', () => showCustomizer());
   action('🏠 Blueprint', () => showBlueprint());
   action('📂 Import', () => chooseImport());
   document.body.appendChild(actions);
   const questView = document.createElement('div'); questView.id='flurryQuest'; document.body.appendChild(questView);
+  const helpView = document.createElement('div'); helpView.id='flurryHelp'; document.body.appendChild(helpView);
   const overlay = document.createElement('div'); overlay.id='flurryModal'; overlay.setAttribute('role','dialog'); overlay.setAttribute('aria-modal','true');
   const panel = document.createElement('div'); panel.className='fPanel'; overlay.appendChild(panel); document.body.appendChild(overlay);
   const file = document.createElement('input'); file.type='file'; file.accept='.json,application/json'; file.style.display='none'; document.body.appendChild(file);
@@ -128,6 +136,67 @@ export function initFlurry(game) {
   const label = text=>make('label',text);
   const input = (value='',type='text')=>{const el=make('input');el.value=value;el.type=type;return el;};
   const complete = () => {quest=Math.min(4,quest+1); save(QUEST,quest); placed=0; lastQuestText=''; notify(game,quest===4?'Lofi: Amazing! You are a true Yeti creator!':'Quest completed! '+questNames[quest]);};
+  // Beginners should be able to build immediately, without finding a recipe book.
+  const BUILD_PALETTE = [
+    [B.SPRUCE_PLANKS, 'Spruce Wood'], [B.PLANKS, 'Wood Planks'],
+    [B.GLASS, 'Glass'], [B.STONE_BRICKS, 'Stone Bricks'],
+    [B.SNOW, 'Snow'], [B.ICE, 'Ice'],
+    [B.BRICKS, 'Red Bricks'], [B.COBBLE, 'Cobblestone'],
+    [B.WOOL, 'White Wool'], [B.WOOL_RED, 'Red Wool'],
+    [B.TORCH, 'Torch'], [B.SPRUCE_LOG, 'Spruce Logs']
+  ];
+  function enterBuildMode() {
+    const player = game.player;
+    if (!player.creative) {
+      player.creative = true;
+      player.flying = false;
+      game.settings.mode = 'c';
+      try { localStorage.setItem('flurrycraft_settings_v1', JSON.stringify(game.settings)); } catch {}
+      notify(game, 'Creative Build Mode enabled: unlimited blocks!');
+    }
+  }
+  function selectBlock(id) {
+    if (game.state !== 'play' || !B.BLOCKS[id]) return;
+    enterBuildMode();
+    const player=game.player;
+    let slot=player.inv.findIndex((s,i)=>i<9 && s?.id===id);
+    if (slot<0) slot=player.inv.findIndex((s,i)=>i<9 && !s);
+    if (slot<0) slot=player.sel;
+    player.inv[slot]={id,n:64};
+    player.sel=slot;
+    game.ui.dirtyInv=true;
+    close();
+    helpView.dataset.selected=String(id);
+    notify(game, BUILD_PALETTE.find(x=>x[0]===id)?.[1]+' selected — aim at the ground and tap PLACE □!');
+  }
+  function equipStarterBlocks() {
+    const p=game.player;
+    if (!p.creative || p.inv.slice(0,9).some(Boolean)) return;
+    [B.SPRUCE_PLANKS,B.GLASS,B.STONE_BRICKS,B.SNOW,B.ICE,B.BRICKS,B.PLANKS,B.TORCH].forEach((id,i)=>{p.inv[i]={id,n:64};});
+    p.sel=0;
+    game.ui.dirtyInv=true;
+  }
+  function showBuildMenu() {
+    if (game.state !== 'play' || !game.world) { notify(game,'Enter a world first!'); return; }
+    open('🧱 BUILD YOUR WORLD');
+    make('p','Choose any building material. This turns on Creative Build Mode so you can place unlimited blocks — even in your existing Survival world.');
+    make('p','HOW: ① Choose a block below. ② Move the + crosshair onto the ground or a wall. ③ Tap the □ PLACE button on the RIGHT. Hold ⚒ to remove blocks.');
+    const grid=make('div');grid.className='flurryTiles';
+    for (const [id,name] of BUILD_PALETTE) {
+      const b=document.createElement('button');b.className='flurryTile';b.type='button';
+      const img=document.createElement('img');img.src=B.iconURL(id);img.alt='';
+      const caption=document.createElement('span');caption.textContent=name;
+      b.append(img,caption);b.addEventListener('click',()=>selectBlock(id));grid.appendChild(b);
+    }
+    button('Give me a starter set of blocks',()=>{
+      enterBuildMode();
+      const p=game.player;
+      [B.SPRUCE_PLANKS,B.GLASS,B.STONE_BRICKS,B.SNOW,B.ICE,B.BRICKS,B.PLANKS,B.TORCH].forEach((id,i)=>{p.inv[i]={id,n:64};});
+      p.sel=0;game.ui.dirtyInv=true;close();
+      notify(game,'Starter kit ready! Tap □ on the right to place spruce wood.');
+    });
+    button('Close',close,true);
+  }
   function showCustomizer() {
     open('Customize your Yeti');
     make('p','Design your snowy avatar. Your choices are saved on this device.');
@@ -198,6 +267,13 @@ export function initFlurry(game) {
   });
   function onWorldReady(isNew){
     const p=game.player,w=game.world;
+    equipStarterBlocks();
+    // Existing survival worlds used to start with an empty hotbar. Show
+    // the building picker the first time a returning player opens one.
+    if (!read('flurrycraft_builder_help_seen_v2',false) && p.inv.slice(0,9).every(s=>!s)) {
+      save('flurrycraft_builder_help_seen_v2',true);
+      setTimeout(()=>{if(game.state==='play')showBuildMenu();},550);
+    }
     const baseX=Math.floor(p.spawn.x)+8, baseZ=Math.floor(p.spawn.z)+3;
     const baseY=Math.max(2,Math.min(115,w.gen.column(baseX,baseZ).h+1));
     if(isNew){
@@ -223,6 +299,11 @@ export function initFlurry(game) {
     const isPlaying=game.state==='play' && !game.paused;
     actions.style.display=isPlaying&&!game.ui.isOpen?'flex':'none';
     questView.style.display=isPlaying?'block':'none';
+    helpView.style.display=isPlaying&&!game.ui.isOpen&&overlay.style.display!=='flex'?'block':'none';
+    if(isPlaying){ const id=game.player.held()?.id;const label=BUILD_PALETTE.find(e=>e[0]===id)?.[1];
+      const text=label?'🧱 '+label+' selected · Aim at ground → tap □ PLACE':'🧱 Tap BUILD (top left) to choose blocks';
+      if(helpView.textContent!==text)helpView.textContent=text;
+    }
     if(!isPlaying){avatar.group.visible=false;return;}
     const p=game.player;
     avatar.group.visible=third&&!p.dead;
@@ -267,5 +348,6 @@ export function initFlurry(game) {
     if(game.state!=='play'||game.ui.isOpen||game.paused)return;
     if(e.code==='KeyV'){third=!third;notify(game,third?'Third-person camera':'First-person camera');}
     if(e.code==='KeyB')showBlueprint();
+    if(e.code==='KeyG')showBuildMenu();
   });
 }

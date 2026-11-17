@@ -18,16 +18,17 @@ The address above is a proposed URL and works ONLY after Pages has been configur
 
 - Procedural snowy terrain, caves, weather, time of day and basic survival/creative modes.
 - Mining, block placement, crafting, inventory, tool hotbar, local world save, touch joystick and swipe camera from the upstream engine.
-- Custom Yeti model; change fur and scarf colors and show/hide a winter hat.
+- Custom Yeti model; change fur and scarf colors and show/hide a winter hat. The model uses unlit materials so its colors remain visible in third-person.
 - Optional first/third-person camera; default first person for accurate building.
 - Lofi starter shack with a simple four-stage quest.
+- Prominent **🧱 BUILD** menu with labeled material tiles, quick starter set, and a persistent hint for the PLACE control. Creative free-building is the default for new worlds. Existing Survival saves can switch to Creative by choosing a material from BUILD.
 - Save a nearby 11×12×11 building area as a JSON blueprint, then import and place it in your world. No wallet needed.
 
 ## Controls
 
-Phone: left thumb joystick, right-side swipe to look, buttons for jump/mine/place/inventory. The FlurryCraft buttons near the upper left offer 👁 View, 🎨 Yeti, 🏠 Blueprint, 📂 Import. Use landscape orientation.
+Phone: **tap 🧱 BUILD in the top-left first**, select a material, aim the crosshair at the ground or wall, tap the cyan **□ PLACE** button on the right. Hold **⚒ MINE** to remove blocks. Left thumb joystick moves; swipe the right half to look. Existing Survival saves automatically offer the building menu once. The FlurryCraft buttons near the upper left offer 👁 View, 🎨 Yeti, 🏠 Blueprint, 📂 Import. Use landscape orientation.
 
-Desktop: WASD move, mouse look, left click mine, right click place, Space jump, E inventory, 1–9 hotbar, V switch camera, B save blueprint.
+Desktop: WASD move, mouse look, left click mine, right click place, Space jump, E inventory, 1–9 hotbar, **G open BUILD menu**, V switch camera, B save blueprint.
 
 Use shorter render distance from the menu if mobile performance is poor.
 
