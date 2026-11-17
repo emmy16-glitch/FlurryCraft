@@ -543,7 +543,7 @@ export function initFlurry(game) {
     }
     if(!blocks.length){notify(game,'No building blocks found inside this selection.');return;}
     const blueprint=validateBlueprint({version:1,name,author,size,blocks});
-    const library=read(BLUEPRINTS,[]);
+    let library=read(BLUEPRINTS,[]);
     if(!Array.isArray(library))library=[];
     library.push(blueprint);
     if(library.length>15)library.splice(0,library.length-15);
@@ -591,12 +591,16 @@ export function initFlurry(game) {
   }
   function refreshPreview(){
     if(!previewState)return;
-    const s=previewState,{data,turn,origin,ghost,bounds}=s;
+    const s=previewState;
+    let {data,turn,origin,ghost,bounds}=s;
     const size=rotatedSize(data.size,turn);
     s.group.position.set(origin.x,origin.y,origin.z);
     s.group.remove(bounds);
     bounds.geometry.dispose();
-    const boxGeo=new THREE.EdgesGeometry(new THREE.BoxGeometry(size[0],size[1],size[2]));
+    bounds.material.dispose();
+    const cube=new THREE.BoxGeometry(size[0],size[1],size[2]);
+    const boxGeo=new THREE.EdgesGeometry(cube);
+    cube.dispose();
     bounds=new THREE.LineSegments(boxGeo,new THREE.LineBasicMaterial({color:'#80eaff',transparent:true,opacity:.9,depthTest:false}));
     bounds.position.set(size[0]/2,size[1]/2,size[2]/2);
     bounds.renderOrder=19;
