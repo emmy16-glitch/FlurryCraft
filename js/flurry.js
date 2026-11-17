@@ -166,6 +166,15 @@ export function initFlurry(game) {
     button.addEventListener('click', e => { e.stopPropagation(); callback(); }); actions.appendChild(button); return button;
   };
   const buildAction = action('🧱 BUILD', () => showBuildMenu()); buildAction.classList.add('build');
+  let toolState=null, lastBuild=null;
+  const markAction=action('📍 Mark 1',()=>markToolPoint());
+  const stopTool=action('✕ Cancel Tool',()=>{toolState=null;refreshToolActions();notify(game,'Smart building cancelled.');});
+  markAction.style.display=stopTool.style.display='none';
+  function refreshToolActions(){
+    const showing=!!toolState;
+    markAction.style.display=stopTool.style.display=showing?'inline-flex':'none';
+    if(showing)markAction.textContent=toolState.start?'📍 Mark 2 + Build':'📍 Mark 1';
+  }
   action('👁 View', () => { third=!third; notify(game, third ? 'Third-person Yeti view' : 'First-person building view'); });
   let brightWorld = read('flurrycraft_bright_world_v1', true) !== false;
   const toggleDay = () => {
@@ -189,6 +198,8 @@ export function initFlurry(game) {
     notify(game,'Back near spawn! Flying enabled: JUMP goes up, DOWN goes down.');
   };
   const extras = [
+    action('📐 Walls / Floors',()=>showSmartBuilder()),
+    action('↶ Undo Build',()=>undoSmartBuild()),
     action('🎨 Yeti', () => showCustomizer()),
     action('🏠 Save Build', () => showBlueprint()),
     action('📂 Import', () => chooseImport()),
@@ -335,6 +346,102 @@ export function initFlurry(game) {
     });
     button('Close',close,true);
   }
+  // Two-point construction: use the same block currently selected in the hotbar.
+  // This deliberately avoids new save formats; edits go through World.setBlock.
+  function showSmartBuilder(){
+    if(game.state!=='play'||!game.world){notify(game,'Enter a world first.');return;}
+    const held=game.player.held(), id=held?.id;
+    if(!held||!B.BLOCKS[id]||B.SHAPE[id]!==0||!B.ITEMS[id]?.block){
+      notify(game,'Select a solid building block in the bottom hotbar first.');return;
+    }
+    open('📐 Smart Build');
+    make('p','Build a wall or floor in two taps. First select a normal block (wood, glass, stone, etc.) from + ALL.');
+    make('p','1. Choose a tool. 2. Tap Start. 3. Aim the + at the ground and tap MARK 1. 4. Move your view, aim at another point and tap MARK 2 + BUILD.');
+    label('Building shape');
+    const type=make('select');
+    for(const [value,name] of [['wall','Straight wall'],['floor','Flat floor or roof']]){
+      const op=document.createElement('option');op.value=value;op.textContent=name;type.appendChild(op);
+    }
+    label('Wall height (blocks)');
+    const height=input('3','number');height.min='1';height.max='6';height.step='1';
+    type.addEventListener('change',()=>height.disabled=type.value!=='wall');
+    make('p','Material: '+B.itemName(id)+'. Maximum 96 new blocks per operation. Existing blocks will not be overwritten.');
+    button('Start selecting corners',()=>{
+      toolState={kind:type.value,height:Math.min(6,Math.max(1,parseInt(height.value,10)||3)),id,world:game.world,start:null};
+      third=false;close();refreshToolActions();
+      // Collapse the More submenu so the mark button is easy to see on phones.
+      moreOpen=false;extras.forEach(btn=>btn.style.display='none');more.textContent='⋯ More';
+      notify(game,'Aim at a surface, then tap 📍 Mark 1 at the top.');
+    });
+    button('Cancel',close,true);
+  }
+  function aimBuildPoint(){
+    const t=game.player.target;
+    if(!t){notify(game,'Aim the + at a nearby ground block or wall.');return null;}
+    const point={x:t.x+t.nx,y:t.y+t.ny,z:t.z+t.nz};
+    if(![point.x,point.y,point.z].every(Number.isInteger)||point.y<1||point.y>=96){
+      notify(game,'Choose a build point within the world.');return null;
+    }
+    return point;
+  }
+  function markToolPoint(){
+    if(!toolState||toolState.world!==game.world||game.state!=='play')return;
+    const point=aimBuildPoint();if(!point)return;
+    if(!toolState.start){
+      toolState.start=point;refreshToolActions();
+      notify(game,'Corner 1 marked. Aim elsewhere and tap Mark 2 + Build.');
+      return;
+    }
+    const a=toolState.start,b=point,locations=[];
+    if(toolState.kind==='floor'){
+      const loX=Math.min(a.x,b.x),hiX=Math.max(a.x,b.x),loZ=Math.min(a.z,b.z),hiZ=Math.max(a.z,b.z);
+      for(let x=loX;x<=hiX;x++)for(let z=loZ;z<=hiZ;z++)locations.push([x,a.y,z]);
+    }else{
+      const axis=Math.abs(b.x-a.x)>=Math.abs(b.z-a.z)?'x':'z';
+      const first=axis==='x'?a.x:a.z,last=axis==='x'?b.x:b.z,dir=first<=last?1:-1;
+      for(let n=first;dir>0?n<=last:n>=last;n+=dir){
+        for(let h=0;h<toolState.height;h++){
+          locations.push(axis==='x'?[n,a.y+h,a.z]:[a.x,a.y+h,n]);
+        }
+      }
+    }
+    if(!locations.length||locations.length>96){
+      notify(game,'Area is too large. Select a smaller wall or floor (96 blocks max).');return;
+    }
+    const world=game.world,id=toolState.id,changes=[];
+    for(const [x,y,z] of locations){
+      if(y<1||y>=96||!world.loaded(x,z)){notify(game,'The area is outside the loaded world. Move closer.');return;}
+      const existing=world.getBlock(x,y,z);
+      if(existing===id)continue;
+      if(existing!==B.AIR){notify(game,'A block is already in the selected area. Clear it or choose another spot.');return;}
+      const p=game.player;
+      if(B.SOLID[id] && x+1>p.x-p.hw&&x<p.x+p.hw&&
+          z+1>p.z-p.hw&&z<p.z+p.hw&&y+1>p.y&&y<p.y+p.h){
+        notify(game,'Move outside the wall/floor area before building.');return;
+      }
+      changes.push([x,y,z,id]);
+    }
+    if(!changes.length){notify(game,'Those blocks already exist. Choose a different area.');return;}
+    if(!game.player.creative && !game.player.held()?.flurryUnlimited){
+      notify(game,'Smart tools require a Creative world or a block equipped from + ALL.');return;
+    }
+    for(const [x,y,z,newId] of changes)world.setBlock(x,y,z,newId);
+    lastBuild={world,changes};
+    toolState=null;refreshToolActions();
+    game.ui.dirtyInv=true;
+    notify(game,'Built '+changes.length+' '+B.itemName(id)+' blocks! More → Undo Build can reverse this.');
+  }
+  function undoSmartBuild(){
+    if(!lastBuild||lastBuild.world!==game.world){notify(game,'No recent smart build to undo in this world.');return;}
+    let count=0;
+    for(const [x,y,z,id] of lastBuild.changes){
+      if(game.world.loaded(x,z)&&game.world.getBlock(x,y,z)===id){
+        game.world.setBlock(x,y,z,B.AIR);count++;
+      }
+    }
+    lastBuild=null;
+    notify(game,'Undid '+count+' blocks from your last smart build.');
+  }
   function showCustomizer() {
     open('Customize your Yeti');
     const art=make('div');art.className='fc-customize-preview';
@@ -409,6 +516,7 @@ export function initFlurry(game) {
   });
   function onWorldReady(isNew){
     const p=game.player,w=game.world;
+    toolState=null;lastBuild=null;refreshToolActions();
     equipStarterBlocks();
     if (p.creative && brightWorld) game.env.tod=0.25;
     // Existing survival worlds used to start with an empty hotbar. Show
@@ -445,7 +553,10 @@ export function initFlurry(game) {
     helpView.style.display=isPlaying&&!game.ui.isOpen&&overlay.style.display!=='flex'?'block':'none';
     if(isPlaying){
       const id=game.player.held()?.id;
-      const text=id&&B.ITEMS[id] ? B.itemName(id)+' · PLACE □' : 'Tap + ALL on the bottom bar to choose a block';
+      const text=toolState ? (toolState.start ?
+        '📐 Aim at second corner → tap MARK 2 + BUILD' :
+        '📐 Aim at first corner → tap MARK 1') :
+        (id&&B.ITEMS[id] ? B.itemName(id)+' · PLACE □' : 'Tap + ALL on the bottom bar to choose a block');
       if(helpView.textContent!==text)helpView.textContent=text;
     }
     if(!isPlaying){avatar.group.visible=false;return;}
@@ -521,7 +632,7 @@ export function initFlurry(game) {
   all.style.pointerEvents='auto';
   all.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();showBuildMenu();});
   hotbar.appendChild(all);
-  game.flurry={update,onWorldReady,countPlayerPlacement,isThird:()=>third,daylightLocked:()=>brightWorld,openBlockLibrary:showBuildMenu};
+  game.flurry={update,onWorldReady,countPlayerPlacement,isThird:()=>third,daylightLocked:()=>brightWorld,openBlockLibrary:showBuildMenu,showSmartBuilder};
   document.addEventListener('keydown', e=>{
     if(e.target && /INPUT|TEXTAREA/.test(e.target.tagName))return;
     if(e.code==='Escape' && overlay.style.display==='flex'){close();e.stopImmediatePropagation();return;}

@@ -19,6 +19,7 @@ Performance goals (not benchmarks): smooth 30 FPS on modest Android phones and 6
 
 - Precise camera targeting, full character editor, animations, warm clothing, snowstorm survival.
 - Implemented first house pack: doors, windows, low-poly table/chair/bed/fireplace.
+- Implemented 2-point walls and floors/roofs with safe empty-cell checks, 96-block limit and one-action undo.
 - Next: full two-high doors, rotation and expanded furniture, blueprint area selection and hologram placement preview.
 - Expand NPC conversations, quests, world progression and creator building tools.
 - Validate high/medium/low Android configurations.
