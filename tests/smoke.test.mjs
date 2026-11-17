@@ -34,6 +34,13 @@ test('custom game systems are connected', () => {
   assert.match(flurry,/function showSmartBuilder/);
   assert.match(flurry,/function markToolPoint/);
   assert.match(flurry,/function undoSmartBuild/);
+  assert.match(flurry,/function redoLastEdit/);
+  assert.match(flurry,/nativeRightAction/);
+  assert.match(flurry,/nativeBreakBlock/);
+  assert.match(flurry,/editHistory\.push\(world/);
+  assert.match(readFileSync('js/edit-history.js','utf8'),/class EditHistory/);
+  assert.match(main,/game\.flurry\.recordChange/);
+  assert.match(main,/visibilitychange/);
   assert.match(flurry,/locations.length>96/);
   assert.match(readFileSync('js/blocks.js','utf8'),/DOOR_CLOSED = 72/);
   assert.match(readFileSync('js/blocks.js','utf8'),/FIREPLACE = 77/);

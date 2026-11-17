@@ -7,6 +7,7 @@ import { rotateXZ, rotatedSize, selectionBounds } from './blueprints.js';
 import { normalizeBlueprint } from './creator-studio.js';
 import { initCreatorStudioUI } from './creator-studio-ui.js';
 import { initSuiMarketUI } from './sui-market-ui.js';
+import { EditHistory } from './edit-history.js';
 
 const PREFERENCES = 'flurrycraft_yeti_v1';
 const BLUEPRINTS = 'flurrycraft_blueprints_v1';
@@ -100,6 +101,7 @@ export function initFlurry(game) {
   let colors = Object.assign({ fur:'#f7fdff', face:'#4e9cd0', scarf:'#37c5e1', hat:'yes' }, read(PREFERENCES, {}));
   let quest = Math.max(0, Math.min(4, Number(read(QUEST, 0)) || 0));
   let placed = 0;
+  const editHistory=new EditHistory({maxSteps:40,maxCells:6000});
   let npcPosition = null;
   let avatar = createYeti(colors);
   let lofi = createYeti(colors, true);
@@ -192,7 +194,7 @@ export function initFlurry(game) {
   };
   // Three clear entry points. All other actions remain accessible in Menu.
   const buildAction=action('▦ Blocks',()=>showBuildMenu());buildAction.classList.add('build');
-  let toolState=null,lastBuild=null,selectionState=null,previewState=null;
+  let toolState=null,selectionState=null,previewState=null;
   const markAction=action('Mark first',()=>selectionState?markCapturePoint():markToolPoint());
   const stopTool=action('✕ Cancel',()=>{toolState=null;selectionState=null;refreshToolActions();notify(game,'Cancelled.');});
   markAction.style.display=stopTool.style.display='none';
@@ -253,7 +255,8 @@ export function initFlurry(game) {
   menuSection('BUILD');
   menuItem('Walls & Floors',()=>showSmartBuilder());
   menuItem('Save Building',()=>showBlueprint());
-  menuItem('Undo Last Build',()=>undoSmartBuild());
+  menuItem('Undo',()=>undoSmartBuild());
+  menuItem('Redo',()=>redoLastEdit());
   menuSection('WORLD');
   menuItem('Switch Camera',()=>{third=!third;notify(game,third?'Third person':'First person');});
   menuItem('My Yeti',()=>showCustomizer());
@@ -522,23 +525,35 @@ export function initFlurry(game) {
     if(!game.player.creative && !game.player.held()?.flurryUnlimited){
       notify(game,'Smart tools require a Creative world or a block equipped from + ALL.');return;
     }
+    const tx=editHistory.begin(world,toolState.kind==='floor'?'Floor':'Wall');
     for(const [x,y,z,newId] of changes)world.setBlock(x,y,z,newId);
-    lastBuild={world,changes};
+    if(tx)editHistory.finish();
     toolState=null;refreshToolActions();
     game.ui.dirtyInv=true;
-    notify(game,'Built '+changes.length+' '+B.itemName(id)+' blocks! More → Undo Build can reverse this.');
+    notify(game,'Built '+changes.length+' blocks');
   }
-  function undoSmartBuild(){
-    if(!lastBuild||lastBuild.world!==game.world){notify(game,'No recent smart build to undo in this world.');return;}
-    let count=0;
-    for(const [x,y,z,id] of lastBuild.changes){
-      if(game.world.loaded(x,z)&&game.world.getBlock(x,y,z)===id){
-        game.world.setBlock(x,y,z,B.AIR);count++;
-      }
+  function restoreSafe(x,y,z,newId){
+    if(!B.SOLID[newId])return true;
+    const p=game.player;
+    if(x+1>p.x-p.hw&&x<p.x+p.hw&&z+1>p.z-p.hw&&z<p.z+p.hw&&y+1>p.y&&y<p.y+p.h)
+      return false;
+    for(const m of game.mobs){
+      if(!m.dead&&x+1>m.x-m.hw&&x<m.x+m.hw&&z+1>m.z-m.hw&&z<m.z+m.hw&&y+1>m.y&&y<m.y+m.h)
+        return false;
     }
-    lastBuild=null;
-    notify(game,'Undid '+count+' blocks from your last smart build.');
+    return true;
   }
+  function feedbackEdit(result,verb){
+    if(result.ok){notify(game,verb+' '+result.count+' blocks');return;}
+    const reason=result.reason;
+    notify(game,reason==='empty'?'Nothing to '+verb.toLowerCase():
+      reason==='blocked'?'Move away from the build first':
+      reason==='changed'?'The area has changed. Cannot '+verb.toLowerCase():
+      reason==='busy'?'Finish your current action first':
+      'Cannot '+verb.toLowerCase()+' this build');
+  }
+  function undoSmartBuild(){feedbackEdit(editHistory.undo(game.world,restoreSafe),'Undid');}
+  function redoLastEdit(){feedbackEdit(editHistory.redo(game.world,restoreSafe),'Redid');}
   function showCustomizer() {
     open('Customize your Yeti');
     const art=make('div');art.className='fc-customize-preview';
@@ -768,25 +783,31 @@ export function initFlurry(game) {
     // Spread World.setBlock work over animation frames to avoid a multi-second
     // freeze when a 3D house contains hundreds of voxels.
     let at=0,built=0;
-    notify(game,'Installing '+data.name+'... ('+moves.length+' blocks)');
+    const installed=[];
+    notify(game,'Placing '+data.name+'…');
     function installBatch(){
       if(game.world!==world||game.state!=='play'){notify(game,'Installation interrupted after '+built+' blocks.');return;}
       const end=Math.min(moves.length,at+22);
       for(;at<end;at++){
         const [x,y,z,id]=moves[at];
         if(world.loaded(x,z)&&world.getBlock(x,y,z)===B.AIR){
-          if(world.setBlock(x,y,z,id)!==false)built++;
+          if(world.setBlock(x,y,z,id)!==false){
+            built++;installed.push([x,y,z,B.AIR,id]);
+          }
         }
       }
       if(at<moves.length)requestAnimationFrame(installBatch);
-      else notify(game,'Installed '+data.name+' · '+built+' blocks placed. Autosave is on.');
+      else {
+        if(installed.length)editHistory.push(world,'Install '+data.name,installed);
+        notify(game,'Placed '+built+' building blocks');
+      }
     }
     requestAnimationFrame(installBatch);
   }
   function chooseImport(){creatorStudio.open();}
   function onWorldReady(isNew){
     const p=game.player,w=game.world;
-    toolState=null;selectionState=null;lastBuild=null;clearPreview();refreshToolActions();
+    toolState=null;selectionState=null;editHistory.reset(w);clearPreview();refreshToolActions();
     equipStarterBlocks();
     if (p.creative && brightWorld) game.env.tod=0.25;
     // Existing survival worlds used to start with an empty hotbar. Show
@@ -863,9 +884,28 @@ export function initFlurry(game) {
   }
   // Only count player placements within reach, never world generation.
   const countPlayerPlacement = (x,y,z,oldId,newId) => {
-    if(game.state!=='play'||quest!==2||oldId!==B.AIR||newId===B.AIR)return;
+    if(editHistory.applying||game.state!=='play'||quest!==2||oldId!==B.AIR||newId===B.AIR)return;
     const p=game.player;
     if(Math.hypot(x-p.x,y-p.y,z-p.z)<7)placed++;
+  };
+  const recordChange=(world,x,y,z,oldId,newId)=>editHistory.record(world,x,y,z,oldId,newId);
+  // Capture precisely the edits resulting from each interaction. Natural
+  // terrain generation and simulation run outside transactions, so they aren't
+  // mistakenly added to Undo.
+  const nativeRightAction=game.player.rightAction;
+  game.player.rightAction=function(...args){
+    const tracked=this.creative||!!this.held()?.flurryUnlimited;
+    if(!tracked||!game.world)return nativeRightAction.apply(this,args);
+    const started=editHistory.begin(game.world,'Place');
+    try{return nativeRightAction.apply(this,args);}
+    finally{if(started)editHistory.finish();}
+  };
+  const nativeBreakBlock=game.player.breakBlock;
+  game.player.breakBlock=function(...args){
+    if(!this.creative||!game.world)return nativeBreakBlock.apply(this,args);
+    const started=editHistory.begin(game.world,'Mine');
+    try{return nativeBreakBlock.apply(this,args);}
+    finally{if(started)editHistory.finish();}
   };
   // Bottom hotbar is interactive on ALL devices (not just when touch is active).
   // Tapping a filled slot equips it. Tapping an empty slot opens the library.
@@ -903,11 +943,19 @@ export function initFlurry(game) {
   all.style.pointerEvents='auto';
   all.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();showBuildMenu();});
   hotbar.appendChild(all);
-  game.flurry={update,onWorldReady,countPlayerPlacement,isThird:()=>third,daylightLocked:()=>brightWorld,openBlockLibrary:showBuildMenu,showSmartBuilder};
+  game.flurry={update,onWorldReady,countPlayerPlacement,recordChange,isApplyingEdit:()=>editHistory.applying,isThird:()=>third,daylightLocked:()=>brightWorld,openBlockLibrary:showBuildMenu,showSmartBuilder,undoEdit:undoSmartBuild,redoEdit:redoLastEdit};
   document.addEventListener('keydown', e=>{
     if(e.target && /INPUT|TEXTAREA/.test(e.target.tagName))return;
     if(e.code==='Escape' && overlay.style.display==='flex'){close();e.stopImmediatePropagation();return;}
     if(e.code==='Escape'&&!menu.hidden){setMoreMenu(false);e.stopImmediatePropagation();return;}
+    if((e.ctrlKey||e.metaKey)&&e.code==='KeyZ'&&game.state==='play'&&!game.ui.isOpen&&!game.paused){
+      e.preventDefault();
+      if(e.shiftKey)redoLastEdit();else undoSmartBuild();
+      return;
+    }
+    if((e.ctrlKey||e.metaKey)&&e.code==='KeyY'&&game.state==='play'&&!game.ui.isOpen&&!game.paused){
+      e.preventDefault();redoLastEdit();return;
+    }
     if(game.state!=='play'||game.ui.isOpen||game.paused)return;
     if(e.code==='KeyV'){third=!third;notify(game,third?'Third-person camera':'First-person camera');}
     if(e.code==='KeyB')showBlueprint();

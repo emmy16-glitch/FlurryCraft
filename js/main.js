@@ -245,7 +245,7 @@ $('pSens').value = settings.sens; $('pSens').oninput = (e) => { settings.sens = 
 sound.volume = settings.vol / 100;
 $('bResume').onclick = () => { showPause(false); game.requestPointer(); };
 $('bSave').onclick = () => { saveGame(); ui.toast('World saved'); };
-$('bQuit').onclick = () => { saveGame(); location.reload(); };
+$('bQuit').onclick = () => { if(saveGame()) location.reload();else ui.toast('Still in game. Save before exiting.'); };
 $('bRespawn').onclick = () => { $('death').style.display = 'none'; player.respawn(); ui.dirtyInv = true; game.requestPointer(); };
 // ---- world list (multiple save slots)
 const IDX_KEY = 'vc_index_v1'; let currentId = null;
@@ -270,7 +270,7 @@ $('bNew').onclick = () => { sound.init(); startGame(false); };
 
 // ---------------------------------------------------------------- save / load
 function saveGame() {
-  if (!game.world || !currentId) return;
+  if (!game.world || !currentId) return false;
   try {
     const edits = {}; for (const [k, m] of game.world.edits) { const a = []; for (const [i, v] of m) a.push(i, v); edits[k] = a; }
     const data = {
@@ -280,10 +280,14 @@ function saveGame() {
     };
     localStorage.setItem('vc_world_' + currentId, JSON.stringify(data));
     const idx = loadIndex().filter((w) => w.id !== currentId); idx.push({ id: currentId, name: currentName, date: Date.now(), mode: settings.mode, played: Math.round(basePlayed + game.time) }); saveIndex(idx);
-  } catch (e) { ui.toast('Save failed (storage full?)'); }
+    return true;
+  } catch (e) { ui.toast('Save failed: storage may be full');return false; }
 }
 setInterval(() => { if (game.state === 'play' && !player.dead) saveGame(); }, 30000);
 window.addEventListener('beforeunload', () => { if (game.state === 'play') saveGame(); });
+document.addEventListener('visibilitychange', () => {
+  if(document.visibilityState==='hidden'&&game.state==='play'&&!player.dead)saveGame();
+});
 
 // ---------------------------------------------------------------- start
 let currentName = 'World', basePlayed = 0;
@@ -303,7 +307,10 @@ function startGame(cont, id) {
   world.setBlock = (x, y, z, id, record = true) => {
     const old = world.getBlock(x, y, z);
     const result = originalSetBlock(x, y, z, id, record);
-    if (game.flurry) game.flurry.countPlayerPlacement(x, y, z, old, id);
+    if (result !== false && game.flurry) {
+      game.flurry.recordChange(world, x, y, z, old, id);
+      if (!game.flurry.isApplyingEdit()) game.flurry.countPlayerPlacement(x, y, z, old, id);
+    }
     return result;
   };
   world.setRadius(settings.render); world.maxGen = 40; world.maxMesh = 40;
