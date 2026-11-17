@@ -21,7 +21,7 @@ The address above is a proposed URL and works ONLY after Pages has been configur
 - Custom Yeti model; change fur and scarf colors and show/hide a winter hat. The model uses unlit materials so its colors remain visible in third-person.
 - Optional first/third-person camera; default first person for accurate building.
 - Lofi starter shack with a simple four-stage quest.
-- Prominent **🧱 BUILD** menu with labeled material tiles, quick starter set, and a persistent hint for the PLACE control. Creative free-building is the default for new worlds. Existing Survival saves can switch to Creative by choosing a material from BUILD.
+- Prominent **🧱 BUILD** menu with labeled material tiles, quick starter set, a persistent hint for the PLACE control, and feedback when placement cannot work. Picking a building material automatically returns to first-person aiming. Creative free-building is the default for new worlds. Existing Survival saves can switch to Creative by choosing a material from BUILD.
 - Save a nearby 11×12×11 building area as a JSON blueprint, then import and place it in your world. No wallet needed.
 
 ## Controls
