@@ -89,6 +89,17 @@ export function initFlurry(game) {
     '.flurryBtn:active{background:#1684a5}',
     '.flurryBtn.build{background:#168c9a;border:2px solid #d2faff;box-shadow:0 0 0 2px #003343,0 3px 16px #0008;font-weight:900;letter-spacing:.04em}',
     '.flurryTiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin:12px 0}',
+    '.flurryCategories{display:flex;gap:6px;flex-wrap:wrap;margin:9px 0}',
+    '#flurryModal button.flurryCategory{margin:0;padding:7px 11px;border:1px solid #5b9ab3;border-radius:999px;background:#143c53;color:#d9f5ff;font:700 12px system-ui}',
+    '#flurryModal button.flurryCategory.selected{background:#a0edff;border-color:#d5f8ff;color:#063044}',
+    '.fc-hotbar-all{cursor:pointer;display:flex!important;flex-direction:column;align-items:center;justify-content:center;background:#167d96!important;border:2px solid #baf4ff!important;color:#fff!important;line-height:1;font-family:system-ui}',
+    '.fc-hotbar-all .fc-plus{font-size:23px;font-weight:800;line-height:1}',
+    '.fc-hotbar-all .fc-all-text{font-size:9px;font-weight:900;letter-spacing:.04em}',
+    '#hotbar{width:min(96vw,530px);max-width:calc(100vw - 8px);gap:2px}',
+    '#hotbar .slot{width:auto!important;min-width:0;flex:1 1 0;height:auto;aspect-ratio:1/1}',
+    '#hotbar .slot img{width:80%;height:80%;max-width:36px;max-height:36px}',
+    '.flurryLibraryHint{color:#b7dbe9;font-size:12px;margin:7px 0}',
+
     '#flurryModal .flurryTile{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;padding:9px 3px;margin:0;min-height:74px;background:#16465e;box-shadow:inset 0 0 0 1px #5bb3c8}',
     '.flurryTile img{width:36px;height:36px;object-fit:contain;image-rendering:pixelated}',
     '#flurryHelp{position:fixed;left:50%;bottom:69px;transform:translateX(-50%);width:max-content;max-width:78vw;z-index:14;padding:7px 13px;border:1px solid #a4e9ff;border-radius:12px;background:#082b40d9;color:#f0fcff;font:700 12px/1.3 system-ui;pointer-events:none;text-align:center;text-shadow:1px 1px #012;display:none}',
@@ -175,14 +186,21 @@ export function initFlurry(game) {
   const input = (value='',type='text')=>{const el=make('input');el.value=value;el.type=type;return el;};
   const complete = () => {quest=Math.min(4,quest+1); save(QUEST,quest); placed=0; lastQuestText=''; notify(game,quest===4?'Lofi: Amazing! You are a true Yeti creator!':'Quest completed! '+questNames[quest]);};
   // Beginners should be able to build immediately, without finding a recipe book.
-  const BUILD_PALETTE = [
-    [B.SPRUCE_PLANKS, 'Spruce Wood'], [B.PLANKS, 'Wood Planks'],
-    [B.GLASS, 'Glass'], [B.STONE_BRICKS, 'Stone Bricks'],
-    [B.SNOW, 'Snow'], [B.ICE, 'Ice'],
-    [B.BRICKS, 'Red Bricks'], [B.COBBLE, 'Cobblestone'],
-    [B.WOOL, 'White Wool'], [B.WOOL_RED, 'Red Wool'],
-    [B.TORCH, 'Torch'], [B.SPRUCE_LOG, 'Spruce Logs']
-  ];
+  // Derive the library from the engine registry instead of maintaining a
+  // hard-coded 12-block selection. All supported placeable inventory blocks
+  // are available in both Creative and Survival.
+  const BUILD_PALETTE = Object.values(B.ITEMS)
+    .filter(item => item && item.block && B.BLOCKS[item.id] &&
+      item.id !== B.BEDROCK && item.id !== B.TNT && item.id !== B.FARMLAND)
+    .map(item => [item.id, item.name])
+    .sort((a,b) => a[1].localeCompare(b[1]));
+  const utilityIds = new Set([B.CRAFTING,B.FURNACE,B.CHEST,B.TORCH]);
+  const natureIds = new Set([B.STONE,B.GRASS,B.DIRT,B.COBBLE,B.SAND,B.GRAVEL,
+    B.LEAVES,B.LOG,B.BIRCH_LOG,B.SPRUCE_LOG,B.ICE,B.SNOW,B.CACTUS,
+    B.COAL_ORE,B.IRON_ORE,B.GOLD_ORE,B.DIAMOND_ORE]);
+  function blockCategory(id) {
+    return utilityIds.has(id) ? 'Utility' : natureIds.has(id) ? 'Nature' : 'Building';
+  }
   function enterBuildMode() {
     const player = game.player;
     if (!player.creative) {
@@ -193,21 +211,30 @@ export function initFlurry(game) {
       notify(game, 'Creative Build Mode enabled: unlimited blocks!');
     }
   }
-  function selectBlock(id) {
-    if (game.state !== 'play' || !B.BLOCKS[id]) return;
-    enterBuildMode();
-    // Exact placement uses a first-person ray. Third-person obscures the crosshair.
-    third=false;
+  function selectBlock(id, targetSlot) {
+    if (game.state !== 'play' || !BUILD_PALETTE.some(block => block[0]===id)) return;
     const player=game.player;
-    let slot=player.inv.findIndex((s,i)=>i<9 && s?.id===id);
-    if (slot<0) slot=player.inv.findIndex((s,i)=>i<9 && !s);
-    if (slot<0) slot=player.sel;
-    player.inv[slot]={id,n:64};
+    // A chosen library block is unlimited in either game mode. Survival's
+    // enemies/health still apply; we never silently switch its mode.
+    // An explicitly tapped hotbar slot is always replaced, otherwise reuse
+    // an existing matching slot before overriding the active one.
+    let slot=Number.isInteger(targetSlot)&&targetSlot>=0&&targetSlot<9
+      ? targetSlot : player.inv.findIndex((s,i)=>i<9 && s?.id===id);
+    if(slot<0)slot=player.inv.findIndex((s,i)=>i<9&&!s);
+    if(slot<0)slot=player.sel;
+    const previous=player.inv[slot];
+    if(previous && previous.id!==id && !previous.flurryUnlimited && !player.creative) {
+      const spare=player.inv.findIndex((s,i)=>i>=9&&!s);
+      if(spare<0){notify(game,'Inventory full! Free space before replacing this slot.');return;}
+      player.inv[spare]=previous; // Preserve items earned in Survival.
+    }
+    // Precision placement remains first-person when selecting from library.
+    third=false;
+    player.inv[slot]={id,n:64,flurryUnlimited:true};
     player.sel=slot;
     game.ui.dirtyInv=true;
     close();
-    helpView.dataset.selected=String(id);
-    notify(game, BUILD_PALETTE.find(x=>x[0]===id)?.[1]+' selected — aim at the ground and tap PLACE □!');
+    notify(game,B.itemName(id)+' equipped. Tap PLACE to build.');
   }
   function equipStarterBlocks() {
     const p=game.player;
@@ -216,24 +243,48 @@ export function initFlurry(game) {
     p.sel=0;
     game.ui.dirtyInv=true;
   }
-  function showBuildMenu() {
+  function showBuildMenu(targetSlot=null) {
     if (game.state !== 'play' || !game.world) { notify(game,'Enter a world first!'); return; }
-    open('🧱 BUILD YOUR WORLD');
-    make('p','Choose any building material. This turns on Creative Build Mode so you can place unlimited blocks — even in your existing Survival world.');
-    make('p','HOW: ① Choose a block below. ② Move the + crosshair onto the ground or a wall. ③ Tap the □ PLACE button on the RIGHT. Hold ⚒ to remove blocks.');
+    open('🧱 ALL BLOCKS');
+    make('p','Tap a block to equip it instantly in your hotbar. This works in Creative and Survival without changing your mode.');
+    const hint=make('div','Use the + ALL button on the bottom bar anytime, or hold any hotbar slot to replace it.');
+    hint.className='flurryLibraryHint';
+    const search=input('','search');
+    search.placeholder='Search blocks: snow, glass, stairs...';
+    search.setAttribute('aria-label','Search available blocks');
+    const categories=make('div');categories.className='flurryCategories';
     const grid=make('div');grid.className='flurryTiles';
-    for (const [id,name] of BUILD_PALETTE) {
-      const b=document.createElement('button');b.className='flurryTile';b.type='button';
-      const img=document.createElement('img');img.src=B.iconURL(id);img.alt='';
-      const caption=document.createElement('span');caption.textContent=name;
-      b.append(img,caption);b.addEventListener('click',()=>selectBlock(id));grid.appendChild(b);
+    let category='All';
+    const draw=()=>{
+      grid.replaceChildren();
+      const q=search.value.trim().toLowerCase();
+      const visible=BUILD_PALETTE.filter(([id,name])=>
+        (category==='All'||blockCategory(id)===category) && name.toLowerCase().includes(q));
+      if(!visible.length){const empty=document.createElement('p');empty.textContent='No blocks match. Try another search.';grid.appendChild(empty);return;}
+      for(const [id,name] of visible){
+        const b=document.createElement('button');b.className='flurryTile';b.type='button';
+        const img=document.createElement('img');img.src=B.iconURL(id);img.alt='';
+        const caption=document.createElement('span');caption.textContent=name;
+        b.append(img,caption);b.addEventListener('click',()=>selectBlock(id,targetSlot));grid.appendChild(b);
+      }
+    };
+    for(const c of ['All','Building','Nature','Utility']){
+      const tab=document.createElement('button');tab.type='button';tab.className='flurryCategory';
+      tab.textContent=c;tab.setAttribute('aria-pressed',String(c===category));
+      if(c===category)tab.classList.add('selected');
+      tab.addEventListener('click',()=>{
+        category=c;
+        for(const t of categories.children){const on=t.textContent===c;t.classList.toggle('selected',on);t.setAttribute('aria-pressed',String(on));}
+        draw();
+      });
+      categories.appendChild(tab);
     }
+    search.addEventListener('input',draw);draw();
     button('Give me a starter set of blocks',()=>{
-      enterBuildMode();
       const p=game.player;
-      [B.SPRUCE_PLANKS,B.GLASS,B.STONE_BRICKS,B.SNOW,B.ICE,B.BRICKS,B.PLANKS,B.TORCH].forEach((id,i)=>{p.inv[i]={id,n:64};});
+      [B.SPRUCE_PLANKS,B.GLASS,B.STONE_BRICKS,B.SNOW,B.ICE,B.BRICKS,B.PLANKS,B.TORCH].forEach((id,i)=>{p.inv[i]={id,n:64,flurryUnlimited:true};});
       p.sel=0;game.ui.dirtyInv=true;third=false;close();
-      notify(game,'Starter kit ready! Tap □ on the right to place spruce wood.');
+      notify(game,'Starter blocks equipped — tap a hotbar slot to switch.');
     });
     button('Close',close,true);
   }
@@ -341,8 +392,9 @@ export function initFlurry(game) {
     actions.style.display=isPlaying&&!game.ui.isOpen?'flex':'none';
     questView.style.display=isPlaying?'block':'none';
     helpView.style.display=isPlaying&&!game.ui.isOpen&&overlay.style.display!=='flex'?'block':'none';
-    if(isPlaying){ const id=game.player.held()?.id;const label=BUILD_PALETTE.find(e=>e[0]===id)?.[1];
-      const text=label?'🧱 '+label+' selected · Aim at ground → tap □ PLACE':'🧱 Tap BUILD (top left) to choose blocks';
+    if(isPlaying){
+      const id=game.player.held()?.id;
+      const text=id&&B.ITEMS[id] ? B.itemName(id)+' · PLACE □' : 'Tap + ALL on the bottom bar to choose a block';
       if(helpView.textContent!==text)helpView.textContent=text;
     }
     if(!isPlaying){avatar.group.visible=false;return;}
@@ -382,7 +434,43 @@ export function initFlurry(game) {
     const p=game.player;
     if(Math.hypot(x-p.x,y-p.y,z-p.z)<7)placed++;
   };
-  game.flurry={update,onWorldReady,countPlayerPlacement,isThird:()=>third,daylightLocked:()=>brightWorld};
+  // Bottom hotbar is interactive on ALL devices (not just when touch is active).
+  // Tapping a filled slot equips it. Tapping an empty slot opens the library.
+  // Long-pressing a filled slot opens the library to replace that exact slot.
+  const hotbar=$('hotbar');
+  hotbar.setAttribute('role','toolbar');
+  hotbar.setAttribute('aria-label','Choose building blocks');
+  hotbar.style.pointerEvents='auto';hotbar.style.zIndex='16';
+  game.ui.hbEls.forEach((el,i)=>{
+    el.style.pointerEvents='auto';
+    el.style.cursor='pointer';
+    el.setAttribute('role','button');
+    el.setAttribute('tabindex','0');
+    el.setAttribute('aria-label','Hotbar slot '+(i+1));
+    let holdTimer=null,wasLong=false;
+    const begin=e=>{
+      if(game.state!=='play'||game.paused||game.ui.isOpen)return;
+      e.preventDefault();e.stopPropagation();
+      wasLong=false;game.player.sel=i;game.ui.dirtyInv=true;
+      if(!game.player.inv[i]){showBuildMenu(i);return;}
+      holdTimer=setTimeout(()=>{wasLong=true;showBuildMenu(i);},550);
+    };
+    const end=()=>{if(holdTimer){clearTimeout(holdTimer);holdTimer=null;}};
+    el.addEventListener('pointerdown',begin);
+    el.addEventListener('pointerup',end);
+    el.addEventListener('pointercancel',end);
+    el.addEventListener('pointerleave',end);
+    el.addEventListener('keydown',e=>{
+      if(e.key==='Enter'||e.key===' '){e.preventDefault();game.player.sel=i;game.ui.dirtyInv=true;if(!game.player.inv[i])showBuildMenu(i);}
+    });
+  });
+  const all=document.createElement('button');
+  all.type='button';all.className='slot fc-hotbar-all';all.setAttribute('aria-label','Open all available blocks');
+  all.innerHTML='<span class="fc-plus">+</span><span class="fc-all-text">ALL</span>';
+  all.style.pointerEvents='auto';
+  all.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();showBuildMenu();});
+  hotbar.appendChild(all);
+  game.flurry={update,onWorldReady,countPlayerPlacement,isThird:()=>third,daylightLocked:()=>brightWorld,openBlockLibrary:showBuildMenu};
   document.addEventListener('keydown', e=>{
     if(e.target && /INPUT|TEXTAREA/.test(e.target.tagName))return;
     if(e.code==='Escape' && overlay.style.display==='flex'){close();e.stopImmediatePropagation();return;}

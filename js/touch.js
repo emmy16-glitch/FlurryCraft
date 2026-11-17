@@ -49,10 +49,10 @@ export function initTouch(game, player, ui, hooks) {
   tap('tbSneak', () => { T.sneak = !T.sneak; $('tbSneak').classList.toggle('on', T.sneak); });
   tap('tbInv', () => ui.openInventory());
   tap('tbMenu', () => hooks.pause());
-  tap('tbDrop', () => { const s = player.held(); if (!s) return; const cp = Math.cos(player.pitch); game.spawnItem(s.id, 1, player.x, player.eyeY - 0.3, player.z, s.d, [-Math.sin(player.yaw) * cp * 5, Math.sin(player.pitch) * 5 + 1.5, -Math.cos(player.yaw) * cp * 5]); s.n--; if (s.n <= 0) player.inv[player.sel] = null; ui.dirtyInv = true; });
-  // ---- tappable hotbar (sits above the touch layer)
+  tap('tbDrop', () => { const s = player.held(); if (!s) return; if (s.flurryUnlimited) {ui.toast('Use + ALL to change unlimited blocks.');return;} const cp = Math.cos(player.pitch); game.spawnItem(s.id, 1, player.x, player.eyeY - 0.3, player.z, s.d, [-Math.sin(player.yaw) * cp * 5, Math.sin(player.pitch) * 5 + 1.5, -Math.cos(player.yaw) * cp * 5]); s.n--; if (s.n <= 0) player.inv[player.sel] = null; ui.dirtyInv = true; });
+  // Bottom hotbar selection and + ALL catalog are wired once by flurry.js,
+  // before the mobile layer starts. Do not add duplicate touch handlers.
   const hb = $('hotbar'); hb.style.pointerEvents = 'auto'; hb.style.zIndex = 16;
-  [...hb.children].forEach((el, i) => { el.style.pointerEvents = 'auto'; el.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); player.sel = i; }); });
   document.addEventListener('gesturestart', (e) => e.preventDefault());
   document.addEventListener('touchmove', (e) => { if (e.target && e.target.closest && !e.target.closest('#panel,#creative,#book,#worldlist')) e.preventDefault(); }, { passive: false });
 }

@@ -34,6 +34,12 @@ test('custom game systems are connected', () => {
   assert.match(readFileSync('js/weather.js','utf8'), /Permanent snowfall/);
   assert.match(flurry,/function showBuildMenu/);
   assert.match(flurry,/function selectBlock/);
+  assert.match(flurry,/openBlockLibrary:showBuildMenu/);
+  assert.match(flurry,/fc-hotbar-all/);
+  assert.match(flurry,/Object.values\(B.ITEMS\)/);
+  assert.match(flurry,/search.addEventListener\('input',draw\)/);
+  assert.match(readFileSync('js/player.js','utf8'),/s.flurryUnlimited/);
+  assert.match(readFileSync('js/ui.js','utf8'),/s.flurryUnlimited/);
   assert.match(flurry,/daylightLocked/);
   assert.match(flurry,/Unstuck/);
   assert.match(readFileSync('js/touch.js','utf8'),/lastPlacementTip/);

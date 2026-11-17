@@ -42,7 +42,7 @@ export class Player {
     if (s.d <= 0) { this.inv[this.sel] = null; this.game.sound.play('break', { sound: 'wood', vol: 0.8 }); }
     this.game.ui.dirtyInv = true;
   }
-  consumeHeld() { const s = this.held(); if (!s || this.creative) return; s.n--; if (s.n <= 0) this.inv[this.sel] = null; this.game.ui.dirtyInv = true; }
+  consumeHeld() { const s = this.held(); if (!s || this.creative || s.flurryUnlimited) return; s.n--; if (s.n <= 0) this.inv[this.sel] = null; this.game.ui.dirtyInv = true; }
   // ------------------------------------------------------------ damage
   hurt(dmg, sx, sz) {
     if (this.dead || this.creative || this.invuln > 0) return;

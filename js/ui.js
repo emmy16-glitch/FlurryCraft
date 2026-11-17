@@ -53,7 +53,8 @@ export class UI {
   slotHTML(s, big) {
     if (!s) return '';
     const it = B.ITEMS[s.id]; let h = `<img class="pix" src="${B.iconURL(s.id)}" draggable="false">`;
-    if (s.n > 1) h += `<span class="n">${s.n}</span>`;
+    if (s.flurryUnlimited) h += '<span class="n" aria-label="unlimited">∞</span>';
+    else if (s.n > 1) h += `<span class="n">${s.n}</span>`;
     if (it && it.tool && s.d !== undefined && s.d < it.tool.dur) { const f = s.d / it.tool.dur; h += `<div class="d"><i style="width:${f * 100}%;background:hsl(${f * 120},90%,50%)"></i></div>`; }
     return h;
   }

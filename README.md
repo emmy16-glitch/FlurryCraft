@@ -23,12 +23,13 @@ The address above is a proposed URL and works ONLY after Pages has been configur
 - Lofi starter shack with a simple four-stage quest.
 - Simplified opening menu: create a world or resume, customize Yeti, and optional game settings tucked away; in-game controls prioritize **BUILD**, camera and More.
 - **More → ↗ Unstuck** returns you above your spawn in safe flight mode if you get trapped underground; **More → 🪽 Fly** toggles flight; **More → ☀ Day** controls bright Creative daylight. Placement hints are limited to avoid covering gameplay.
-- Prominent **🧱 BUILD** menu with labeled material tiles, quick starter set, a persistent hint for the PLACE control, and feedback when placement cannot work. Picking a building material automatically returns to first-person aiming. Creative free-building is the default for new worlds. Existing Survival saves can switch to Creative by choosing a material from BUILD.
+- **Direct bottom hotbar controls:** tap any filled slot to equip it; tap an empty slot to add a block; hold a filled slot to replace its material; use **+ ALL** next to the hotbar for a searchable, categorized list of every supported block item in the engine (including stairs and slabs). These work in Creative and Survival without changing modes. Library blocks are unlimited in either mode; naturally acquired Survival inventory items are kept when possible. No new furniture blocks have been invented yet.
+- Prominent **🧱 BUILD** menu with the same searchable material collection, starter set, and brief placement hint. Picking a building material automatically returns to first-person aiming. Creative free-building is the default for new worlds. Existing Survival saves can switch to Creative by choosing a material from BUILD.
 - Save a nearby 11×12×11 building area as a JSON blueprint, then import and place it in your world. No wallet needed.
 
 ## Controls
 
-Phone: **tap 🧱 BUILD in the top-left first**, select a material, aim the crosshair at the ground or wall, tap the cyan **□ PLACE** button on the right. Hold **⚒ MINE** to remove blocks. Left thumb joystick moves; swipe the right half to look. Existing Survival saves automatically offer the building menu once. The FlurryCraft buttons near the upper left offer 👁 View, 🎨 Yeti, 🏠 Blueprint, 📂 Import. Use landscape orientation.
+Phone: tap a block in the bottom hotbar to equip it. Tap **+ ALL** to browse or search every currently supported building block, including slabs/stairs; choose one and it replaces your selected hotbar slot. Tap an empty slot to fill it or long-press a filled slot to change its contents. Works in Creative or Survival. Aim the crosshair at the ground or wall, tap the cyan **□ PLACE** button to place; hold **⚒ MINE** to remove. Left thumb joystick moves; swipe the right half to look. The FlurryCraft buttons near the upper left offer 👁 View, 🎨 Yeti, 🏠 Blueprint, 📂 Import. Use landscape orientation.
 
 Desktop: WASD move, mouse look, left click mine, right click place, Space jump, E inventory, 1–9 hotbar, **G open BUILD menu**, V switch camera, B save blueprint.
 
