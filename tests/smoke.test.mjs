@@ -97,6 +97,11 @@ test('custom game systems are connected', () => {
   assert.match(readFileSync('index.html','utf8'),/#tbBreak\[data-action=attack\]/);
   assert.match(flurry,/isInterfaceBusy:/);
   assert.match(readFileSync('js/adventure-core.js','utf8'),/function trialWaves/);
+  assert.match(readFileSync('js/frost-dungeon.js','utf8'),/generateFrostDungeon/);
+  assert.match(readFileSync('js/adventure.js','utf8'),/withinDungeonEntry/);
+  assert.match(readFileSync('js/adventure.js','utf8'),/Upgrade to Walk-in Dungeon/);
+  assert.match(readFileSync('js/adventure.js','utf8'),/fcDungeonEntry/);
+  assert.match(readFileSync('js/adventure.js','utf8'),/enteredChamber/);
   assert.match(readFileSync('js/mobs.js','utf8'),/function winterCreature/);
   assert.match(readFileSync('js/mobs.js','utf8'),/textures\.add\(m\.map\)/);
   assert.match(readFileSync('js/adventure.js','utf8'),/Track Frost Ruins/);

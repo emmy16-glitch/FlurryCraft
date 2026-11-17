@@ -75,9 +75,12 @@ test('fresh survival world creates an approachable Frost Ruins dungeon and persi
  const h=createHarness();try{
   h.adventure.load(null);h.adventure.resetWorld(true);
   assert.ok(h.adventure.den);
-  for(let i=0;i<350;i++)h.adventure.update(.02);
+  for(let i=0;i<850;i++)h.adventure.update(.02);
   const data=h.adventure.serialize();
   assert.equal(data.denBuilt,true,'dungeon build is complete');
+  assert.equal(data.dungeonVersion,2);
+  assert.equal(h.world.getBlock(data.den.x,data.den.y+1,data.den.z+14),0);
+  assert.equal(h.world.getBlock(data.den.x,data.den.y+1,data.den.z+28),0);
   assert.equal(h.world.getBlock(data.den.x,data.den.y-1,data.den.z),79);
   assert.equal(h.game.player.countItem(h.B.FROST_SHARD),0);
   h.adventure.open();
@@ -89,17 +92,20 @@ test('fresh survival world creates an approachable Frost Ruins dungeon and persi
 test('clearing all three ice-native dungeon waves awards materials and XP',()=>{
  const h=createHarness();try{
   h.adventure.load(null);h.adventure.resetWorld(true);
-  for(let i=0;i<350;i++)h.adventure.update(.02);
+  for(let i=0;i<850;i++)h.adventure.update(.02);
   const d=h.adventure.den;
-  h.game.player.x=d.x+.5;h.game.player.z=d.z+.5;
+  h.game.player.x=d.x+.5;h.game.player.z=d.z-6.5;
   h.adventure.open();
-  const button=h.panel.findButton('Start Frost Trial');
+  const button=h.panel.findButton('Enter Dungeon');
   assert.ok(button);
   button.listeners.click();
   assert.equal(h.game.mobs.length,2);
   for(let wave=0;wave<3;wave++){
    const live=h.game.mobs.filter(m=>!m.dead&&m.trialId);
    for(const mob of live){mob.dead=true;h.adventure.monsterDefeated(mob,true);}
+   if(wave<2){
+     h.game.player.x=d.x+.5;h.game.player.z=d.z+14*(wave+1)+.5;
+   }
    h.adventure.update(1);
   }
   const s=h.adventure.serialize();
@@ -182,5 +188,41 @@ test('combat feedback is hidden behind menus or while paused',()=>{
   h.game.paused=true;
   h.adventure.update(.016);
   assert.equal(h.document.getElementById('fcAdventurePill').style.display,'none');
+ }finally{h.restore();}
+});
+
+
+test('legacy outdoor ruins are not extended until their owner opts in',()=>{
+ const h=createHarness();try{
+  const den={x:42,y:44,z:17};
+  h.adventure.load({level:5,den,denBuilt:true,clears:2,dungeonVersion:0});
+  h.adventure.resetWorld(false);
+  assert.equal(h.adventure.serialize().dungeonVersion,0);
+  assert.equal(h.world.getBlock(den.x,den.y-1,den.z+28),0);
+  h.adventure.open();
+  const upgrade=h.panel.findButton('Upgrade to Walk-in Dungeon');
+  assert.ok(upgrade);
+  upgrade.listeners.click();
+  for(let i=0;i<850;i++)h.adventure.update(.03);
+  const state=h.adventure.serialize();
+  assert.equal(state.dungeonVersion,2);
+  assert.equal(state.clears,2,'existing dungeon accomplishments preserved');
+  assert.equal(h.world.getBlock(den.x,den.y-1,den.z+28),h.B.FROST_BRICK);
+ }finally{h.restore();}
+});
+test('dungeon entrance appears in world, not when remote or while inside menus',()=>{
+ const h=createHarness();try{
+  h.adventure.load(null);h.adventure.resetWorld(true);
+  for(let i=0;i<850;i++)h.adventure.update(.02);
+  const den=h.adventure.den,entry=h.document.getElementById('fcDungeonEntry');
+  h.game.player.x=den.x+.5;h.game.player.y=den.y;
+  h.game.player.z=den.z-6.5;
+  h.adventure.update(.016);
+  assert.equal(entry.style.display,'block');
+  h.game.player.x=den.x+60;
+  h.adventure.update(.016);assert.equal(entry.style.display,'none');
+  h.game.player.x=den.x+.5;
+  h.game.ui.isOpen=true;
+  h.adventure.update(.016);assert.equal(entry.style.display,'none');
  }finally{h.restore();}
 });
