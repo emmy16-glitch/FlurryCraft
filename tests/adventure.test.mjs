@@ -37,7 +37,7 @@ test('ruins have unique floor, entrance gaps and a stable nearby location',()=>{
  assert.ok(p);assert.ok(Math.hypot(p.x,p.z)>20);
  const blocks=ruinBlocks(p);
  assert.ok(blocks.length>150);
- assert.ok(blocks.some(c=>c[0]===p.x&&c[2]===p.z&&c[4]===undefined)===false);
+ assert.ok(blocks.some(c=>c[0]===p.x&&c[1]===p.y-1&&c[2]===p.z&&c[3]===79));
  assert.ok(!blocks.some(c=>c[0]===p.x&&c[1]===p.y&&c[2]===p.z-6));
 });
 test('ward containment is local, and only saved beacon coordinates count',()=>{
