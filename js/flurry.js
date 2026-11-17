@@ -260,7 +260,7 @@ export function initFlurry(game) {
     const p=game.player;
     if(Math.hypot(x-p.x,y-p.y,z-p.z)<7)placed++;
   };
-  game.flurry={update,onWorldReady,countPlayerPlacement};
+  game.flurry={update,onWorldReady,countPlayerPlacement,isThird:()=>third};
   document.addEventListener('keydown', e=>{
     if(e.target && /INPUT|TEXTAREA/.test(e.target.tagName))return;
     if(e.code==='Escape' && overlay.style.display==='flex'){close();e.stopImmediatePropagation();return;}
