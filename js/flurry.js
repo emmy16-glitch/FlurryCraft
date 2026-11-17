@@ -885,6 +885,7 @@ export function initFlurry(game) {
       const swordSlot=p.inv.findIndex(it=>!it);
       if(swordSlot>=0){
         p.inv[swordSlot]={id:B.toolId(3,0),n:1};
+        game.adventure?.markStarterSword();
         p.sel=swordSlot<9?swordSlot:p.sel;
         game.ui.dirtyInv=true;
       }

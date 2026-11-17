@@ -14,6 +14,7 @@ test('player XP levels increment, cap at 100 and save states sanitize',()=>{
  assert.equal(max.level,100);assert.equal(max.xp,0);assert.equal(xpToNext(100),0);
  const clean=safeAdventure({level:Infinity,xp:-2,den:{x:Infinity,y:22,z:0},beacons:[{},null]});
  assert.equal(clean.level,1);assert.equal(clean.xp,0);assert.equal(clean.den,null);
+ assert.equal(clean.swordClaimed,false);
  assert.deepEqual(clean.beacons,[]);
 });
 test('winter mobs unlock gradually rather than spawning a boss for level one',()=>{

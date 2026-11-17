@@ -261,6 +261,20 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
     const activity=make('div',undefined,hero);activity.className='fc-level-stats';
     make('span',progress.kills+' creatures defeated',activity);
     make('span',progress.clears+' dungeon clears',activity);
+    const starterId=B.toolId?.(3,0);
+    if(!game.player.creative&&!progress.swordClaimed&&
+       Number.isInteger(starterId)&&game.player.countItem(starterId)===0){
+      const gear=make('section',undefined,panel);gear.className='fc-adventure-card';
+      make('h3','Ready to Fight?',gear);
+      make('p','Aim at a creature and tap ATTACK. Your first wooden sword is free.',gear);
+      button('Get Starter Sword',()=>{
+        if(!game.player.canAccept(starterId)){notify(game,'Free an inventory slot first');return;}
+        progress.swordClaimed=true;
+        safeItem(starterId,1);
+        notify(game,'Wooden sword added to inventory');
+        open();
+      },gear);
+    }
     const den=make('section',undefined,panel);den.className='fc-adventure-card';
     make('h3','Frost Ruins · 3 Chambers',den);
     make('p','Enter the gate, clear each room, then reach the Glacier Guardian.',den);
@@ -426,6 +440,7 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
 
   refreshPill();
   return {serialize,load,resetWorld,open,update,mobLevel,roamingKind,
-    monsterDefeated,hitFeedback,trackBlock,isShielded,get level(){return progress.level;},
+    monsterDefeated,hitFeedback,trackBlock,isShielded,markStarterSword(){progress.swordClaimed=true;},
+    get level(){return progress.level;},
     get den(){return progress.den;}};
 }

@@ -60,7 +60,7 @@ function createHarness(){
    remove(){this.dead=true;}
   }
  };
- const B={AIR:0,ICE:29,STONE_BRICKS:35,SNOW:17,TORCH:22,FROST_BRICK:79,
+ const B={toolId:(kind,tier)=>280+kind*4+tier,AIR:0,ICE:29,STONE_BRICKS:35,SNOW:17,TORCH:22,FROST_BRICK:79,
   WARD_BEACON:80,FROST_SHARD:278};
  const nav=[];
  const explorer={guideTo(where){nav.push(where);}};
@@ -224,5 +224,24 @@ test('dungeon entrance appears in world, not when remote or while inside menus',
   h.game.player.x=den.x+.5;
   h.game.ui.isOpen=true;
   h.adventure.update(.016);assert.equal(entry.style.display,'none');
+ }finally{h.restore();}
+});
+
+test('an existing survival world may claim exactly one starter sword',()=>{
+ const h=createHarness();try{
+  h.adventure.load({level:3,swordClaimed:false});
+  h.adventure.resetWorld(false);
+  h.adventure.open();
+  const claim=h.panel.findButton('Get Starter Sword');
+  assert.ok(claim);
+  claim.listeners.click();
+  const id=h.B.toolId(3,0);
+  assert.equal(h.game.player.countItem(id),1);
+  assert.equal(h.adventure.serialize().swordClaimed,true);
+  h.adventure.open();
+  assert.equal(h.panel.findButton('Get Starter Sword'),null);
+  h.adventure.load(h.adventure.serialize());
+  h.adventure.open();
+  assert.equal(h.panel.findButton('Get Starter Sword'),null);
  }finally{h.restore();}
 });
