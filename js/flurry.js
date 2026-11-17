@@ -378,7 +378,7 @@ export function initFlurry(game) {
   suiMarket=initSuiMarketUI({game,panel,openDialog:open,closeDialog:close,notify,startPreview});
   explorer=initExplorerMap({game,panel,openDialog:open,closeDialog:close,notify,
     dialogOpen:()=>overlay.style.display==='flex',
-    isBlocked:()=>!!previewState});
+    isBlocked:()=>!!previewState||!menu.hidden});
   // Beginners should be able to build immediately, without finding a recipe book.
   // Derive the library from the engine registry instead of maintaining a
   // hard-coded 12-block selection. All supported placeable inventory blocks

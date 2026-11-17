@@ -98,8 +98,8 @@ export function initExplorerMap({game,panel,openDialog,closeDialog,notify,dialog
     '#fcMiniMap canvas{width:100%;height:auto;aspect-ratio:1;display:block;border-radius:10px;background:#254e61;image-rendering:pixelated;pointer-events:none}',
     '#fcMiniMap .fc-mini-label{display:block;color:#d4eff7;font:750 10px/1.4 system-ui;max-width:100%;text-overflow:ellipsis;white-space:nowrap;overflow:hidden;text-align:center;padding:4px 1px 1px;pointer-events:none}',
     '#fcMiniMap .fc-mini-label[data-guiding="true"]{color:#a2f6d2}',
-    'body.touch #fcMiniMap{top:max(76px,calc(env(safe-area-inset-top) + 72px));right:10px;width:102px}',
-    '@media(max-height:520px){body.touch #fcMiniMap{top:max(70px,calc(env(safe-area-inset-top) + 66px));width:90px;right:8px}#fcMiniMap{width:98px}}',
+    'body.touch #fcMiniMap{top:max(76px,calc(env(safe-area-inset-top) + 72px));right:112px;width:98px}',
+    '@media(max-height:520px){body.touch #fcMiniMap{top:max(73px,calc(env(safe-area-inset-top) + 68px));width:90px;right:112px}#fcMiniMap{width:98px}}',
     '@media(max-width:570px){.fc-map-layout{grid-template-columns:1fr}.fc-map-frame{width:min(100%,340px);margin:auto}.fc-map-side{padding:4px 0}}',
     '@media(max-height:500px){#flurryModal .fPanel.fc-map-panel{padding:9px}.fc-map-layout{gap:8px}.fc-map-frame{max-height:62dvh;width:100%;max-width:300px;margin:auto}.fc-map-side .fc-map-pin-list{max-height:170px;overflow:auto}#fcNavBeacon{top:51px;right:5px;padding:5px 6px}}'
   ].join('\n');
@@ -181,7 +181,7 @@ export function initExplorerMap({game,panel,openDialog,closeDialog,notify,dialog
       miniLabel.dataset.guiding='true';
       mini.setAttribute('aria-label','Open map. Guiding to '+active.name+', '+b.distance+' blocks away');
     }else{
-      miniLabel.textContent='MAP  ·  Tap to expand';
+      miniLabel.textContent='Map';
       miniLabel.dataset.guiding='false';
       mini.setAttribute('aria-label','Expand world map');
     }
