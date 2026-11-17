@@ -11,7 +11,7 @@ class MockElement {
   this.tagName=tag.toUpperCase();
   this.children=[];this.className='';this.textContent='';this.attributes={};
   this.width=280;this.height=145;this.isConnected=true;
-  this.events={};
+  this.events={};this.classList={add(){},remove(){}};
  }
  appendChild(el){this.children.push(el);return el;}
  setAttribute(k,v){this.attributes[k]=v;}
