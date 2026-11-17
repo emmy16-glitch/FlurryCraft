@@ -382,7 +382,8 @@ export function initFlurry(game) {
   explorer=initExplorerMap({game,panel,openDialog:open,closeDialog:close,notify,
     dialogOpen:()=>overlay.style.display==='flex',
     isBlocked:()=>!!previewState||!menu.hidden});
-  game.adventure=initAdventure({game,B,openDialog:open,closeDialog:close,panel,notify,explorer});
+  game.adventure=initAdventure({game,B,openDialog:open,closeDialog:close,panel,notify,explorer,
+    isInterfaceBusy:()=>overlay.style.display==='flex'||!menu.hidden||!!previewState});
   // Beginners should be able to build immediately, without finding a recipe book.
   // Derive the library from the engine registry instead of maintaining a
   // hard-coded 12-block selection. All supported placeable inventory blocks

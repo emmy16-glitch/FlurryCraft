@@ -58,6 +58,8 @@ Survival players can open **Menu → Winter Adventure** to view Levels 1–100 p
 
 New Survival worlds get a nearby **Frost Ruins** outdoor dungeon. Existing worlds can opt into creating one from the Adventure menu without resetting their save. Follow **Track Frost Ruins** on the minimap, travel to the site, and start the three-wave Frost Trial. Clear it for building materials and your first **Winter Ward**. Place a Ward near your castle to protect the surrounding 10-block radius: hostile creatures stop chasing players sheltered inside, player damage is reduced, and explosions cannot destroy blocks within that radius. Craft an additional ward with **5 Frost Shards + 12 Froststone Bricks**.
 
+**Combat controls:** On Android, aim at a living creature and the existing Mine button automatically becomes **Attack** (⚔). Aim back at terrain and it becomes **Mine** (⚒). Hold the same button to act; no separate combat button or mode switch. Desktop left-click already attacks a creature or mines terrain. Targeted creatures have a small name, level and HP bar above the crosshair, and level-ups briefly display a celebratory banner. Tap **LV** below the main actions to open the clean XP/progression panel (also at Menu → Winter Adventure). 
+
 Progress, trial clears and Wards are stored per world. Only Survival earns XP; Creative remains a free building sandbox. The first chapter is implemented; new regions, content for Levels 11–100 and full castle defense systems are future milestones.
 
 ## Finding places in your world

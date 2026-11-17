@@ -6,9 +6,12 @@ class Element {
  constructor(tag='div'){
   this.tagName=tag.toUpperCase();this.children=[];this.textContent='';
   this.className='';this.style={};this.listeners={};this.disabled=false;
+  this.attributes={};this.dataset={};this.hidden=false;
+  this.classList={toggle(){},add(){},remove(){}};
   this.isConnected=true;
  }
  appendChild(e){this.children.push(e);return e;}
+ setAttribute(name,value){this.attributes[name]=String(value);}
  addEventListener(type,fn){this.listeners[type]=fn;}
  get renderedText(){return this.textContent+' '+this.children.map(x=>x.renderedText).join(' ');}
  findButton(label){if(this.tagName==='BUTTON'&&this.textContent.includes(label))return this;

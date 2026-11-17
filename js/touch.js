@@ -36,6 +36,8 @@ export function initTouch(game, player, ui, hooks) {
   // ---- buttons
   const hold = (id, on, off) => { const el = $(id); el.addEventListener('pointerdown', (e) => { e.preventDefault(); el.setPointerCapture(e.pointerId); el.classList.add('down'); on(); }); const up = () => { el.classList.remove('down'); if (off) off(); }; el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up); };
   hold('tbJump', () => { T.jump = true; const now = performance.now(); if (player.creative && now - (game._lastTapJump || 0) < 300) { player.flying = !player.flying; player.vy = 0; } game._lastTapJump = now; }, () => { T.jump = false; });
+  // The same input attacks creatures or mines blocks. The action indicator
+  // follows the player's live crosshair target in adventure.update().
   hold('tbBreak', () => { T.left = true; }, () => { T.left = false; });
   let lastPlacementTip = -10000;
   hold('tbPlace', () => { T.right = true; T.rightPressed = true;

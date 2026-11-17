@@ -78,7 +78,10 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
   const levelNoticeNumber=make('span','Level 2',levelNotice);
   const totalXP=()=>progress.xp;
   const needed=()=>xpToNext(progress.level);
-  function serialize(){return {...progress,beacons:progress.beacons.map(b=>({...b}))};}
+  function serialize(){
+    const {levelsGained,...saved}=progress;
+    return {...saved,beacons:progress.beacons.map(b=>({...b}))};
+  }
   function load(raw){progress=safeAdventure(raw);world=game.world;trial=null;denPending=false;
     buildPlan=[];buildIndex=0;nextRun++;levelNoticeTime=0;levelNotice.hidden=true;
     enemyHUD.hidden=true;lastTargetStamp='';refreshPill();}
