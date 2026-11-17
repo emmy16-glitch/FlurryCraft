@@ -3,6 +3,7 @@
 // NFT mint/list/buy requires audited Move contracts and an ownership-aware backend.
 import * as THREE from 'three';
 import * as B from './blocks.js';
+import { rotateXZ, rotatedSize, selectionBounds } from './blueprints.js';
 
 const PREFERENCES = 'flurrycraft_yeti_v1';
 const BLUEPRINTS = 'flurrycraft_blueprints_v1';
@@ -143,6 +144,14 @@ export function initFlurry(game) {
     '#flurryQuest strong{display:block;color:#90ebff;letter-spacing:.06em;font-size:10px;margin-bottom:2px}',
     '#flurryModal{position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;padding:16px;background:rgba(1,15,28,.85);color:#e7faff;font:14px/1.5 system-ui}',
     '#flurryModal .fPanel{width:min(440px,94vw);max-height:90vh;overflow:auto;border:1px solid #78cde5;border-radius:18px;padding:20px;background:linear-gradient(165deg,#214b65,#0c2332);box-shadow:0 14px 50px #0009}',
+    '#fcBlueprintPreview{position:fixed;top:8px;right:8px;z-index:35;display:none;width:min(292px,48vw);padding:9px;border-radius:14px;background:#0b344aed;color:#f3fcff;border:1px solid #8fe5f9;box-shadow:0 6px 24px #0017;pointer-events:auto;font:600 11px/1.4 system-ui}',
+    '#fcBlueprintPreview strong{display:block;font-size:13px;margin-bottom:3px}',
+    '#fcBlueprintPreview .fc-preview-status{font-size:11px;color:#b8e5f3;max-height:36px;overflow:auto;margin-bottom:4px}',
+    '#fcBlueprintPreview .fc-preview-buttons{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}',
+    '#fcBlueprintPreview button{min-width:0;min-height:34px;border:1px solid #75b6d1;border-radius:9px;background:#205b78;color:white;font:700 12px system-ui;touch-action:manipulation;cursor:pointer}',
+    '#fcBlueprintPreview button.fc-place{background:#23a883;color:#052c30;border-color:#9bf0d4}',
+    '#fcBlueprintPreview button.fc-place:disabled{opacity:.45;cursor:not-allowed}',
+    '@media(max-height:530px){#fcBlueprintPreview{top:4px;right:5px;padding:6px;width:min(245px,43vw)}#fcBlueprintPreview button{min-height:27px;font-size:10px}#fcBlueprintPreview strong{font-size:11px}}',
     '#flurryModal h2{margin:0 0 8px;font-size:24px;color:#fff}',
     '#flurryModal label{display:block;margin:12px 0 6px;color:#ceeefd;font-weight:600}',
     '#flurryModal input,#flurryModal select{background:#061b29;border:1px solid #579ab1;border-radius:10px;color:white;padding:9px;width:100%;font:inherit}',
@@ -166,14 +175,15 @@ export function initFlurry(game) {
     button.addEventListener('click', e => { e.stopPropagation(); callback(); }); actions.appendChild(button); return button;
   };
   const buildAction = action('🧱 BUILD', () => showBuildMenu()); buildAction.classList.add('build');
-  let toolState=null, lastBuild=null;
-  const markAction=action('📍 Mark 1',()=>markToolPoint());
-  const stopTool=action('✕ Cancel Tool',()=>{toolState=null;refreshToolActions();notify(game,'Smart building cancelled.');});
+  let toolState=null, lastBuild=null, selectionState=null, previewState=null;
+  const markAction=action('📍 Mark 1',()=>selectionState ? markCapturePoint() : markToolPoint());
+  const stopTool=action('✕ Cancel Tool',()=>{toolState=null;selectionState=null;refreshToolActions();notify(game,'Selection cancelled.');});
   markAction.style.display=stopTool.style.display='none';
   function refreshToolActions(){
-    const showing=!!toolState;
+    const showing=!!(toolState||selectionState);
     markAction.style.display=stopTool.style.display=showing?'inline-flex':'none';
-    if(showing)markAction.textContent=toolState.start?'📍 Mark 2 + Build':'📍 Mark 1';
+    if(selectionState)markAction.textContent=selectionState.start?'📦 Capture Corner 2':'📦 Capture Corner 1';
+    else if(toolState)markAction.textContent=toolState.start?'📍 Mark 2 + Build':'📍 Mark 1';
   }
   action('👁 View', () => { third=!third; notify(game, third ? 'Third-person Yeti view' : 'First-person building view'); });
   let brightWorld = read('flurrycraft_bright_world_v1', true) !== false;
@@ -225,6 +235,34 @@ export function initFlurry(game) {
   const overlay = document.createElement('div'); overlay.id='flurryModal'; overlay.setAttribute('role','dialog'); overlay.setAttribute('aria-modal','true');
   const panel = document.createElement('div'); panel.className='fPanel'; overlay.appendChild(panel); document.body.appendChild(overlay);
   const file = document.createElement('input'); file.type='file'; file.accept='.json,application/json'; file.style.display='none'; document.body.appendChild(file);
+
+  // Non-modal preview controls let players see the actual world while moving
+  // and rotating the hologram. These are independent of touch joystick input.
+  const previewPanel=document.createElement('div');
+  previewPanel.id='fcBlueprintPreview';
+  previewPanel.setAttribute('role','group');
+  previewPanel.setAttribute('aria-label','Blueprint preview controls');
+  const previewName=document.createElement('strong');
+  const previewStatus=document.createElement('div');previewStatus.className='fc-preview-status';
+  const previewButtons=document.createElement('div');previewButtons.className='fc-preview-buttons';
+  previewPanel.append(previewName,previewStatus,previewButtons);
+  const previewButton=(text,fn,cls='')=>{
+    const b=document.createElement('button');b.type='button';b.textContent=text;b.className=cls;
+    b.addEventListener('pointerdown',e=>e.stopPropagation());
+    b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();fn();});
+    previewButtons.appendChild(b);return b;
+  };
+  previewButton('↺ Rotate',()=>shiftPreview(0,0,0,1));
+  previewButton('← Left',()=>shiftPreview(-1,0,0));
+  previewButton('Right →',()=>shiftPreview(1,0,0));
+  previewButton('↑ Forward',()=>shiftPreview(0,0,-1));
+  previewButton('↓ Back',()=>shiftPreview(0,0,1));
+  previewButton('↟ Up',()=>shiftPreview(0,1,0));
+  previewButton('↡ Down',()=>shiftPreview(0,-1,0));
+  const installButton=previewButton('✓ Place',()=>installBlueprint(),'fc-place');
+  previewButton('✕ Cancel',()=>clearPreview());
+  document.body.appendChild(previewPanel);
+
   const menuButton = document.createElement('div'); menuButton.id='flurryMenuButton'; menuButton.className='btn'; menuButton.textContent='🎨 Customize your Yeti';
   const newWorldButton=$('bNew'); if (newWorldButton) newWorldButton.insertAdjacentElement('afterend',menuButton);
   menuButton.addEventListener('click', () => showCustomizer());
@@ -456,67 +494,218 @@ export function initFlurry(game) {
     button('Save my Yeti',()=>{colors={fur:fur.value,face:face.value,scarf:scarf.value,hat:hat.value}; avatar.recolor(colors); save(PREFERENCES,colors);close();notify(game,'Yeti appearance saved!');});
     button('Cancel',close,true);
   }
+
   function showBlueprint() {
-    if(game.state!=='play' || !game.world){notify(game,'Start or open a world first.');return;}
-    open('Save your building');
-    make('p','Stand near the center of your house. Captures blocks in an 11×12×11 area around you. This is a LOCAL blueprint, not an NFT.');
-    label('Creation name');const name=input('My snowy cabin');
-    label('Creator name');const author=input('Yeti builder');
-    button('Save + download JSON',()=>{
-      const world=game.world, p=game.player;
-      const origin=[Math.floor(p.x)-5,Math.floor(p.y)-1,Math.floor(p.z)-5], size=[11,12,11];
-      const blocks=[];
-      for(let y=0;y<size[1];y++)for(let z=0;z<size[2];z++)for(let x=0;x<size[0];x++){
-        const wx=origin[0]+x, wy=origin[1]+y, wz=origin[2]+z;
-        if(!world.loaded(wx,wz)){notify(game,'Nearby chunks are loading. Try again in a moment.');return;}
-        const id=world.getBlock(wx,wy,wz);
-        if(id!==B.AIR && B.BLOCKS[id] && id!==B.WATER && id!==B.LAVA && id!==B.BEDROCK && id!==B.TALLGRASS){blocks.push([x,y,z,id]);}
-      }
-      if(!blocks.length){notify(game,'No building blocks found in the selected area.');return;}
-      const blueprint=validateBlueprint({version:1,name:name.value,author:author.value,size,blocks});
-      const library=read(BLUEPRINTS,[]); library.push(blueprint); if(library.length>15)library.shift();
-      if(!save(BLUEPRINTS,library))notify(game,'Device storage is full. You can still download your blueprint.');
-      const blob=new Blob([JSON.stringify(blueprint)],{type:'application/json'});
-      const url=URL.createObjectURL(blob), a=document.createElement('a');a.href=url;
-      a.download='flurrycraft-'+blueprint.name.toLowerCase().replace(/[^a-z0-9]+/g,'-').slice(0,32)+'.json';
-      a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);close();
-      if(quest===3)complete();notify(game,'Building blueprint saved! Marketplace and NFT minting come later.');
+    if(game.state!=='play'||!game.world){notify(game,'Enter a game world first.');return;}
+    open('📦 Save a Building Blueprint');
+    make('p','Select two opposite corners of your house. You decide which blocks belong in the blueprint, up to 32 blocks per side and 6,000 filled blocks.');
+    make('p','How: Tap Start, aim your + at the first corner block and tap CAPTURE CORNER 1. Aim at the opposite corner (including roof) and tap CAPTURE CORNER 2.');
+    make('p','Tip: To include the floor and roof, mark a bottom corner and a top corner. Only real blocks within those boundaries will be saved.');
+    button('Start 2-corner selection',()=>{
+      toolState=null;
+      selectionState={world:game.world,start:null};
+      third=false;close();refreshToolActions();
+      moreOpen=false;extras.forEach(btn=>btn.style.display='none');more.textContent='⋯ More';
+      notify(game,'Aim at the first block of your building, then tap CAPTURE CORNER 1.');
     });
-    button('Close',close,true);
+    button('Cancel',close,true);
   }
-  function placeBlueprint(candidate) {
-    let data;try{data=validateBlueprint(candidate);}catch(err){notify(game,err.message);return;}
-    if(game.state!=='play' || !game.world){notify(game,'Enter a game world before importing.');return;}
-    const world=game.world,p=game.player;
-    const dx=Math.round(-Math.sin(p.yaw)*9),dz=Math.round(-Math.cos(p.yaw)*9);
-    const ox=Math.floor(p.x)+dx-Math.floor(data.size[0]/2),oy=Math.floor(p.y),oz=Math.floor(p.z)+dz-Math.floor(data.size[2]/2);
-    for(const [x,y,z] of data.blocks){
-      const X=ox+x,Y=oy+y,Z=oz+z;
-      if(!world.loaded(X,Z)){notify(game,'Move closer so the destination loads.');return;}
-      if(world.getBlock(X,Y,Z)!==B.AIR){notify(game,'Destination obstructed! Face a clear, flat area and retry.');return;}
+  function markCapturePoint(){
+    if(!selectionState||selectionState.world!==game.world||game.state!=='play')return;
+    const t=game.player.target;
+    if(!t){notify(game,'Aim directly at a block in your building.');return;}
+    const point={x:t.x,y:t.y,z:t.z};
+    if(!selectionState.start){
+      selectionState.start=point;refreshToolActions();
+      notify(game,'First corner saved. Aim at the opposite top corner.');
+      return;
     }
-    if(!confirm('Place '+data.name+' ('+data.blocks.length+' blocks) into this world? This uses a local blueprint, not an NFT.'))return;
-    for(const [x,y,z,id] of data.blocks) world.setBlock(ox+x,oy+y,oz+z,id);
-    notify(game,'Placed '+data.name+'! World autosaves periodically.');
+    let selection;
+    try{selection=selectionBounds(selectionState.start,point);}catch(e){notify(game,e.message);return;}
+    selectionState=null;refreshToolActions();
+    open('📦 Name your creation');
+    make('p','Selected '+selection.size.join(' × ')+' blocks. Confirm the selection and save it as an editable building blueprint.');
+    label('Creation name');const name=input('My winter house');
+    label('Creator name');const author=input('Yeti Builder');
+    button('Save + Download Blueprint',()=>captureBlueprint(selection,name.value,author.value));
+    button('Cancel',close,true);
+  }
+  function captureBlueprint(selection,name,author){
+    const world=game.world;
+    const {min,size}=selection,blocks=[];
+    const exclude=new Set([B.AIR,B.WATER,B.LAVA,B.BEDROCK,B.TALLGRASS]);
+    for(let y=0;y<size[1];y++)for(let z=0;z<size[2];z++)for(let x=0;x<size[0];x++){
+      const wx=min[0]+x, wy=min[1]+y, wz=min[2]+z;
+      if(!world.loaded(wx,wz)){notify(game,'Part of your house is not loaded. Move closer to it and try again.');return;}
+      const id=world.getBlock(wx,wy,wz);
+      if(!exclude.has(id)&&B.BLOCKS[id])blocks.push([x,y,z,id]);
+      if(blocks.length>MAX_BLOCKS){notify(game,'This selection contains over 6,000 filled blocks. Choose a smaller area.');return;}
+    }
+    if(!blocks.length){notify(game,'No building blocks found inside this selection.');return;}
+    const blueprint=validateBlueprint({version:1,name,author,size,blocks});
+    const library=read(BLUEPRINTS,[]);
+    if(!Array.isArray(library))library=[];
+    library.push(blueprint);
+    if(library.length>15)library.splice(0,library.length-15);
+    if(!save(BLUEPRINTS,library))notify(game,'Storage may be full. Download the JSON file to keep a backup.');
+    const blob=new Blob([JSON.stringify(blueprint)],{type:'application/json'});
+    const url=URL.createObjectURL(blob),a=document.createElement('a');
+    a.href=url;a.download='flurrycraft-'+blueprint.name.toLowerCase().replace(/[^a-z0-9]+/g,'-').slice(0,32)+'.json';
+    a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+    close();
+    if(quest===3)complete();
+    notify(game,'Saved '+blueprint.name+' ('+blocks.length+' blocks). It is NOT minted as an NFT.');
+  }
+  function clearPreview(){
+    if(previewState){
+      const {group}=previewState;
+      game.scene.remove(group);
+      group.traverse(obj=>{
+        if(obj.geometry)obj.geometry.dispose();
+        if(obj.material){if(Array.isArray(obj.material))obj.material.forEach(m=>m.dispose());else obj.material.dispose();}
+      });
+      previewState=null;
+    }
+    previewPanel.style.display='none';
+  }
+  function previewCoordinates(data,ox,oy,oz,turn){
+    const [sx,sy,sz]=rotatedSize(data.size,turn);
+    return {size:[sx,sy,sz],ox,oy,oz};
+  }
+  function checkPlacement(){
+    if(!previewState||previewState.world!==game.world)return {ok:false,message:'World changed; cancel and reload.'};
+    const {data,origin,turn}=previewState,w=game.world,p=game.player;
+    const size=rotatedSize(data.size,turn);
+    if(origin.y<1||origin.y+size[1]>96)return {ok:false,message:'Move the blueprint up/down to fit inside world height.'};
+    for(const [x,y,z,id] of data.blocks){
+      const [dx,dz]=rotateXZ(x,z,data.size,turn);
+      const X=origin.x+dx,Y=origin.y+y,Z=origin.z+dz;
+      if(!w.loaded(X,Z))return {ok:false,message:'Destination chunks are still loading. Move closer.'};
+      if(w.getBlock(X,Y,Z)!==B.AIR)return {ok:false,message:'Destination obstructed. Move or lift the hologram.'};
+      if(B.SOLID[id]&&X+1>p.x-p.hw&&X<p.x+p.hw&&
+         Z+1>p.z-p.hw&&Z<p.z+p.hw&&Y+1>p.y&&Y<p.y+p.h){
+        return {ok:false,message:'Move away from the blueprint before placing it.'};
+      }
+    }
+    return {ok:true,message:'Clear area · '+data.blocks.length+' blocks ready to place'};
+  }
+  function refreshPreview(){
+    if(!previewState)return;
+    const s=previewState,{data,turn,origin,ghost,bounds}=s;
+    const size=rotatedSize(data.size,turn);
+    s.group.position.set(origin.x,origin.y,origin.z);
+    s.group.remove(bounds);
+    bounds.geometry.dispose();
+    const boxGeo=new THREE.EdgesGeometry(new THREE.BoxGeometry(size[0],size[1],size[2]));
+    bounds=new THREE.LineSegments(boxGeo,new THREE.LineBasicMaterial({color:'#80eaff',transparent:true,opacity:.9,depthTest:false}));
+    bounds.position.set(size[0]/2,size[1]/2,size[2]/2);
+    bounds.renderOrder=19;
+    s.group.add(bounds);s.bounds=bounds;
+    const obj=new THREE.Object3D();
+    const stride=Math.max(1,Math.ceil(data.blocks.length/650));
+    let placed=0;
+    for(let i=0;i<data.blocks.length&&placed<ghost.count;i+=stride){
+      const [x,y,z,id]=data.blocks[i], [dx,dz]=rotateXZ(x,z,data.size,turn);
+      obj.position.set(dx+.5,y+.5,dz+.5);obj.scale.set(.90,.90,.90);obj.updateMatrix();
+      ghost.setMatrixAt(placed,obj.matrix);
+      const name=(B.BLOCKS[id]?.name||'').toLowerCase();
+      const color=name.includes('glass')||name.includes('ice')?'#86dfff':
+        name.includes('snow')||name.includes('wool')?'#edfaff':
+        name.includes('stone')||name.includes('brick')?'#c2cada':
+        name.includes('wood')||name.includes('spruce')||name.includes('plank')||name.includes('log')?'#c7996b':'#8fdcc0';
+      ghost.setColorAt(placed,new THREE.Color(color));
+      placed++;
+    }
+    ghost.count=placed;ghost.instanceMatrix.needsUpdate=true;
+    if(ghost.instanceColor)ghost.instanceColor.needsUpdate=true;
+    const valid=checkPlacement();
+    previewStatus.textContent=valid.message+' · Rotation '+(turn*90)+'°';
+    installButton.disabled=!valid.ok;
+    bounds.material.color.set(valid.ok?'#8bf8ce':'#ff9caa');
+    previewPanel.style.display='block';
+  }
+  function startPreview(candidate){
+    let data;
+    try{data=validateBlueprint(candidate);}catch(e){notify(game,'Invalid blueprint: '+e.message);return;}
+    if(game.state!=='play'||!game.world){notify(game,'Enter a world before importing.');return;}
+    clearPreview();close();
+    const p=game.player;
+    const dx=Math.round(-Math.sin(p.yaw)*11),dz=Math.round(-Math.cos(p.yaw)*11);
+    const origin={x:Math.floor(p.x)+dx-Math.floor(data.size[0]/2),y:Math.floor(p.y),z:Math.floor(p.z)+dz-Math.floor(data.size[2]/2)};
+    const group=new THREE.Group();group.name='FlurryCraft Blueprint Hologram';
+    const maxInstances=Math.min(650,data.blocks.length);
+    const ghost=new THREE.InstancedMesh(new THREE.BoxGeometry(1,1,1),
+      new THREE.MeshBasicMaterial({color:'#ffffff',transparent:true,opacity:.38,depthWrite:false,depthTest:false,fog:false}),maxInstances);
+    ghost.count=maxInstances;ghost.frustumCulled=false;ghost.renderOrder=17;
+    group.add(ghost);game.scene.add(group);
+    const bounds=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(1,1,1)),
+      new THREE.LineBasicMaterial({color:'#8bf8ce',depthTest:false,transparent:true,opacity:.9}));
+    group.add(bounds);
+    previewState={world:game.world,data,turn:0,origin,group,ghost,bounds};
+    previewName.textContent='📐 '+data.name;
+    third=false;
+    moreOpen=false;extras.forEach(btn=>btn.style.display='none');more.textContent='⋯ More';
+    refreshPreview();
+    notify(game,'Blueprint preview: rotate or move the ghost, then tap Place.');
+  }
+  function shiftPreview(dx=0,dy=0,dz=0,rotate=0){
+    if(!previewState)return;
+    if(rotate)previewState.turn=(previewState.turn+rotate)%4;
+    previewState.origin.x+=dx;
+    previewState.origin.y+=dy;
+    previewState.origin.z+=dz;
+    refreshPreview();
+  }
+  function installBlueprint(){
+    const valid=checkPlacement();
+    if(!valid.ok){notify(game,valid.message);return;}
+    const s=previewState,world=s.world,data=s.data;
+    const moves=data.blocks.map(([x,y,z,id])=>{
+      const [dx,dz]=rotateXZ(x,z,data.size,s.turn);
+      return [s.origin.x+dx,s.origin.y+y,s.origin.z+dz,id];
+    });
+    clearPreview();
+    // Spread World.setBlock work over animation frames to avoid a multi-second
+    // freeze when a 3D house contains hundreds of voxels.
+    let at=0,built=0;
+    notify(game,'Installing '+data.name+'... ('+moves.length+' blocks)');
+    function installBatch(){
+      if(game.world!==world||game.state!=='play'){notify(game,'Installation interrupted after '+built+' blocks.');return;}
+      const end=Math.min(moves.length,at+22);
+      for(;at<end;at++){
+        const [x,y,z,id]=moves[at];
+        if(world.loaded(x,z)&&world.getBlock(x,y,z)===B.AIR){
+          if(world.setBlock(x,y,z,id)!==false)built++;
+        }
+      }
+      if(at<moves.length)requestAnimationFrame(installBatch);
+      else notify(game,'Installed '+data.name+' · '+built+' blocks placed. Autosave is on.');
+    }
+    requestAnimationFrame(installBatch);
   }
   function chooseImport(){
-    open('Import a creation');
-    make('p','Install a saved blueprint into your world. Stand on flat ground and FACE the space where it should appear. Imports cannot overwrite existing blocks.');
+    if(game.state!=='play'||!game.world){notify(game,'Enter a world first.');return;}
+    open('📂 My Building Blueprints');
+    make('p','Choose a saved creation or import a JSON file. Preview a transparent 3D hologram, rotate it, move it to an empty area and tap Place.');
     const library=read(BLUEPRINTS,[]);
-    if(library.length){label('Your saved blueprints');for(const item of library.slice().reverse()){
-      const b=button('Place '+String(item.name).slice(0,36),()=>{close();placeBlueprint(item);}); b.style.display='block';
-    }}
-    button('Choose blueprint JSON',()=>{close();file.click();});
+    if(Array.isArray(library)&&library.length){
+      label('Saved locally on this device');
+      for(const item of library.slice().reverse()){
+        const b=button('Preview · '+String(item.name).slice(0,36),()=>startPreview(item));
+        b.style.display='block';
+      }
+    }else make('p','No locally saved blueprints yet. Use More → Save Build to capture your house.');
+    button('Import a blueprint JSON',()=>{close();file.click();});
     button('Cancel',close,true);
   }
   file.addEventListener('change',async()=>{
-    const source=file.files && file.files[0];file.value='';if(!source)return;
-    if(source.size>1_000_000){notify(game,'Blueprint file is too large.');return;}
-    try{const data=JSON.parse(await source.text());placeBlueprint(data);}catch(err){notify(game,'Could not open blueprint: '+err.message);}
+    const source=file.files?.[0];file.value='';if(!source)return;
+    if(source.size>1_000_000){notify(game,'Blueprint JSON is too large.');return;}
+    try{startPreview(JSON.parse(await source.text()));}catch(e){notify(game,'Cannot read blueprint JSON: '+e.message);}
   });
   function onWorldReady(isNew){
     const p=game.player,w=game.world;
-    toolState=null;lastBuild=null;refreshToolActions();
+    toolState=null;selectionState=null;lastBuild=null;clearPreview();refreshToolActions();
     equipStarterBlocks();
     if (p.creative && brightWorld) game.env.tod=0.25;
     // Existing survival worlds used to start with an empty hotbar. Show
@@ -548,12 +737,12 @@ export function initFlurry(game) {
   }
   function update(dt) {
     const isPlaying=game.state==='play' && !game.paused;
-    actions.style.display=isPlaying&&!game.ui.isOpen?'flex':'none';
+    actions.style.display=isPlaying&&!game.ui.isOpen&&!previewState?'flex':'none';
     questView.style.display=isPlaying?'block':'none';
     helpView.style.display=isPlaying&&!game.ui.isOpen&&overlay.style.display!=='flex'?'block':'none';
     if(isPlaying){
       const id=game.player.held()?.id;
-      const text=toolState ? (toolState.start ?
+      const text=previewState ? '📐 Move / rotate hologram → tap Place when green' : selectionState ? (selectionState.start ? '📦 Aim at opposite top block → CAPTURE CORNER 2' : '📦 Aim at first block → CAPTURE CORNER 1') : toolState ? (toolState.start ?
         '📐 Aim at second corner → tap MARK 2 + BUILD' :
         '📐 Aim at first corner → tap MARK 1') :
         (id&&B.ITEMS[id] ? B.itemName(id)+' · PLACE □' : 'Tap + ALL on the bottom bar to choose a block');
@@ -639,6 +828,7 @@ export function initFlurry(game) {
     if(game.state!=='play'||game.ui.isOpen||game.paused)return;
     if(e.code==='KeyV'){third=!third;notify(game,third?'Third-person camera':'First-person camera');}
     if(e.code==='KeyB')showBlueprint();
+    if(e.code==='KeyEscape' && previewState)clearPreview();
     if(e.code==='KeyG')showBuildMenu();
   });
 }

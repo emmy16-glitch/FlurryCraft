@@ -11,7 +11,7 @@
 
 ## Limitations to fix after mobile testing
 
-These implementations have been syntax checked, not verified visually on an Android phone yet. Third-person placement reticle may not align perfectly with the block target; build in first person for precision. Quest progress is per-browser, not per-world. Fixed-size blueprints may include natural terrain blocks in the captured volume. Starter shack uses existing blocks; more furniture and doors are needed. Avatar is original simple geometry, not final character artwork. Browser saves are not synchronized or protected against loss. Touch layouts need device QA and optimization.
+These implementations have been syntax checked, not verified visually on an Android phone yet. Third-person placement reticle may not align perfectly with the block target; build in first person for precision. Quest progress is per-browser, not per-world. Selected blueprints may include natural terrain blocks inside the chosen bounds. Starter shack uses existing blocks; more furniture and doors are needed. Avatar is original simple geometry, not final character artwork. Browser saves are not synchronized or protected against loss. Touch layouts need device QA and optimization.
 
 Performance goals (not benchmarks): smooth 30 FPS on modest Android phones and 60 FPS on capable phones. Lower render distance, chunk budgets and shader complexity as necessary after profiling.
 
@@ -20,7 +20,8 @@ Performance goals (not benchmarks): smooth 30 FPS on modest Android phones and 6
 - Precise camera targeting, full character editor, animations, warm clothing, snowstorm survival.
 - Implemented first house pack: doors, windows, low-poly table/chair/bed/fireplace.
 - Implemented 2-point walls and floors/roofs with safe empty-cell checks, 96-block limit and one-action undo.
-- Next: full two-high doors, rotation and expanded furniture, blueprint area selection and hologram placement preview.
+- Implemented adjustable two-corner blueprint selection, JSON v1 export, color-coded 3D hologram preview, 90-degree rotation, safe placement checks and batched installation.
+- Next: full two-high doors, rotation and expanded furniture, snapping blueprints to terrain and collision-tested device QA.
 - Expand NPC conversations, quests, world progression and creator building tools.
 - Validate high/medium/low Android configurations.
 

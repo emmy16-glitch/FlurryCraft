@@ -44,6 +44,12 @@ test('custom game systems are connected', () => {
   assert.match(flurry, /'mouth'/);
   assert.match(readFileSync('js/ui.js','utf8'), /closeButton\.addEventListener\('click'/);
   assert.match(flurry,/function showBlueprint/);
+  assert.match(flurry,/function markCapturePoint/);
+  assert.match(flurry,/function startPreview/);
+  assert.match(flurry,/function refreshPreview/);
+  assert.match(flurry,/function installBlueprint/);
+  assert.match(flurry,/requestAnimationFrame\(installBatch\)/);
+  assert.match(flurry,/function checkPlacement/);
   assert.match(flurry,/function placeBlueprint/);
   assert.match(readFileSync('js/worldgen.js','utf8'), /All open lakes, rivers and seas freeze/);
   assert.match(readFileSync('js/weather.js','utf8'), /Permanent snowfall/);
