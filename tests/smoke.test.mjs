@@ -1,0 +1,31 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
+import { spawnSync } from 'node:child_process';
+
+test('browser HTML and bundled dependencies exist', () => {
+  const html = readFileSync('index.html','utf8');
+  assert.match(html, /<title>FlurryCraft/);
+  assert.match(html, /vendor\/three\.module\.min\.js/);
+  assert.match(html, /js\/main\.js/);
+  assert.ok(existsSync('vendor/three.module.min.js'));
+  assert.ok(existsSync('UPSTREAM_LICENSE.txt'));
+});
+test('all JavaScript game modules parse', () => {
+  for (const file of readdirSync('js').filter(x => x.endsWith('.js'))) {
+    const path = join('js',file);
+    const result = spawnSync(process.execPath,['--check',path],{encoding:'utf8'});
+    assert.equal(result.status,0,path+': '+result.stderr);
+  }
+});
+test('custom game systems are connected', () => {
+  const main = readFileSync('js/main.js','utf8');
+  const flurry = readFileSync('js/flurry.js','utf8');
+  assert.match(main,/initFlurry\(game\)/);
+  assert.match(main,/game\.flurry\.onWorldReady/);
+  assert.match(main,/game\.flurry\.update/);
+  assert.match(flurry,/function createYeti/);
+  assert.match(flurry,/function showBlueprint/);
+  assert.match(flurry,/function placeBlueprint/);
+});

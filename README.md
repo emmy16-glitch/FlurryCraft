@@ -1,12 +1,44 @@
-# FlurryCraft ❄️
+# ❄️ FlurryCraft — Build Your World of Winter
 
-A free-to-play browser voxel sandbox for phones and desktops, based on the MIT-licensed [Yet Another VoxelCraft](https://github.com/GoldwinXS/YetAnotherVoxelCraft) by GoldwinXS.
+Browser-first, free-to-play voxel sandbox for Android, iPhone and desktop. FlurryCraft is evolving toward a creator economy on Sui, but blockchain sales are NOT enabled yet.
 
-## Play locally
-Use any static web server (Python: `python -m http.server 8000`) and open `http://localhost:8000`. All engine files and Three.js are included; no npm install or build is needed. Open in landscape on mobile.
+Built on the MIT-licensed [Yet Another VoxelCraft](https://github.com/GoldwinXS/YetAnotherVoxelCraft) engine by GoldwinXS, with a local bundled Three.js r160. Original attribution is preserved in UPSTREAM_LICENSE.txt.
 
-## Status
-**Phase 1:** snowy voxel world, creative/survival modes, mining, placing, crafting, saving, touch joystick and swipe camera inherited from upstream. **In development:** original Yeti avatar, Lofi quests, creator blueprints, Sui NFTs and trading. NFTs are not live or for sale.
+## Play in a browser
 
-## Credits and licensing
-FlurryCraft additions are MIT licensed by the repository owner. Engine derived from GoldwinXS's MIT-licensed Yet Another VoxelCraft; original copyright and license are preserved in `UPSTREAM_LICENSE.txt`. Three.js r160 is bundled under MIT license.
+To publish your own website:
+1. Open this GitHub repository, then Settings → Pages.
+2. Select GitHub Actions as the Build and deployment source.
+3. Open Actions → Deploy FlurryCraft to Pages → Run workflow, if an automatic deployment did not start.
+4. After a successful deployment, use https://emmy16-glitch.github.io/FlurryCraft/
+
+The address above is a proposed URL and works ONLY after Pages has been configured and deployed. There is no app to download. You may also run a local static web server such as Python http.server on port 8000. Direct file:// opening is not supported because the game uses JavaScript modules.
+
+## Current features (pre-alpha)
+
+- Procedural snowy terrain, caves, weather, time of day and basic survival/creative modes.
+- Mining, block placement, crafting, inventory, tool hotbar, local world save, touch joystick and swipe camera from the upstream engine.
+- Custom Yeti model; change fur and scarf colors and show/hide a winter hat.
+- Optional first/third-person camera; default first person for accurate building.
+- Lofi starter shack with a simple four-stage quest.
+- Save a nearby 11×12×11 building area as a JSON blueprint, then import and place it in your world. No wallet needed.
+
+## Controls
+
+Phone: left thumb joystick, right-side swipe to look, buttons for jump/mine/place/inventory. The FlurryCraft buttons near the upper left offer 👁 View, 🎨 Yeti, 🏠 Blueprint, 📂 Import. Use landscape orientation.
+
+Desktop: WASD move, mouse look, left click mine, right click place, Space jump, E inventory, 1–9 hotbar, V switch camera, B save blueprint.
+
+Use shorter render distance from the menu if mobile performance is poor.
+
+## Important status
+
+The code has undergone static JavaScript syntax validation, but has not yet been tested end-to-end in a real phone browser. Browser data is stored locally on the user's device. Uploading/minting Sui NFTs, paid marketplace listings, real earnings, royalties, multiplayer and actual cloud storage are planned, NOT implemented. See docs/ROADMAP.md.
+
+## Development
+
+No npm install is needed to play the game. Developers can run the optional syntax smoke tests with Node 20+ using npm test.
+
+## Licensing
+
+This repository's MIT license covers FlurryCraft-specific work. Source code derived from GoldwinXS's MIT Yet Another VoxelCraft keeps the author's license in UPSTREAM_LICENSE.txt. Bundled Three.js is also MIT licensed. Confirm appropriate rights to Lofi or other third-party character artwork before commercial distribution.
