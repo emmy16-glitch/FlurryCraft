@@ -4,6 +4,8 @@
 import * as THREE from 'three';
 import * as B from './blocks.js';
 import { rotateXZ, rotatedSize, selectionBounds } from './blueprints.js';
+import { normalizeBlueprint } from './creator-studio.js';
+import { initCreatorStudioUI } from './creator-studio-ui.js';
 
 const PREFERENCES = 'flurrycraft_yeti_v1';
 const BLUEPRINTS = 'flurrycraft_blueprints_v1';
@@ -87,18 +89,10 @@ function createYeti(colors, isLofi = false) {
 }
 
 function validateBlueprint(candidate) {
-  if (!candidate || candidate.version !== 1 || !Array.isArray(candidate.blocks)) throw new Error('Invalid FlurryCraft blueprint format.');
-  if (!Array.isArray(candidate.size) || candidate.size.length !== 3) throw new Error('Blueprint dimensions missing.');
-  const size = candidate.size;
-  if (!size.every(v => Number.isInteger(v) && v > 0 && v <= 32) || size[0] * size[1] * size[2] > 32768) throw new Error('Blueprint dimensions are too large.');
-  if (candidate.blocks.length === 0 || candidate.blocks.length > MAX_BLOCKS) throw new Error('Invalid number of blocks.');
-  for (const p of candidate.blocks) {
-    if (!Array.isArray(p) || p.length !== 4 || p.some(v => !Number.isInteger(v)) ||
-        p[0] < 0 || p[0] >= size[0] || p[1] < 0 || p[1] >= size[1] || p[2] < 0 || p[2] >= size[2] ||
-        p[3] < 1 || p[3] > 255 || !B.BLOCKS[p[3]]) throw new Error('Blueprint contains an invalid block.');
-  }
-  return { version:1, name: String(candidate.name || 'Untitled creation').slice(0,48),
-    size, blocks:candidate.blocks, author:String(candidate.author || 'Yeti creator').slice(0,48) };
+  // Legacy JSON v1 remains valid; reject malformed, duplicated and unsafe blocks.
+  return normalizeBlueprint(candidate,id =>
+    id>0 && id<B.N_BLOCKS && !!B.BLOCKS[id] && id!==B.WATER &&
+    id!==B.LAVA && id!==B.BEDROCK && id!==B.TALLGRASS);
 }
 
 export function initFlurry(game) {
@@ -185,6 +179,8 @@ export function initFlurry(game) {
     if(selectionState)markAction.textContent=selectionState.start?'📦 Capture Corner 2':'📦 Capture Corner 1';
     else if(toolState)markAction.textContent=toolState.start?'📍 Mark 2 + Build':'📍 Mark 1';
   }
+  let creatorStudio;
+  action('🏠 Studio',()=>creatorStudio.open());
   action('👁 View', () => { third=!third; notify(game, third ? 'Third-person Yeti view' : 'First-person building view'); });
   let brightWorld = read('flurrycraft_bright_world_v1', true) !== false;
   const toggleDay = () => {
@@ -234,7 +230,6 @@ export function initFlurry(game) {
   const helpView = document.createElement('div'); helpView.id='flurryHelp'; document.body.appendChild(helpView);
   const overlay = document.createElement('div'); overlay.id='flurryModal'; overlay.setAttribute('role','dialog'); overlay.setAttribute('aria-modal','true');
   const panel = document.createElement('div'); panel.className='fPanel'; overlay.appendChild(panel); document.body.appendChild(overlay);
-  const file = document.createElement('input'); file.type='file'; file.accept='.json,application/json'; file.style.display='none'; document.body.appendChild(file);
 
   // Non-modal preview controls let players see the actual world while moving
   // and rotating the hologram. These are independent of touch joystick input.
@@ -267,14 +262,18 @@ export function initFlurry(game) {
   const newWorldButton=$('bNew'); if (newWorldButton) newWorldButton.insertAdjacentElement('afterend',menuButton);
   menuButton.addEventListener('click', () => showCustomizer());
 
-  const close = () => { overlay.style.display='none'; panel.replaceChildren(); };
+  const close = () => { overlay.style.display='none'; panel.replaceChildren(); panel.classList.remove('fc-studio-wide'); };
   overlay.addEventListener('pointerdown', e => { if(e.target===overlay) close(); });
   const make = (tag,text,parent=panel) => { const el=document.createElement(tag); if(text!==undefined) el.textContent=text; parent.appendChild(el); return el; };
   const button = (title, fn, muted=false) => {const el=make('button',title); if(muted)el.className='muted'; el.addEventListener('click',fn); return el;};
-  const open = title => {panel.replaceChildren(); make('h2',title); overlay.style.display='flex';};
+  const open = title => {panel.replaceChildren(); panel.classList.remove('fc-studio-wide');make('h2',title); overlay.style.display='flex';};
   const label = text=>make('label',text);
   const input = (value='',type='text')=>{const el=make('input');el.value=value;el.type=type;return el;};
   const complete = () => {quest=Math.min(4,quest+1); save(QUEST,quest); placed=0; lastQuestText=''; notify(game,quest===4?'Lofi: Amazing! You are a true Yeti creator!':'Quest completed! '+questNames[quest]);};
+  creatorStudio=initCreatorStudioUI({
+    game,B,panel,openDialog:open,closeDialog:close,showCapture:showBlueprint,
+    startPreview,notify
+  });
   // Beginners should be able to build immediately, without finding a recipe book.
   // Derive the library from the engine registry instead of maintaining a
   // hard-coded 12-block selection. All supported placeable inventory blocks
@@ -543,18 +542,14 @@ export function initFlurry(game) {
     }
     if(!blocks.length){notify(game,'No building blocks found inside this selection.');return;}
     const blueprint=validateBlueprint({version:1,name,author,size,blocks});
-    let library=read(BLUEPRINTS,[]);
-    if(!Array.isArray(library))library=[];
-    library.push(blueprint);
-    if(library.length>15)library.splice(0,library.length-15);
-    if(!save(BLUEPRINTS,library))notify(game,'Storage may be full. Download the JSON file to keep a backup.');
-    const blob=new Blob([JSON.stringify(blueprint)],{type:'application/json'});
-    const url=URL.createObjectURL(blob),a=document.createElement('a');
-    a.href=url;a.download='flurrycraft-'+blueprint.name.toLowerCase().replace(/[^a-z0-9]+/g,'-').slice(0,32)+'.json';
-    a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+    const status=creatorStudio.add(blueprint);
+    creatorStudio.download(blueprint);
     close();
     if(quest===3)complete();
-    notify(game,'Saved '+blueprint.name+' ('+blocks.length+' blocks). It is NOT minted as an NFT.');
+    notify(game,status==='saved' ? 'Saved '+blueprint.name+' · '+blocks.length+' blocks. Open 🏠 Studio to manage it.' :
+      status==='exists' ? 'This build is already saved. A backup JSON was downloaded.' :
+      status==='full' ? 'Your gallery is full. Your JSON file was downloaded.' :
+      'Browser storage is full. Keep the downloaded JSON file.');
   }
   function clearPreview(){
     if(previewState){
@@ -687,26 +682,7 @@ export function initFlurry(game) {
     }
     requestAnimationFrame(installBatch);
   }
-  function chooseImport(){
-    if(game.state!=='play'||!game.world){notify(game,'Enter a world first.');return;}
-    open('📂 My Building Blueprints');
-    make('p','Choose a saved creation or import a JSON file. Preview a transparent 3D hologram, rotate it, move it to an empty area and tap Place.');
-    const library=read(BLUEPRINTS,[]);
-    if(Array.isArray(library)&&library.length){
-      label('Saved locally on this device');
-      for(const item of library.slice().reverse()){
-        const b=button('Preview · '+String(item.name).slice(0,36),()=>startPreview(item));
-        b.style.display='block';
-      }
-    }else make('p','No locally saved blueprints yet. Use More → Save Build to capture your house.');
-    button('Import a blueprint JSON',()=>{close();file.click();});
-    button('Cancel',close,true);
-  }
-  file.addEventListener('change',async()=>{
-    const source=file.files?.[0];file.value='';if(!source)return;
-    if(source.size>1_000_000){notify(game,'Blueprint JSON is too large.');return;}
-    try{startPreview(JSON.parse(await source.text()));}catch(e){notify(game,'Cannot read blueprint JSON: '+e.message);}
-  });
+  function chooseImport(){creatorStudio.open();}
   function onWorldReady(isNew){
     const p=game.player,w=game.world;
     toolState=null;selectionState=null;lastBuild=null;clearPreview();refreshToolActions();

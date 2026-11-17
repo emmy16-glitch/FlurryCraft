@@ -231,7 +231,12 @@ export class Player {
     const g = this.game, w = g.world, t = this.target; if (!t) return false;
     const held = this.held();
     if (!this.sneaking && (t.block===B.DOOR_CLOSED || t.block===B.DOOR_OPEN)) {
-      w.setBlock(t.x,t.y,t.z,t.block===B.DOOR_CLOSED?B.DOOR_OPEN:B.DOOR_CLOSED);
+      const next=t.block===B.DOOR_CLOSED?B.DOOR_OPEN:B.DOOR_CLOSED;
+      const above=w.getBlock(t.x,t.y+1,t.z),below=w.getBlock(t.x,t.y-1,t.z);
+      w.setBlock(t.x,t.y,t.z,next);
+      // Vertically matching door blocks form a passable, two-block doorway.
+      if(above===t.block)w.setBlock(t.x,t.y+1,t.z,next);
+      else if(below===t.block)w.setBlock(t.x,t.y-1,t.z,next);
       g.sound.play('place',{sound:'wood',pos:{x:t.x+.5,y:t.y+.5,z:t.z+.5}});
       return true;
     }
