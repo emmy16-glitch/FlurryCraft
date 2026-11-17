@@ -339,7 +339,7 @@ export function initFlurry(game) {
     questPoll-=dt;
     if(questPoll<=0){
       questPoll=.4;
-      if(quest===1 && p.countItem(B.LOG)+p.countItem(B.SPRUCE_LOG)+p.countItem(B.BIRCH_LOG)>=6)complete();
+      if(quest===1 && (p.creative || p.countItem(B.LOG)+p.countItem(B.SPRUCE_LOG)+p.countItem(B.BIRCH_LOG)>=6))complete();
       if(quest===2 && placed>=8)complete();
       const suffix=quest===2?' ('+placed+'/8)':quest===1?' ('+(p.countItem(B.LOG)+p.countItem(B.SPRUCE_LOG)+p.countItem(B.BIRCH_LOG))+'/6)':'';
       const text='LOFI QUEST '+(quest+1)+'/5|'+questNames[quest]+suffix;
