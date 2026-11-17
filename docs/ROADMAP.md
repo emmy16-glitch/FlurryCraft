@@ -19,6 +19,7 @@ Performance goals (not benchmarks): smooth 30 FPS on modest Android phones and 6
 
 - Precise camera targeting, full character editor, animations, warm clothing, snowstorm survival.
 - Implemented first house pack: doors, windows, low-poly table/chair/bed/fireplace.
+- Winter World 2.0: softened two-layer particles, wind gusts and frosty terrain textures, configurable storm intensity in Menu → Weather, plus adaptive snow budget on slower devices.
 - Implemented 2-point walls and floors/roofs with safe empty-cell checks, 96-block limit and one-action undo.
 - Implemented adjustable two-corner blueprint selection, JSON v1 export, color-coded 3D hologram preview, 90-degree rotation, terrain-height snapping, safe placement checks and batched installation.
 - Creator Studio gallery: free starter blueprints, isometric thumbnails, native file sharing, local backups, import/deletion and deterministic SHA-256 fingerprints. A separate Sui Testnet NFT implementation exists in source but is not deployed.

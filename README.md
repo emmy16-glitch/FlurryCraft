@@ -16,7 +16,7 @@ The address above is a proposed URL and works ONLY after Pages has been configur
 
 ## Current features (pre-alpha)
 
-- Persistent winter landscape with snow-covered beaches, mountains and frozen seas, plus continual falling snow and periodic blizzards. New worlds start in daylight; Creative defaults to a bright world with a toggle in More. Survival retains a day/night cycle.
+- **Winter World 2.0:** thick snow caps on terrain, frosted spruce leaves, softened near/far snowflakes, animated blizzard gusts and adaptive snow particle counts for Android. Snow is permanent, with Storm the default. Use **Menu → Weather** to switch between Storm, Snowfall and Calm. The terrain and saved world format remain unchanged. New worlds start in daylight; Creative defaults to a bright world, while Survival keeps its day/night cycle.
 - Mining, block placement, crafting, inventory, tool hotbar, local world save, touch joystick and swipe camera from the upstream engine.
 - Redesigned, expressive low-poly Yeti with a blue face, visible eyes, smile, blue paws and snowy fur; customize fur, face and scarf colors and wear a winter hat. Original illustrated SVG artwork appears in the title screen, loading screen, quests and character editor. The model uses unlit materials so its colors remain visible in third-person.
 - Optional first/third-person camera; default first person for accurate building.

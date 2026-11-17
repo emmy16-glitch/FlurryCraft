@@ -89,6 +89,12 @@ test('custom game systems are connected', () => {
   assert.match(flurry,/function installBlueprint/); // replaces the old instant-placement function
   assert.match(readFileSync('js/worldgen.js','utf8'), /All open lakes, rivers and seas freeze/);
   assert.match(readFileSync('js/weather.js','utf8'), /Permanent snowfall/);
+  assert.match(readFileSync('js/weather.js','utf8'), /class Weather/);
+  assert.match(readFileSync('js/weather.js','utf8'), /_adaptQuality/);
+  assert.match(readFileSync('js/weather.js','utf8'), /createSnowField/);
+  assert.match(readFileSync('js/flurry.js','utf8'), /Weather: /);
+  assert.match(readFileSync('js/flurry.js','utf8'), /flurrycraft_winter_weather_v1/);
+  assert.match(readFileSync('js/blocks.js','utf8'), /Deeper powder cap/);
   assert.match(flurry,/function showBuildMenu/);
   assert.match(flurry,/function selectBlock/);
   assert.match(flurry,/openBlockLibrary:showBuildMenu/);

@@ -85,7 +85,8 @@ paint('grass_side', (x, y) => {
 });
 paint('snow', (x, y) => { const v = 244 + (rnd(x, y, 8) - 0.5) * 10; return [v, v + 2, v + 5]; });
 paint('snow_side', (x, y) => {
-  const h = 3 + (rnd(x, 0, 9) < 0.5 ? 1 : 0) + (rnd(x, 1, 9) < 0.3 ? 1 : 0);
+  // Deeper powder cap, preserving the underlying soil and the original block IDs.
+  const h = 7 + (rnd(x, 0, 9) < 0.5 ? 1 : 0) + (rnd(x, 1, 9) < 0.3 ? 1 : 0);
   if (y < h) { const v = 244 + (rnd(x, y, 8) - 0.5) * 10; return [v, v + 2, v + 5]; }
   return dirtPx(x, y);
 });

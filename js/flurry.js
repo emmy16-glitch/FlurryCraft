@@ -8,6 +8,7 @@ import { normalizeBlueprint } from './creator-studio.js';
 import { initCreatorStudioUI } from './creator-studio-ui.js';
 import { initSuiMarketUI } from './sui-market-ui.js';
 import { EditHistory } from './edit-history.js';
+import { weatherProfile,cycleWeatherMode } from './winter-weather.js';
 
 const PREFERENCES = 'flurrycraft_yeti_v1';
 const BLUEPRINTS = 'flurrycraft_blueprints_v1';
@@ -226,6 +227,7 @@ export function initFlurry(game) {
   let creatorStudio,suiMarket;
   action('⌂ My Builds',()=>creatorStudio.open());
   let brightWorld=read('flurrycraft_bright_world_v1',true)!==false;
+  let winterMode=game.weather.setMode(read('flurrycraft_winter_weather_v1','storm'));
   let questVisible=read('fc_quest_visible_v1',false)===true;
   const menuToggle=action('☰ Menu',()=>setMoreMenu(menu.hidden));
   menuToggle.setAttribute('aria-expanded','false');
@@ -285,6 +287,12 @@ export function initFlurry(game) {
     notify(game,p.flying?'Flying on':'Flying off');
   });
   const dayButton=menuItem(brightWorld?'Daylight: On':'Daylight: Off',toggleDay);
+  const weatherButton=menuItem('Weather: '+weatherProfile(winterMode).label,()=>{
+    winterMode=game.weather.setMode(cycleWeatherMode(winterMode));
+    save('flurrycraft_winter_weather_v1',winterMode);
+    weatherButton.textContent='Weather: '+weatherProfile(winterMode).label;
+    notify(game,'Snow: '+weatherProfile(winterMode).label);
+  });
   menuItem('Return to Spawn',rescue);
   const questButton=menuItem(questVisible?'Hide Quest':'Show Quest',()=>{
     questVisible=!questVisible;
