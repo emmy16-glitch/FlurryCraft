@@ -84,7 +84,7 @@ test('custom game systems are connected', () => {
   assert.match(readFileSync('js/player.js','utf8'),/s.flurryUnlimited/);
   assert.match(readFileSync('js/ui.js','utf8'),/s.flurryUnlimited/);
   assert.match(flurry,/daylightLocked/);
-  assert.match(flurry,/Unstuck/);
+  assert.match(flurry,/Return to Spawn/);
   assert.match(readFileSync('js/touch.js','utf8'),/lastPlacementTip/);
   assert.match(flurry,/MeshBasicMaterial/);
 });
