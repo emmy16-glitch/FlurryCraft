@@ -50,7 +50,7 @@ test('custom game systems are connected', () => {
   assert.match(flurry,/function installBlueprint/);
   assert.match(flurry,/requestAnimationFrame\(installBatch\)/);
   assert.match(flurry,/function checkPlacement/);
-  assert.match(flurry,/function placeBlueprint/);
+  assert.match(flurry,/function installBlueprint/); // replaces the old instant-placement function
   assert.match(readFileSync('js/worldgen.js','utf8'), /All open lakes, rivers and seas freeze/);
   assert.match(readFileSync('js/weather.js','utf8'), /Permanent snowfall/);
   assert.match(flurry,/function showBuildMenu/);
