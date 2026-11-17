@@ -1,13 +1,16 @@
 // FlurryCraft Explorer Map. Offline procedural terrain, world-specific places.
-// No geolocation, remote tiles, or always-on map rendering.
+// No geolocation or remote tiles. The tiny minimap renders on movement, not every frame.
 import {
  MAP_CELLS,MAP_STEPS,MAX_PLACES,mapToWorld,worldToMap,directionTo,
  markerKey,cleanPlace,sanitizePlaces,winterMapColor
 } from './explorer-map-core.js';
 
-export function initExplorerMap({game,panel,openDialog,closeDialog,notify,dialogOpen}){
+export function initExplorerMap({game,panel,openDialog,closeDialog,notify,dialogOpen,isBlocked=()=>false}){
   let places={home:null,marks:[]},active=null,loadedWorld=null;
   let zoom=1,renderToken=0,mapOpened=false,renderClock=0;
+  const MINI_SIZE=120, MINI_SAMPLES=48, MINI_STEP=2, MINI_RADIUS=MINI_SAMPLES*4;
+  let miniTerrain=null,miniCenter=null,miniTimer=0,miniJob=0,miniDrawing=null;
+  let miniFirstDraw=true;
   const $=(tag,text,parent)=>{
     const e=document.createElement(tag);
     if(text!==undefined)e.textContent=text;
@@ -26,6 +29,7 @@ export function initExplorerMap({game,panel,openDialog,closeDialog,notify,dialog
     places=sanitizePlaces(value);
     loadedWorld=game.world;
     active=null;
+    miniCenter=null;miniTerrain=null;miniJob++;miniFirstDraw=true;miniTimer=0;
   }
   function persist(next){
     const cleaned=sanitizePlaces(next);
@@ -46,9 +50,10 @@ export function initExplorerMap({game,panel,openDialog,closeDialog,notify,dialog
     active=clean;
     closeDialog();mapOpened=false;renderToken++;
     notify(game,'Following '+clean.name);
+    drawMini();
   }
   function stopNavigation(){
-    active=null;nav.hidden=true;
+    active=null;nav.hidden=true;drawMini();
   }
   const style=$('style');
   style.textContent=[
@@ -87,6 +92,14 @@ export function initExplorerMap({game,panel,openDialog,closeDialog,notify,dialog
     '#fcNavBeacon .fc-nav-text strong{display:block;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font:750 11px system-ui}',
     '#fcNavBeacon .fc-nav-text small{color:#afd3df;font:600 10px system-ui}',
     '#fcNavBeacon .fc-nav-stop{border:0;background:#245069;color:#d4f4fa;min-width:30px;height:30px;border-radius:8px;font:800 13px system-ui}',
+    '#fcMiniMap{position:fixed;top:10px;right:10px;z-index:27;width:110px;display:none;flex-direction:column;gap:0;overflow:hidden;padding:4px;background:rgba(8,32,46,.91);border:1px solid #6b9db1;border-radius:14px;box-shadow:0 5px 24px #001d2c8c;backdrop-filter:blur(6px);cursor:pointer;touch-action:manipulation;pointer-events:auto;transition:border-color .18s ease}',
+    '#fcMiniMap:active{border-color:#a6edfc}',
+    '#fcMiniMap:focus-visible{outline:2px solid #a5efff;outline-offset:2px}',
+    '#fcMiniMap canvas{width:100%;height:auto;aspect-ratio:1;display:block;border-radius:10px;background:#254e61;image-rendering:pixelated;pointer-events:none}',
+    '#fcMiniMap .fc-mini-label{display:block;color:#d4eff7;font:750 10px/1.4 system-ui;max-width:100%;text-overflow:ellipsis;white-space:nowrap;overflow:hidden;text-align:center;padding:4px 1px 1px;pointer-events:none}',
+    '#fcMiniMap .fc-mini-label[data-guiding="true"]{color:#a2f6d2}',
+    'body.touch #fcMiniMap{top:max(76px,calc(env(safe-area-inset-top) + 72px));right:10px;width:102px}',
+    '@media(max-height:520px){body.touch #fcMiniMap{top:max(70px,calc(env(safe-area-inset-top) + 66px));width:90px;right:8px}#fcMiniMap{width:98px}}',
     '@media(max-width:570px){.fc-map-layout{grid-template-columns:1fr}.fc-map-frame{width:min(100%,340px);margin:auto}.fc-map-side{padding:4px 0}}',
     '@media(max-height:500px){#flurryModal .fPanel.fc-map-panel{padding:9px}.fc-map-layout{gap:8px}.fc-map-frame{max-height:62dvh;width:100%;max-width:300px;margin:auto}.fc-map-side .fc-map-pin-list{max-height:170px;overflow:auto}#fcNavBeacon{top:51px;right:5px;padding:5px 6px}}'
   ].join('\n');
@@ -98,6 +111,98 @@ export function initExplorerMap({game,panel,openDialog,closeDialog,notify,dialog
   const navTitle=$('strong','',navText),navDistance=$('small','',navText);
   const stop=button(nav,'✕',stopNavigation,'fc-nav-stop');stop.setAttribute('aria-label','Stop navigation');
   document.body.appendChild(nav);
+  // Mini navigator is one tap-target above the game, just below touch
+  // Inventory/Pause controls. No additional draggable widgets.
+  const mini=$('button');mini.id='fcMiniMap';mini.type='button';
+  mini.setAttribute('aria-label','Expand world map');
+  mini.setAttribute('title','Open World Map');
+  const miniCanvas=$('canvas',undefined,mini);miniCanvas.width=miniCanvas.height=MINI_SIZE;
+  const miniLabel=$('span','Map',mini);miniLabel.className='fc-mini-label';
+  mini.addEventListener('pointerdown',e=>e.stopPropagation());
+  mini.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();openMap();});
+  document.body.appendChild(mini);
+  const miniCtx=miniCanvas.getContext('2d',{alpha:false});
+  const miniCache=$('canvas');miniCache.width=miniCache.height=MINI_SIZE;
+  const miniCacheCtx=miniCache.getContext('2d',{alpha:false});
+
+  function drawMini(){
+    if(!miniTerrain||!miniCenter||!miniCtx)return;
+    miniCtx.drawImage(miniCache,0,0);
+    const me=pos(),side=MINI_SIZE;
+    const coord=(x,z)=>worldToMap(x,z,miniCenter.x,miniCenter.z,MINI_STEP,side);
+    const player=coord(me.x,me.z);
+    if(active){
+      const dest=coord(active.x,active.z);
+      const dx=dest.x-player.x,dz=dest.y-player.y;
+      const magnitude=Math.hypot(dx,dz)||1;
+      const maxDist=(side*.5)-8;
+      const factor=Math.min(1,maxDist/magnitude);
+      const ax=player.x+dx*factor,ay=player.y+dz*factor;
+      miniCtx.beginPath();miniCtx.moveTo(player.x,player.y);miniCtx.lineTo(ax,ay);
+      miniCtx.lineWidth=2;miniCtx.strokeStyle='#f5ca7c';
+      miniCtx.setLineDash([3,3]);miniCtx.stroke();miniCtx.setLineDash([]);
+      miniCtx.fillStyle='#ffda89';miniCtx.beginPath();miniCtx.arc(ax,ay,4,0,Math.PI*2);miniCtx.fill();
+    }
+    const home=places.home;
+    if(home){
+      const p=coord(home.x,home.z);
+      if(p.x>5&&p.x<side-5&&p.y>5&&p.y<side-5){
+        miniCtx.beginPath();miniCtx.arc(p.x,p.y,3,0,Math.PI*2);
+        miniCtx.fillStyle='#9ef8ce';miniCtx.fill();
+      }
+    }
+    for(const mark of places.marks){
+      const p=coord(mark.x,mark.z);
+      if(p.x>5&&p.x<side-5&&p.y>5&&p.y<side-5){
+        miniCtx.beginPath();miniCtx.arc(p.x,p.y,2.5,0,Math.PI*2);
+        miniCtx.fillStyle='#ffe3a4';miniCtx.fill();
+      }
+    }
+    miniCtx.save();miniCtx.translate(player.x,player.y);miniCtx.rotate(-game.player.yaw);
+    miniCtx.lineWidth=2;miniCtx.strokeStyle='#073348';miniCtx.fillStyle='#70e6ff';
+    miniCtx.beginPath();miniCtx.moveTo(0,-10);miniCtx.lineTo(6.5,8);miniCtx.lineTo(0,4);
+    miniCtx.lineTo(-6.5,8);miniCtx.closePath();miniCtx.fill();miniCtx.stroke();miniCtx.restore();
+    miniCtx.font='bold 10px system-ui';miniCtx.fillStyle='#effcff';miniCtx.fillText('N',6,12);
+    if(active){
+      const b=directionTo(game.player.x,game.player.z,active.x,active.z,game.player.yaw);
+      miniLabel.textContent=active.name+' · '+b.distance+' blocks';
+      miniLabel.dataset.guiding='true';
+      mini.setAttribute('aria-label','Open map. Guiding to '+active.name+', '+b.distance+' blocks away');
+    }else{
+      miniLabel.textContent='MAP  ·  Tap to expand';
+      miniLabel.dataset.guiding='false';
+      mini.setAttribute('aria-label','Expand world map');
+    }
+  }
+  function scheduleMiniTerrain(){
+    if(!game.world||!miniCacheCtx||!miniCtx)return;
+    const token=++miniJob;
+    miniCenter=pos();
+    const c={...miniCenter},world=game.world;
+    let index=0;
+    miniCacheCtx.fillStyle='#254e61';miniCacheCtx.fillRect(0,0,MINI_SIZE,MINI_SIZE);
+    const columnHeights=new Int16Array(MINI_SAMPLES);
+    function frame(){
+      if(token!==miniJob||game.world!==world||game.state!=='play')return;
+      const end=Math.min(MINI_SAMPLES*MINI_SAMPLES,index+280);
+      for(;index<end;index++){
+        const row=Math.floor(index/MINI_SAMPLES),col=index%MINI_SAMPLES;
+        const wx=c.x+(col-MINI_SAMPLES/2)*4;
+        const wz=c.z+(row-MINI_SAMPLES/2)*4;
+        const sampled=world.gen.column(wx,wz),height=sampled.h;
+        const variation=row?Math.max(-1,Math.min(1,(columnHeights[col]-height)/5)):0;
+        columnHeights[col]=height;
+        miniCacheCtx.fillStyle=winterMapColor(height,sampled.biome,variation);
+        const x=Math.floor(col*MINI_SIZE/MINI_SAMPLES),y=Math.floor(row*MINI_SIZE/MINI_SAMPLES);
+        const x2=Math.ceil((col+1)*MINI_SIZE/MINI_SAMPLES);
+        const y2=Math.ceil((row+1)*MINI_SIZE/MINI_SAMPLES);
+        miniCacheCtx.fillRect(x,y,x2-x,y2-y);
+      }
+      if(index<MINI_SAMPLES*MINI_SAMPLES){requestAnimationFrame(frame);return;}
+      miniTerrain=true;miniFirstDraw=false;drawMini();
+    }
+    requestAnimationFrame(frame);
+  }
 
   function drawMarker(ctx,x,z,center,step,side,label,type){
     const p=worldToMap(x,z,center.x,center.z,step,side);
@@ -152,7 +257,7 @@ export function initExplorerMap({game,panel,openDialog,closeDialog,notify,dialog
     const heading=$('h3','Places',side);
     const list=$('div',undefined,side);list.className='fc-map-pin-list';
     const composer=$('div',undefined,side);composer.className='fc-map-chooser';
-    const pickTitle=$('strong','Save this spot',composer);
+    const pickTitle=$('strong','Destination selected',composer);
     const nameInput=$('input',undefined,composer);nameInput.type='text';
     nameInput.maxLength=24;nameInput.placeholder='Place name';nameInput.setAttribute('aria-label','Marker name');
     const compBtns=$('div',undefined,composer);compBtns.className='fc-map-chooser-buttons';
@@ -163,10 +268,13 @@ export function initExplorerMap({game,panel,openDialog,closeDialog,notify,dialog
         name:nameInput.value.trim()||'My Place',x:selected.x,z:selected.z});
       if(!marker)return;
       if(!persist({...places,marks:[...places.marks,marker]}))return;
+      if(active?.id==='destination'&&active.x===marker.x&&active.z===marker.z)active=marker;
       selected=null;composer.classList.remove('is-visible');
-      drawOverlay();refreshList();notify(game,'Place saved');
+      drawOverlay();drawMini();refreshList();notify(game,'Place saved');
     });
-    button(compBtns,'Cancel',()=>{selected=null;composer.classList.remove('is-visible');drawOverlay();},'muted');
+    button(compBtns,'Stop Guide',()=>{
+      selected=null;stopNavigation();composer.classList.remove('is-visible');drawOverlay();
+    },'muted');
     let center=pos(),selected=null,basePixels=null,token=0;
     const ctx=canvas.getContext('2d',{alpha:false});
     const step=()=>MAP_STEPS[zoom];
@@ -182,8 +290,18 @@ export function initExplorerMap({game,panel,openDialog,closeDialog,notify,dialog
       if(sp)drawMarker(ctx,sp.x,sp.z,center,n,size,'Spawn','spawn');
       if(places.home)drawMarker(ctx,places.home.x,places.home.z,center,n,size,'Home','home');
       for(const marker of places.marks)drawMarker(ctx,marker.x,marker.z,center,n,size,marker.name,'marker');
-      const me=pos();drawMarker(ctx,me.x,me.z,center,n,size,'You','player');
-      if(selected)drawMarker(ctx,selected.x,selected.z,center,n,size,'New','selected');
+      const me=pos();
+      if(active){
+        const from=worldToMap(me.x,me.z,center.x,center.z,n,size);
+        const to=worldToMap(active.x,active.z,center.x,center.z,n,size);
+        ctx.save();ctx.beginPath();ctx.rect(0,0,size,size);ctx.clip();
+        ctx.beginPath();ctx.moveTo(from.x,from.y);ctx.lineTo(to.x,to.y);
+        ctx.strokeStyle='#f9bf71';ctx.lineWidth=2.5;ctx.setLineDash([7,5]);ctx.stroke();
+        ctx.restore();
+        drawMarker(ctx,active.x,active.z,center,n,size,active.name,'selected');
+      }
+      drawMarker(ctx,me.x,me.z,center,n,size,'You','player');
+      if(selected&&!active)drawMarker(ctx,selected.x,selected.z,center,n,size,'New','selected');
       ctx.save();ctx.font='800 13px system-ui';ctx.fillStyle='#163d52';ctx.fillText('N',13,21);
       ctx.fillStyle='#f7feff';ctx.fillText('N',12,20);ctx.restore();
     }
@@ -254,34 +372,47 @@ export function initExplorerMap({game,panel,openDialog,closeDialog,notify,dialog
       const py=(e.clientY-rect.top)*canvas.height/rect.height;
       if(px<0||py<0||px>canvas.width||py>canvas.height)return;
       selected=mapToWorld(px,py,center.x,center.z,step(),canvas.width);
+      // A single map tap immediately establishes guidance. No save required.
+      active=cleanPlace({id:'destination',name:'Destination',...selected});
       nameInput.value='My Place';
-      pickTitle.textContent='Save X '+selected.x+' · Z '+selected.z;
+      pickTitle.textContent='Guiding to X '+selected.x+' · Z '+selected.z;
       composer.classList.add('is-visible');
-      drawOverlay();
+      drawOverlay();drawMini();
     });
     refreshList();renderTerrain();
   }
   function reset(){
     renderToken++;mapOpened=false;load();
-    nav.hidden=true;
+    nav.hidden=true;mini.style.display='none';
+    miniTimer=0;
   }
   function update(dt){
-    if(!active||!game.world||game.state!=='play'||game.paused||
-       game.ui?.isOpen||dialogOpen()){
-      nav.hidden=true;return;
+    const playing=game.state==='play'&&!game.paused&&!game.player.dead;
+    // Keep the mini always present during regular gameplay but never over
+    // inventory, fullscreen menus or blueprint placement controls.
+    const visible=playing&&!game.ui?.isOpen&&!dialogOpen()&&!isBlocked();
+    mini.style.display=visible?'flex':'none';
+    nav.hidden=true; // Direction and distance now live inside the minimap.
+    if(!playing)return;
+    miniTimer-=dt;
+    const me=pos();
+    const move=miniCenter?Math.hypot(me.x-miniCenter.x,me.z-miniCenter.z):Infinity;
+    if(visible&&miniTimer<=0){
+      miniTimer=.22;
+      if(!miniTerrain||!miniCenter||move>13) {
+        // Rate-limit terrain generation as the player walks. Fine detail is
+        // rendered only in the expanded map when requested.
+        scheduleMiniTerrain();
+      } else drawMini();
     }
-    renderClock-=dt;
-    if(renderClock>0)return;
-    renderClock=.12;
-    const p=game.player,b=directionTo(p.x,p.z,active.x,active.z,p.yaw);
-    if(b.distance<3){
-      notify(game,'Reached '+active.name);
-      stopNavigation();return;
+    if(active){
+      const b=directionTo(game.player.x,game.player.z,active.x,active.z,game.player.yaw);
+      if(b.distance<3){
+        notify(game,'Reached '+active.name);
+        stopNavigation();
+      }
     }
-    nav.hidden=false;
-    navTitle.textContent=active.name;
-    navDistance.textContent=b.distance+' blocks';
-    navArrow.style.transform='rotate('+(-b.angle)+'rad)';
   }
+
   return {open:openMap,reset,update,stop:stopNavigation};
 }

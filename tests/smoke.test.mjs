@@ -79,6 +79,11 @@ test('custom game systems are connected', () => {
   assert.match(readFileSync('js/explorer-map.js','utf8'),/function initExplorerMap/);
   assert.match(readFileSync('js/explorer-map.js','utf8'),/renderTerrain/);
   assert.match(readFileSync('js/explorer-map.js','utf8'),/fcNavBeacon/);
+  assert.match(readFileSync('js/explorer-map.js','utf8'),/fcMiniMap/);
+  assert.match(readFileSync('js/explorer-map.js','utf8'),/scheduleMiniTerrain/);
+  assert.match(readFileSync('js/explorer-map.js','utf8'),/mini\.addEventListener\('click'/);
+  assert.match(readFileSync('js/explorer-map.js','utf8'),/active=cleanPlace\(\{id:'destination'/);
+  assert.match(readFileSync('js/explorer-map.js','utf8'),/body\.touch #fcMiniMap/);
   assert.match(readFileSync('js/explorer-map-core.js','utf8'),/function markerKey/);
   assert.match(main,/game\.worldId = currentId/);
   assert.match(flurry,/verifyOwnership/);

@@ -57,7 +57,7 @@ export function initTouch(game, player, ui, hooks) {
   // Menus, studio cards and settings MUST scroll on phones. Only stop native
   // browser scrolling during actual game gestures, not within UI overlays.
   document.addEventListener('touchmove', (e) => {
-    if(e.target?.closest?.('#panel,#screen,#pause,#flurryModal,#fcQuickMenu,#fcBlueprintPreview,#menu,#creative,#book,#worldlist'))
+    if(e.target?.closest?.('#panel,#screen,#pause,#flurryModal,#fcQuickMenu,#fcBlueprintPreview,#fcMiniMap,#menu,#creative,#book,#worldlist'))
       return;
     e.preventDefault();
   }, { passive: false });

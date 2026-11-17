@@ -16,6 +16,7 @@ The address above is a proposed URL and works ONLY after Pages has been configur
 
 ## Current features (pre-alpha)
 
+- **Always-visible minimap:** a compact minimap sits at the upper right of gameplay (below the mobile inventory/pause buttons). Tap to expand, tap any spot on the full map to begin guidance instantly, then tap outside or ✕ to shrink it back. Your current position, destination line, direction and remaining block distance stay visible in the mini. Save Home or named pins only when you want to. The minimap updates terrain incrementally as you travel to keep Android smooth.
 - **Explorer Map:** a private, offline terrain map under **Menu → World Map**. Set Home at your current location, tap the map to save up to eight named places per world, and select Guide for a minimal directional compass. Zoom and recenter without loading online map tiles or using device location. Custom buildings are not drawn on the terrain preview. Places are stored in the same browser (back up before clearing storage).
 - **Winter World 2.0:** thick snow caps on terrain, frosted spruce leaves, softened near/far snowflakes, animated blizzard gusts and adaptive snow particle counts for Android. Snow is permanent, with Storm the default. Use **Menu → Weather** to switch between Storm, Snowfall and Calm. The terrain and saved world format remain unchanged. New worlds start in daylight; Creative defaults to a bright world, while Survival keeps its day/night cycle.
 - Mining, block placement, crafting, inventory, tool hotbar, local world save, touch joystick and swipe camera from the upstream engine.
@@ -53,7 +54,7 @@ Blueprint geometry would be stored publicly inside the onchain NFT, so a buyer c
 
 ## Finding places in your world
 
-Open **Menu → World Map** in a saved world. The map opens centered on your character and shows surrounding generated winter terrain, Spawn, Home (if set), and your own pins. Use **+ / −** to zoom, tap the terrain to select a position, and save it as a named place. **Set Home Here** saves your current position. Tap **Guide** beside a place to close the map and see a small arrow and straight-line distance. Tap **✕** on that arrow to stop navigation. There is no teleportation, GPS tracking or route planning.
+Open **Menu → World Map** in a saved world. The map opens centered on your character and shows surrounding generated winter terrain, Spawn, Home (if set), and your own pins. Use **+ / −** to zoom, tap the terrain to select a position, and save it as a named place. **Set Home Here** saves your current position. Tap **Guide** beside a saved place or tap the expanded map itself to start guidance. Tap outside to shrink the map. The minimap keeps the player arrow, destination guide and straight-line distance visible. There is no teleportation, GPS tracking or route planning.
 
 Each world has its own eight-pin limit, stored in your browser. Markers are independent of the NFT blueprint features and are not synced between devices.
 
