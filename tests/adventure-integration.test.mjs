@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {initAdventure} from '../js/adventure.js';
+import {xpToNext} from '../js/adventure-core.js';
 
 class Element {
  constructor(tag='div'){
@@ -13,6 +14,9 @@ class Element {
  appendChild(e){this.children.push(e);return e;}
  setAttribute(name,value){this.attributes[name]=String(value);}
  addEventListener(type,fn){this.listeners[type]=fn;}
+ findById(id){if(this.id===id)return this;for(const child of this.children){
+  const found=child.findById(id);if(found)return found;
+ }return null;}
  get renderedText(){return this.textContent+' '+this.children.map(x=>x.renderedText).join(' ');}
  findButton(label){if(this.tagName==='BUTTON'&&this.textContent.includes(label))return this;
   for(const child of this.children){const found=child.findButton(label);if(found)return found;}
@@ -23,6 +27,9 @@ function createHarness(){
  const priorDoc=globalThis.document;
  const document={head:new Element('head'),body:new Element('body'),
   createElement:tag=>new Element(tag)};
+ document.getElementById=id=>document.body.findById(id);
+ const breakControl=new Element('div');breakControl.id='tbBreak';
+ document.body.appendChild(breakControl);
  globalThis.document=document;
  const cells=new Map();
  const world={
@@ -61,7 +68,8 @@ function createHarness(){
  const closeDialog=()=>{};
  const notify=(_,message)=>notifications.push(message);
  const adventure=game.adventure=initAdventure({game,B,openDialog,closeDialog,panel,notify,explorer});
- return {game,world,panel,B,adventure,inventory,notifications,nav,restore:()=>{globalThis.document=priorDoc;}};
+ return {game,world,panel,B,adventure,inventory,notifications,nav,document,breakControl,
+  restore:()=>{globalThis.document=priorDoc;}};
 }
 test('fresh survival world creates an approachable Frost Ruins dungeon and persists it',()=>{
  const h=createHarness();try{
@@ -113,5 +121,66 @@ test('Winter Ward is saved, protects nearby positions, and loses protection if r
   assert.equal(h.adventure.isShielded(2.5,43,3.5),false);
   h.adventure.load(state);
   assert.equal(h.adventure.isShielded(2.5,43,3.5),false,'stale saved beacon does not protect');
+ }finally{h.restore();}
+});
+
+test('Android Mine button becomes Attack for a living creature and reverts after aiming away',()=>{
+ const h=createHarness();try{
+  h.game.touchMode=true;
+  h.adventure.load(null);h.adventure.resetWorld(false);
+  const mob={kind:'snow_prowler',level:4,hp:9,maxHp:17,dead:false,deadT:0,
+   sp:{hp:17,iceNative:true}};
+  h.game.player.mobTarget=mob;
+  h.adventure.update(.016);
+  assert.equal(h.breakControl.dataset.action,'attack');
+  assert.equal(h.breakControl.textContent,'⚔');
+  assert.equal(h.breakControl.attributes['aria-label'],'Hold to attack target');
+  const health=h.document.getElementById('fcEnemyHealth');
+  assert.equal(health.hidden,false);
+  assert.match(health.renderedText,/Snow Prowler/);
+  assert.match(health.renderedText,/9 \/ 17 HP/);
+  h.game.player.mobTarget=null;
+  h.adventure.update(.016);
+  assert.equal(h.breakControl.dataset.action,'mine');
+  assert.equal(h.breakControl.textContent,'⚒');
+  assert.equal(health.hidden,true);
+ }finally{h.restore();}
+});
+test('level-up gives a brief celebration and tappable progress panel, without false unlock text',()=>{
+ const h=createHarness();try{
+  h.adventure.load({level:1,xp:xpToNext(1)-1});
+  h.game.player.mobTarget=null;
+  h.adventure.monsterDefeated({kind:'frostling',level:1,
+    sp:{iceNative:true}},true);
+  assert.equal(h.adventure.level,2);
+  const toast=h.document.getElementById('fcLevelNotice');
+  assert.equal(toast.hidden,false);
+  assert.match(toast.renderedText,/Level 2/);
+  const level=h.document.getElementById('fcAdventurePill');
+  assert.match(level.renderedText,/LV 2/);
+  level.listeners.click({stopPropagation(){}});
+  assert.match(h.panel.renderedText,/Level 2/);
+  assert.match(h.panel.renderedText,/XP to Level 3/);
+  h.adventure.update(3.05);
+  assert.equal(toast.hidden,true);
+  assert.ok(!Object.keys(h.adventure.serialize()).includes('levelsGained'),
+    'transient level-up animation state does not leak into saved worlds');
+ }finally{h.restore();}
+});
+test('combat feedback is hidden behind menus or while paused',()=>{
+ const h=createHarness();try{
+  h.adventure.load(null);
+  h.game.touchMode=true;
+  h.game.player.mobTarget={kind:'frostling',level:2,hp:12,maxHp:14,sp:{iceNative:true}};
+  h.adventure.update(.016);
+  assert.equal(h.breakControl.dataset.action,'attack');
+  h.game.ui.isOpen=true;
+  h.adventure.update(.016);
+  assert.equal(h.document.getElementById('fcEnemyHealth').hidden,true);
+  assert.equal(h.breakControl.dataset.action,'mine');
+  h.game.ui.isOpen=false;
+  h.game.paused=true;
+  h.adventure.update(.016);
+  assert.equal(h.document.getElementById('fcAdventurePill').style.display,'none');
  }finally{h.restore();}
 });
