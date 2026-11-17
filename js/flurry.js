@@ -216,12 +216,10 @@ export function initFlurry(game) {
     const player=game.player;
     // A chosen library block is unlimited in either game mode. Survival's
     // enemies/health still apply; we never silently switch its mode.
-    // An explicitly tapped hotbar slot is always replaced, otherwise reuse
-    // an existing matching slot before overriding the active one.
-    let slot=Number.isInteger(targetSlot)&&targetSlot>=0&&targetSlot<9
-      ? targetSlot : player.inv.findIndex((s,i)=>i<9 && s?.id===id);
-    if(slot<0)slot=player.inv.findIndex((s,i)=>i<9&&!s);
-    if(slot<0)slot=player.sel;
+    // Catalog selection always replaces the current selected slot, or the
+    // exact hotbar slot tapped/held to open this library.
+    const slot=Number.isInteger(targetSlot)&&targetSlot>=0&&targetSlot<9
+      ? targetSlot : player.sel;
     const previous=player.inv[slot];
     if(previous && previous.id!==id && !previous.flurryUnlimited && !player.creative) {
       const spare=player.inv.findIndex((s,i)=>i>=9&&!s);
@@ -282,7 +280,15 @@ export function initFlurry(game) {
     search.addEventListener('input',draw);draw();
     button('Give me a starter set of blocks',()=>{
       const p=game.player;
-      [B.SPRUCE_PLANKS,B.GLASS,B.STONE_BRICKS,B.SNOW,B.ICE,B.BRICKS,B.PLANKS,B.TORCH].forEach((id,i)=>{p.inv[i]={id,n:64,flurryUnlimited:true};});
+      const ids=[B.SPRUCE_PLANKS,B.GLASS,B.STONE_BRICKS,B.SNOW,B.ICE,B.BRICKS,B.PLANKS,B.TORCH];
+      const preserved=p.inv.slice(0,ids.length).filter(item=>item&&!item.flurryUnlimited);
+      const spare=[];
+      for(let i=9;i<p.inv.length;i++)if(!p.inv[i])spare.push(i);
+      if(!p.creative && preserved.length>spare.length){
+        notify(game,'Not enough inventory space for your existing Survival items. Empty some slots first.');return;
+      }
+      if(!p.creative)preserved.forEach((item,index)=>{p.inv[spare[index]]=item;});
+      ids.forEach((id,i)=>{p.inv[i]={id,n:64,flurryUnlimited:true};});
       p.sel=0;game.ui.dirtyInv=true;third=false;close();
       notify(game,'Starter blocks equipped — tap a hotbar slot to switch.');
     });
