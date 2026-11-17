@@ -4,11 +4,14 @@
 import { xpToNext,safeAdventure,grantXP,trialLocation,ruinBlocks,
   FROST_CREATURES,winterMobLevel,trialWaves,withinWard,chooseWinterMob }
 from './adventure-core.js';
+import { DUNGEON_VERSION,ROOM_NAMES,ROOM_OFFSETS,chamberPosition,dungeonEntrance,
+ withinDungeonEntry,enteredChamber,generateFrostDungeon } from './frost-dungeon.js';
 import { aimedCreature,actionForTarget } from './combat-hud-core.js';
 
 export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explorer,isInterfaceBusy=()=>false}) {
   let progress=safeAdventure(),world=null,denPending=false,buildPlan=[],buildIndex=0;
   let trial=null,nextRun=0,levelNoticeTime=0,lastTargetStamp='',lastTouchMode='';
+  let entryLabel='',lastDungeonStatus='';
   const make=(tag,text,parent=panel)=>{
     const n=document.createElement(tag);if(text!==undefined)n.textContent=text;
     parent.appendChild(n);return n;
@@ -30,6 +33,10 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
     '#fcEnemyHealth .fc-enemy-fill{height:100%;width:100%;background:#a0e6f3;transition:width .12s linear}',
     '#fcEnemyHealth.boss{border-color:#b69a67}#fcEnemyHealth.boss .fc-enemy-fill{background:#edcb8a}',
     '#fcEnemyHealth .fc-enemy-count{margin-top:4px;text-align:right;font:600 10px system-ui;color:#a6c6d5}',
+    '#fcEnemyHealth.is-hit{border-color:#a7f1f9;box-shadow:0 0 0 2px #8aebff33,0 4px 20px #001b2b75}',
+    '#fcDungeonEntry{position:fixed;z-index:27;top:112px;left:12px;display:none;min-height:43px;max-width:min(200px,46vw);padding:9px 13px;background:#88dce9;border:1px solid #bdf8ff;border-radius:12px;color:#092f42;font:800 12px system-ui;box-shadow:0 5px 20px #001b2b86;cursor:pointer;touch-action:manipulation}',
+    '#fcDungeonEntry:focus-visible{outline:2px solid #e8ffff;outline-offset:2px}',
+    '#fcDungeonStatus{position:fixed;z-index:25;top:12px;left:50%;transform:translateX(-50%);display:none;max-width:45vw;min-width:140px;padding:7px 12px;background:#0b3348df;border:1px solid #5087a0;border-radius:12px;color:#e8fbff;text-align:center;font:750 11px system-ui;pointer-events:none;backdrop-filter:blur(7px)}',
     '#fcLevelNotice{position:fixed;z-index:32;left:50%;top:72px;transform:translateX(-50%);min-width:164px;max-width:min(255px,60vw);padding:12px 19px;border:1px solid #a4ebf3;border-radius:15px;background:linear-gradient(160deg,#256581f5,#0a324be9);color:#f4feff;box-shadow:0 12px 32px #001b2b9c;text-align:center;pointer-events:none;animation:fcLevelEnter .3s ease-out}',
     '#fcLevelNotice strong{display:block;font:900 12px system-ui;letter-spacing:.16em;color:#a7f4ff}',
     '#fcLevelNotice span{display:block;margin-top:3px;font:900 22px/1.2 system-ui}',
@@ -53,7 +60,7 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
     '#flurryModal .fc-adventure-card button{width:100%;min-height:42px;border-radius:10px;margin:8px 0 1px;background:#8de8f3;color:#09364c;font:800 12px system-ui}',
     '#flurryModal .fc-adventure-card button:disabled{opacity:.5}',
     '#flurryModal .fc-adventure-card button.muted{background:#225773;color:#e5f7ff}',
-    '@media(max-height:520px){#fcAdventurePill{top:50px;left:7px;padding:5px 8px}.fc-adventure-card{padding:9px!important}#fcEnemyHealth{top:calc(50% - 84px);padding:6px 9px;width:min(206px,44vw)}#fcLevelNotice{top:52px;padding:8px 14px}#fcLevelNotice span{font-size:18px}}'
+    '@media(max-height:520px){#fcAdventurePill{top:50px;left:7px;padding:5px 8px}.fc-adventure-card{padding:9px!important}#fcEnemyHealth{top:calc(50% - 84px);padding:6px 9px;width:min(206px,44vw)}#fcLevelNotice{top:52px;padding:8px 14px}#fcLevelNotice span{font-size:18px}#fcDungeonEntry{top:93px;left:7px;max-width:42vw;min-height:38px;padding:6px 9px;font-size:11px}#fcDungeonStatus{top:7px;padding:5px 9px}}'
   ].join('\n');
   const pill=make('button',undefined,document.body);pill.id='fcAdventurePill';
   pill.type='button';pill.setAttribute('aria-label','Open your level and adventure progress');
@@ -76,6 +83,12 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
   levelNotice.setAttribute('aria-live','polite');
   make('strong','LEVEL UP',levelNotice);
   const levelNoticeNumber=make('span','Level 2',levelNotice);
+  const entryButton=make('button','Enter Frost Ruins',document.body);
+  entryButton.id='fcDungeonEntry';entryButton.type='button';
+  entryButton.setAttribute('aria-label','Enter Frost Ruins dungeon');
+  entryButton.addEventListener('pointerdown',e=>e.stopPropagation());
+  entryButton.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();startTrial();});
+  const dungeonStatus=make('div','',document.body);dungeonStatus.id='fcDungeonStatus';
   const totalXP=()=>progress.xp;
   const needed=()=>xpToNext(progress.level);
   function serialize(){
@@ -83,8 +96,9 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
     return {...saved,beacons:progress.beacons.map(b=>({...b}))};
   }
   function load(raw){progress=safeAdventure(raw);world=game.world;trial=null;denPending=false;
-    buildPlan=[];buildIndex=0;nextRun++;levelNoticeTime=0;levelNotice.hidden=true;
-    enemyHUD.hidden=true;lastTargetStamp='';refreshPill();}
+    buildPlan=[];buildIndex=0;nextRun++;levelNoticeTime=0;hitTimer=0;levelNotice.hidden=true;
+    enemyHUD.hidden=true;entryButton.style.display='none';dungeonStatus.style.display='none';
+    lastTargetStamp='';refreshPill();}
   function resetWorld(isNew){
     world=game.world;
     if(isNew&&!game.player.creative&&!progress.den){
@@ -138,7 +152,10 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
     }
     if(trial&&mob.trialId===trial.id){
       trial.remaining.delete(mob);
-      if(trial.remaining.size===0)trial.nextIn=.9;
+      if(trial.remaining.size===0){
+        trial.nextIn=.75;
+        if(trial.wave<2)notify(game,'Chamber cleared · Walk deeper into the ruins');
+      }
     }
   }
   function safeItem(id,n){
@@ -146,35 +163,20 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
     if(remaining>0)game.spawnItem(id,remaining,game.player.x,game.player.y+.8,game.player.z);
   }
   function createPlan(){
-    const den=progress.den;
-    if(!den)return [];
-    const cells=new Map();
-    const key=(x,y,z)=>x+','+y+','+z;
-    const put=(x,y,z,id)=>cells.set(key(x,y,z),[x,y,z,id]);
-    // Flatten only for a first-time, explicitly accepted or newly created
-    // world arena. This avoids unintentionally modifying existing castles.
-    for(let dx=-6;dx<=6;dx++)for(let dz=-6;dz<=6;dz++){
-      const x=den.x+dx,z=den.z+dz,ground=world.gen.column(x,z).h;
-      for(let y=Math.max(1,den.y-9);y<den.y-1;y++){
-        if(y>=ground+1)put(x,y,z,B.FROST_BRICK);
-      }
-      for(let y=den.y;y<=Math.min(den.y+5,95);y++)put(x,y,z,B.AIR);
-    }
-    for(const [x,y,z,id] of ruinBlocks(den))put(x,y,z,id);
-    return [...cells.values()];
+    return progress.den?generateFrostDungeon(progress.den,B,world.gen):[];
   }
   function buildRuins(fromMenu=false){
-    if(!world||!progress.den||progress.denBuilt)return;
+    if(!world||!progress.den||denPending||progress.dungeonVersion>=DUNGEON_VERSION)return;
     buildPlan=createPlan();buildIndex=0;denPending=true;
-    if(fromMenu)notify(game,'Preparing Frost Ruins');
+    if(fromMenu)notify(game,'Preparing three Frost Ruins chambers');
   }
   function buildTick(){
     if(!denPending||!world||world!==game.world)return;
-    const batch=18,end=Math.min(buildPlan.length,buildIndex+batch);
-    // Avoid dropping portions of the arena when a chunk has not loaded yet.
+    // Apply at most a dozen costly terrain and lighting edits per frame.
+    const batch=12,end=Math.min(buildPlan.length,buildIndex+batch);
     for(let i=buildIndex;i<end;i++){
       const [x,y,z]=buildPlan[i];
-      if(!world.loaded(x,z))return;
+      if(!world.loaded(x,z))return; // complete as more terrain loads
     }
     for(;buildIndex<end;buildIndex++){
       const [x,y,z,id]=buildPlan[buildIndex];
@@ -182,14 +184,15 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
     }
     if(buildIndex>=buildPlan.length){
       denPending=false;buildPlan=[];progress.denBuilt=true;
-      notify(game,'Frost Ruins discovered');
+      progress.dungeonVersion=DUNGEON_VERSION;
+      notify(game,'Frost Ruins ready · Enter through the north gate');
     }
   }
   function trialSpawn(kind,level,index){
-    const den=progress.den;
+    const den=progress.den,room=chamberPosition(den,trial.wave);
     const locations=[[-2,-2],[2,2],[-2,2],[2,-2],[0,0]];
     const [dx,dz]=locations[index%locations.length];
-    const x=den.x+dx+.5,z=den.z+dz+.5;
+    const x=room.x+dx+.5,z=room.z+dz+.5;
     const mob=new game.Mob(game,kind,x,den.y+.05,z,{level,trialId:trial.id});
     game.mobs.push(mob);trial.remaining.add(mob);
     return mob;
@@ -197,11 +200,10 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
   function spawnWave(){
     if(!trial)return;
     const members=trialWaves(progress.level)[trial.wave]||[];
-    trial.remaining=new Set();
+    trial.remaining=new Set();trial.waiting=false;trial.nextIn=0;
     members.forEach((spec,index)=>trialSpawn(spec.kind,spec.level,index));
     refreshPill();
-    const descriptions=['Frostlings approach','Snow Prowlers join the hunt','Glacier Guardian awakened'];
-    notify(game,descriptions[trial.wave]);
+    notify(game,ROOM_NAMES[trial.wave]+' · Defeat '+members.length+' enemies');
   }
   function finishTrial(){
     trial=null;progress.clears++;
@@ -222,15 +224,17 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
   }
   function startTrial(){
     if(game.player.creative){notify(game,'Enter a Survival world for dungeon combat');return;}
-    if(!progress.denBuilt){notify(game,'Frost Ruins are not ready yet');return;}
+    if(!progress.denBuilt||progress.dungeonVersion<DUNGEON_VERSION){
+      notify(game,'Prepare the three-room Frost Ruins first');return;
+    }
     if(trial)return;
     const p=game.player,d=progress.den;
-    if(Math.hypot(p.x-d.x,p.z-d.z)>14){
-      notify(game,'Get closer to Frost Ruins to begin');return;
+    if(!withinDungeonEntry(p,d)){
+      notify(game,'Go to the Frost Ruins entrance to begin');return;
     }
     if(game.difficulty<=0){notify(game,'Enable Easy or Normal combat to enter');return;}
     closeDialog();
-    trial={id:++nextRun,wave:0,remaining:new Set(),nextIn:0};
+    trial={id:++nextRun,wave:0,remaining:new Set(),nextIn:0,waiting:false};
     spawnWave();
   }
   function guide(){
@@ -258,9 +262,9 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
     make('span',progress.kills+' creatures defeated',activity);
     make('span',progress.clears+' dungeon clears',activity);
     const den=make('section',undefined,panel);den.className='fc-adventure-card';
-    make('h3','Frost Ruins',den);
-    make('p','3 waves · Frostlings, Snow Prowlers, Glacier Guardian',den);
-    make('p','Clear the ruins to earn Froststone, Frost Shards and your first Winter Ward.',den);
+    make('h3','Frost Ruins · 3 Chambers',den);
+    make('p','Enter the gate, clear each room, then reach the Glacier Guardian.',den);
+    make('p','Rewards: XP, Frost Shards, Froststone and a Winter Ward.',den);
     if(!progress.den){
       button('Discover Frost Ruins',()=>{
         if(!confirm('Create the Frost Ruins near your spawn? This modifies nearby terrain.'))return;
@@ -270,16 +274,23 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
       },den);
     }else{
       make('p','X '+progress.den.x+' · Z '+progress.den.z+' · '+progress.clears+' clears',den);
+      button('Guide to Entrance',guide,den);
       if(!progress.denBuilt){
-        make('p',denPending?'Preparing the ruins…':'Visit the area to finish preparing the ruins.',den);
-        button('Track Frost Ruins',guide,den);
-        if(!denPending)button('Prepare Ruins',()=>{buildRuins(true);closeDialog();},den);
+        make('p',denPending?'Building rooms as the area loads…':'The dungeon is not built yet.',den);
+        if(!denPending)button('Prepare Dungeon',()=>{buildRuins(true);closeDialog();},den);
+      }else if(progress.dungeonVersion<DUNGEON_VERSION){
+        make('p','Your older Frost Ruins can become a three-room dungeon.',den);
+        button('Upgrade to Walk-in Dungeon',()=>{
+          if(typeof confirm==='function'&&!confirm(
+            'Extend Frost Ruins into a three-room dungeon? This replaces terrain in a 13 × 41 area and may overwrite nearby builds.'))return;
+          buildRuins(true);closeDialog();
+        },den);
       }else if(trial){
-        make('p','Wave '+(trial.wave+1)+' / 3 in progress',den);
-        button('Return to Battle',closeDialog,den);
+        make('p',ROOM_NAMES[trial.wave]+' · Chamber '+(trial.wave+1)+' / 3',den);
+        button('Return to Dungeon',closeDialog,den);
       }else{
-        button('Track Frost Ruins',guide,den);
-        button('Start Frost Trial',startTrial,den);
+        make('p','Walk through the gate at the marked entrance to begin.',den);
+        button('Enter Dungeon',startTrial,den);
       }
     }
     const defense=make('section',undefined,panel);defense.className='fc-adventure-card';
@@ -332,34 +343,89 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
       }
     }
   }
+  function hitFeedback(mob,damage){
+    if(!mob||!game.player||game.player.mobTarget!==mob)return;
+    enemyHUD.classList.add('is-hit');
+    enemyCount.textContent='Hit · −'+Math.round(damage*10)/10;
+    lastTargetStamp='';
+    hitTimer=.3;
+  }
+  let hitTimer=0;
+  function syncAimUI(visible){
+    const info=visible?aimedCreature(game.player.mobTarget):null;
+    enemyHUD.hidden=!info;
+    if(info){
+      const stamp=info.name+'|'+info.level+'|'+Math.ceil(info.health)+'|'+Math.ceil(info.maxHp)+'|'+info.boss;
+      if(lastTargetStamp!==stamp){
+        enemyName.textContent=info.name;
+        enemyLevel.textContent=info.level?'LV '+info.level:'';
+        enemyFill.style.width=info.percent+'%';
+        if(hitTimer<=0)enemyCount.textContent=Math.ceil(info.health)+' / '+Math.ceil(info.maxHp)+' HP';
+        enemyHUD.classList.toggle('boss',info.boss);
+        lastTargetStamp=stamp;
+      }
+    }else lastTargetStamp='';
+    if(game.touchMode){
+      const control=document.getElementById('tbBreak');
+      if(control){
+        const mode=visible?actionForTarget(game.player.mobTarget):'mine';
+        if(mode!==lastTouchMode){
+          control.dataset.action=mode;
+          control.dataset.label=mode==='attack'?'ATTACK':'MINE';
+          control.textContent=mode==='attack'?'⚔':'⚒';
+          control.setAttribute('aria-label',mode==='attack'?'Hold to attack target':'Hold to mine block');
+          control.title=mode==='attack'?'Tap or hold to attack':'Hold to mine';
+          lastTouchMode=mode;
+        }
+      }
+    }
+  }
   function update(dt){
     const play=game.state==='play'&&!game.paused&&!game.player.dead&&!isInterfaceBusy();
     const unobstructed=play&&!game.ui.isOpen;
     pill.style.display=unobstructed&&!game.player.creative?'flex':'none';
     syncAimUI(unobstructed);
+    if(hitTimer>0){
+      hitTimer-=dt;
+      if(hitTimer<=0){enemyHUD.classList.remove('is-hit');lastTargetStamp='';}
+    }
     if(levelNoticeTime>0){
       levelNoticeTime-=dt;
       if(levelNoticeTime<=0)levelNotice.hidden=true;
     }
     levelNotice.style.display=unobstructed&&!game.player.creative?'block':'none';
-    if(!play)return;
-    if(denPending)buildTick();
-    if(!trial)return;
-    const p=game.player,d=progress.den;
-    if(p.dead||p.creative||Math.hypot(p.x-d.x,p.z-d.z)>36){
-      stopTrial('Frost Trial ended');return;
+    if(!play){
+      entryButton.style.display='none';dungeonStatus.style.display='none';
+      return;
     }
-    if(trial.nextIn>0){
-      trial.nextIn-=dt;
-      if(trial.nextIn<=0){
-        if(trial.wave>=2)finishTrial();
-        else{trial.wave++;spawnWave();}
+    if(denPending)buildTick();
+    const dungeonReady=!game.player.creative&&progress.denBuilt&&
+      progress.dungeonVersion>=DUNGEON_VERSION;
+    const atEntry=dungeonReady&&!trial&&withinDungeonEntry(game.player,progress.den);
+    entryButton.style.display=unobstructed&&atEntry?'block':'none';
+    if(!trial){
+      dungeonStatus.style.display='none';
+      return;
+    }
+    const p=game.player,d=progress.den;
+    if(p.dead||p.creative||Math.hypot(p.x-d.x,p.z-d.z)>38){
+      stopTrial('Frost Ruins run ended');return;
+    }
+    let stage=ROOM_NAMES[trial.wave]+' · '+(trial.wave+1)+'/3';
+    if(trial.remaining.size===0&&trial.wave<2)stage='Room clear · Continue deeper';
+    dungeonStatus.textContent=stage;
+    dungeonStatus.style.display=unobstructed?'block':'none';
+    if(trial.nextIn>0)trial.nextIn-=dt;
+    if(trial.remaining.size===0&&trial.nextIn<=0){
+      if(trial.wave>=2){finishTrial();return;}
+      if(enteredChamber(p,d,trial.wave+1)){
+        trial.wave++;spawnWave();
       }
     }
   }
 
   refreshPill();
   return {serialize,load,resetWorld,open,update,mobLevel,roamingKind,
-    monsterDefeated,trackBlock,isShielded,get level(){return progress.level;},
+    monsterDefeated,hitFeedback,trackBlock,isShielded,get level(){return progress.level;},
     get den(){return progress.den;}};
 }
