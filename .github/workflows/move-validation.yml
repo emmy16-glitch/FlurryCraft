@@ -1,0 +1,44 @@
+name: Validate Sui Move (Testnet)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "move/flurrycraft/**"
+      - ".github/workflows/move-validation.yml"
+  pull_request:
+    paths:
+      - "move/flurrycraft/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  move-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pinned suiup
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 -o /tmp/suiup.tar.gz \
+            https://github.com/MystenLabs/suiup/releases/download/v0.1.1/suiup-Linux-musl-x86_64.tar.gz
+          curl --fail --location --retry 3 -o /tmp/suiup.tar.gz.sha256 \
+            https://github.com/MystenLabs/suiup/releases/download/v0.1.1/suiup-Linux-musl-x86_64.tar.gz.sha256
+          cd /tmp
+          sha256sum -c suiup.tar.gz.sha256
+          mkdir -p "$HOME/.local/bin"
+          tar -xzf suiup.tar.gz -C "$HOME/.local/bin"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Install Sui Testnet CLI
+        shell: bash
+        run: |
+          suiup install sui@testnet-1.84.0
+          echo "$HOME/.suiup/bin" >> "$GITHUB_PATH"
+      - name: Build Move package
+        run: sui move build --path move/flurrycraft
+      - name: Run Move scenario tests
+        run: sui move test --path move/flurrycraft

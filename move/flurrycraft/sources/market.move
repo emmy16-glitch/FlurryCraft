@@ -65,6 +65,12 @@ public struct Cancelled has copy, drop {
     listing_id: ID,
 }
 
+/// Read-only onchain metadata used by clients and scenario tests.
+public fun listed_price(listing: &Listing): u64 { listing.price }
+public fun listing_active(listing: &Listing): bool { listing.nft.is_some() }
+public fun creator(nft: &BuildNFT): address { nft.creator }
+public fun blueprint_digest(nft: &BuildNFT): &vector<u8> { &nft.digest }
+
 /// Anyone can mint with Testnet gas, but creator is the *minter's address*.
 /// Offchain client validates the canonical FlurryCraft voxel format before
 /// submitting bytes; the Move module enforces size and computes its own hash.
