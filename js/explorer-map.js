@@ -431,5 +431,5 @@ export function initExplorerMap({game,panel,openDialog,closeDialog,notify,dialog
     }
   }
 
-  return {open:openMap,reset,update,stop:stopNavigation};
+  return {open:openMap,reset,update,stop:stopNavigation,guideTo:startNavigation};
 }

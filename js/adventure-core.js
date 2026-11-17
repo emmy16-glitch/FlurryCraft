@@ -23,7 +23,7 @@ export function safeAdventure(raw){
     [b.x,b.y,b.z].every(Number.isInteger)&&Math.abs(b.x)<1000000&&
     Math.abs(b.z)<1000000&&b.y>0&&b.y<96).map(b=>({x:b.x,y:b.y,z:b.z})):[];
   return {level,xp,kills:clamp(a.kills,0,100000),clears:clamp(a.clears,0,10000),
-    den:pos,beacons};
+    den:pos,denBuilt:!!a.denBuilt&&!!pos,beacons};
 }
 export function grantXP(state,amount) {
   const next=safeAdventure(state),gain=Math.max(0,Math.min(2000,Math.floor(Number(amount)||0)));

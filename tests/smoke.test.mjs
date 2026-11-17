@@ -77,6 +77,15 @@ test('custom game systems are connected', () => {
   assert.match(readFileSync('index.html','utf8'),/Continue Playing/);
   assert.match(flurry,/initSuiMarketUI/);
   assert.match(flurry,/initExplorerMap/);
+  assert.match(flurry,/initAdventure/);
+  assert.match(flurry,/menuItem\('Winter Adventure'/);
+  assert.match(flurry,/game\.adventure\.resetWorld/);
+  assert.match(readFileSync('js/adventure.js','utf8'),/function initAdventure/);
+  assert.match(readFileSync('js/adventure-core.js','utf8'),/function trialWaves/);
+  assert.match(readFileSync('js/mobs.js','utf8'),/function winterCreature/);
+  assert.match(readFileSync('js/blocks.js','utf8'),/FROST_BRICK = 79/);
+  assert.match(main,/adventure:game\.adventure/);
+  assert.match(main,/game\.adventure\?\.trackBlock/);
   assert.match(flurry,/menuItem\('World Map'/);
   assert.match(flurry,/explorer\.reset\(\)/);
   assert.match(readFileSync('js/explorer-map.js','utf8'),/function initExplorerMap/);

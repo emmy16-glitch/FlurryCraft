@@ -10,6 +10,7 @@ import { initSuiMarketUI } from './sui-market-ui.js';
 import { EditHistory } from './edit-history.js';
 import { weatherProfile,cycleWeatherMode } from './winter-weather.js';
 import { initExplorerMap } from './explorer-map.js';
+import { initAdventure } from './adventure.js';
 
 const PREFERENCES = 'flurrycraft_yeti_v1';
 const BLUEPRINTS = 'flurrycraft_blueprints_v1';
@@ -274,6 +275,8 @@ export function initFlurry(game) {
     s.n--;if(s.n<=0)p.inv[p.sel]=null;
     game.ui.dirtyInv=true;
   }
+  menuSection('ADVENTURE');
+  menuItem('Winter Adventure',()=>game.adventure.open());
   menuSection('BUILD');
   menuItem('Walls & Floors',()=>showSmartBuilder());
   menuItem('Save Building',()=>showBlueprint());
@@ -379,6 +382,7 @@ export function initFlurry(game) {
   explorer=initExplorerMap({game,panel,openDialog:open,closeDialog:close,notify,
     dialogOpen:()=>overlay.style.display==='flex',
     isBlocked:()=>!!previewState||!menu.hidden});
+  game.adventure=initAdventure({game,B,openDialog:open,closeDialog:close,panel,notify,explorer});
   // Beginners should be able to build immediately, without finding a recipe book.
   // Derive the library from the engine registry instead of maintaining a
   // hard-coded 12-block selection. All supported placeable inventory blocks
@@ -866,6 +870,7 @@ export function initFlurry(game) {
     const p=game.player,w=game.world;
     toolState=null;selectionState=null;buildJob=null;progress.hidden=true;editHistory.reset(w);clearPreview();refreshToolActions();
     explorer.reset();
+    game.adventure.resetWorld(isNew);
     equipStarterBlocks();
     if (p.creative && brightWorld) game.env.tod=0.25;
     // Existing survival worlds used to start with an empty hotbar. Show
@@ -917,6 +922,7 @@ export function initFlurry(game) {
     placementGhost.visible=true;
   }
   function update(dt) {
+    game.adventure.update(dt);
     explorer.update(dt);
     const isPlaying=game.state==='play' && !game.paused;
     actions.style.display=isPlaying&&!game.ui.isOpen&&!previewState&&overlay.style.display!=='flex'?'flex':'none';

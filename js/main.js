@@ -80,7 +80,7 @@ const game = window.game = {
     for (let dy = -R; dy <= R; dy++) for (let dz = -R; dz <= R; dz++) for (let dx = -R; dx <= R; dx++) {
       const d = Math.hypot(dx, dy, dz); if (d > r * (0.8 + Math.random() * 0.4)) continue;
       const bx = Math.floor(x) + dx, by = Math.floor(y) + dy, bz = Math.floor(z) + dz;
-      const b = w.getBlock(bx, by, bz); if (!b || b === B.BEDROCK || b === B.WATER) continue;
+      const b = w.getBlock(bx, by, bz); if (!b || b === B.BEDROCK || b === B.WATER || this.adventure?.isShielded(bx+.5,by+.5,bz+.5)) continue;
       if (b === B.TNT) { this.igniteTNT(bx, by, bz, 0.4 + Math.random() * 0.8); continue; }
       const def = B.BLOCKS[b];
       if (Math.random() < 0.28 && def.drop) this.spawnItem(def.drop, def.dropN, bx + 0.5, by + 0.5, bz + 0.5);
@@ -276,7 +276,7 @@ function saveGame() {
     const data = {
       seed: game.world.seed, mode: settings.mode, diff: settings.diff, tod: game.env.tod, edits, containers: ui.serialize(),
       player: { x: player.x, y: player.y, z: player.z, yaw: player.yaw, pitch: player.pitch, health: player.health, hunger: player.hunger, sat: player.sat, inv: player.inv, sel: player.sel, spawn: player.spawn, flying: player.flying, armor: player.armor },
-      adv: [...game.adv], played: basePlayed + game.time,
+      adv: [...game.adv], adventure:game.adventure?.serialize(), played: basePlayed + game.time,
     };
     localStorage.setItem('vc_world_' + currentId, JSON.stringify(data));
     const idx = loadIndex().filter((w) => w.id !== currentId); idx.push({ id: currentId, name: currentName, date: Date.now(), mode: settings.mode, played: Math.round(basePlayed + game.time) }); saveIndex(idx);
@@ -299,6 +299,7 @@ function startGame(cont, id) {
   if (save) { settings.mode = save.mode; settings.diff = save.diff; currentId = id; basePlayed = save.played || 0; const m = loadIndex().find((w) => w.id === id); currentName = m ? m.name : 'World'; }
   else { basePlayed = 0; currentId = 'w' + Date.now().toString(36); const n = loadIndex().length + 1; currentName = seedStr ? 'Seed ' + seedStr.slice(0, 18) : 'World ' + n; }
   game.worldId = currentId;game.worldName = currentName;
+  if(game.adventure)game.adventure.load(save?.adventure);
   game.difficulty = [0, 1, 1.5][settings.diff];
   if (touchMode) { try { document.documentElement.requestFullscreen && document.documentElement.requestFullscreen(); if (screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(() => {}); } catch (e) {} }
   $('menu').style.display = 'none'; $('loading').style.display = 'flex'; game.state = 'loading'; disposeMenuWorld(); camera.fov = settings.fov; camera.updateProjectionMatrix();
@@ -310,6 +311,7 @@ function startGame(cont, id) {
     const result = originalSetBlock(x, y, z, id, record);
     if (result !== false && game.flurry) {
       game.flurry.recordChange(world, x, y, z, old, id);
+      game.adventure?.trackBlock(world,x,y,z,old,id);
       if (!game.flurry.isApplyingEdit()) game.flurry.countPlayerPlacement(x, y, z, old, id);
     }
     return result;
@@ -376,9 +378,16 @@ function trySpawnHostile() {
     for (; y > Math.max(2, Math.floor(player.y) - 20); y--) if (B.SOLID[w.getBlock(x, y - 1, z)] && !B.SOLID[w.getBlock(x, y, z)] && !B.SOLID[w.getBlock(x, y + 1, z)] && w.getBlock(x, y, z) !== B.WATER) { found = y; break; }
     if (found < 0) continue;
     const lv = w.getLight(x, found, z), sk = Math.pow((lv >> 4) / 15, 1.55) * game.env.dayLight, bk = (lv & 15) / 15;
-    if (Math.max(sk, bk * 0.9) > 0.22) continue;
-    const r = Math.random(), kind = r < 0.36 ? 'zombie' : r < 0.58 ? 'skeleton' : r < 0.8 ? 'creeper' : 'spider';
-    game.mobs.push(new Mob(game, kind, x + 0.5, found + 0.05, z + 0.5)); return;
+    // Snow creatures roam through daylight and blizzards; classic night
+    // enemies retain the old darkness requirement in Survival.
+    if(game.adventure&&Math.hypot(x-player.spawn.x,z-player.spawn.z)<19)continue;
+    if(game.adventure?.isShielded(x+.5,found,z+.5))continue;
+    const roll=Math.random();
+    const kind=game.adventure&&roll<.9?game.adventure.roamingKind():
+      (roll<.935?'zombie':roll<.96?'skeleton':roll<.98?'creeper':'spider');
+    if(!['frostling','snow_prowler','glacier_guardian'].includes(kind)&&
+      Math.max(sk,bk*.9)>.22)continue;
+    game.mobs.push(new Mob(game,kind,x+.5,found+.05,z+.5));return;
   }
 }
 

@@ -21,6 +21,7 @@ Performance goals (not benchmarks): smooth 30 FPS on modest Android phones and 6
 - Implemented first house pack: doors, windows, low-poly table/chair/bed/fireplace.
 - Winter World 2.0: softened two-layer particles, wind gusts and frosty terrain textures, configurable storm intensity in Menu → Weather, plus adaptive snow budget on slower devices.
 - Explorer Map: offline incremental map, home and spawn pins, eight world-specific markers, zoom and an optional guidance arrow; no new map permissions or network requests.
+- Winter Adventure chapter 1: Level 1–100 XP curve, first 1–10 progression, original Frostlings/Snow Prowlers/Glacier Guardian, Frost Ruins 3-wave trial, per-world progress, Frost Shards/Bricks and Winter Ward base protection. Levels 11–100 dungeon content, bosses and larger castle tiers remain planned.
 - Implemented 2-point walls and floors/roofs with safe empty-cell checks, 96-block limit and one-action undo.
 - Implemented adjustable two-corner blueprint selection, JSON v1 export, color-coded 3D hologram preview, 90-degree rotation, terrain-height snapping, safe placement checks and batched installation.
 - Creator Studio gallery: free starter blueprints, isometric thumbnails, native sharing, backups, import/deletion and SHA-256 fingerprints. Testnet source now has seven passing Move scenarios, buyer preview and clearer confirmation flows. The package still needs publication and wallet end-to-end tests.

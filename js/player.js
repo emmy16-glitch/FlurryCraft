@@ -48,6 +48,9 @@ export class Player {
     if (this.dead || this.creative || this.invuln > 0) return;
     const pts = this.armorPts();
     if (pts > 0 && dmg > 0.5) { dmg *= 1 - Math.min(20, pts) * 0.04; for (let i = 0; i < 4; i++) { const a = this.armor[i]; if (a) { if (a.d === undefined) a.d = B.ITEMS[a.id].armor.dur; a.d--; if (a.d <= 0) { this.armor[i] = null; this.game.sound.play('break', { sound: 'stone', vol: 0.8 }); } } } this.game.ui.dirtyInv = true; this.game.ui.armorSig = ''; }
+    // Winter Wards reduce incoming damage without making a castle invincible.
+    if(this.game.adventure?.isShielded(this.x,this.y,this.z))
+      dmg=Math.max(.4,dmg*.4);
     this.health -= dmg; this.invuln = 0.5; this.hurtFlash = 0.5;
     if (sx !== undefined) { const dx = this.x - sx, dz = this.z - sz, d = Math.hypot(dx, dz) || 1; this.kbx = dx / d * 5.5; this.kbz = dz / d * 5.5; this.vy = Math.max(this.vy, 4.2); this.onGround = false; }
     this.game.sound.play('hurt'); this.exh += 0.1;

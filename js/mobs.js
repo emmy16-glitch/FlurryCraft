@@ -232,7 +232,7 @@ export class Mob {
     // AI
     let wantX = 0, wantZ = 0, speed = 0, face = null;
     const dxp = p.x - this.x, dzp = p.z - this.z, dist = Math.hypot(dxp, dzp), dyp = p.y - this.y;
-    const canSee = !p.dead && !p.creative;
+    const canSee = !p.dead && !p.creative && !(g.adventure?.isShielded(p.x,p.y,p.z));
     if (sp.passive) {
       if (this.fleeT > 0 && this.fleeFrom) { this.fleeT -= dt; const fx = this.x - this.fleeFrom.x, fz = this.z - this.fleeFrom.z; const d = Math.hypot(fx, fz) || 1; wantX = fx / d; wantZ = fz / d; speed = sp.spd * 2.4; }
       else {

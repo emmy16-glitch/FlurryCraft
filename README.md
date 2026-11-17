@@ -52,6 +52,14 @@ The codebase includes a Move 2024 contract and a wallet-aware browser UI for exp
 
 Blueprint geometry would be stored publicly inside the onchain NFT, so a buyer could retrieve the actual building. Anyone can still copy public voxel data; the token is not copyright or an exclusivity guarantee. Never enter wallet recovery phrases into the game.
 
+## Winter Adventure (first playable chapter)
+
+Survival players can open **Menu → Winter Adventure** to view Levels 1–100 progression (first dungeon chapter currently Levels 1–10). Original cold-adapted monsters roam the snow: **Frostlings**, fast **Snow Prowlers**, and a rare **Glacier Guardian** after reaching Level 8. Defeat them to gain XP and collect Frost Shards/Froststone Bricks.
+
+New Survival worlds get a nearby **Frost Ruins** outdoor dungeon. Existing worlds can opt into creating one from the Adventure menu without resetting their save. Follow **Track Frost Ruins** on the minimap, travel to the site, and start the three-wave Frost Trial. Clear it for building materials and your first **Winter Ward**. Place a Ward near your castle to protect the surrounding 10-block radius: hostile creatures stop chasing players sheltered inside, player damage is reduced, and explosions cannot destroy blocks within that radius. Craft an additional ward with **5 Frost Shards + 12 Froststone Bricks**.
+
+Progress, trial clears and Wards are stored per world. Only Survival earns XP; Creative remains a free building sandbox. The first chapter is implemented; new regions, content for Levels 11–100 and full castle defense systems are future milestones.
+
 ## Finding places in your world
 
 Open **Menu → World Map** in a saved world. The map opens centered on your character and shows surrounding generated winter terrain, Spawn, Home (if set), and your own pins. Use **+ / −** to zoom, tap the terrain to select a position, and save it as a named place. **Set Home Here** saves your current position. Tap **Guide** beside a saved place or tap the expanded map itself to start guidance. Tap outside to shrink the map. The minimap keeps the player arrow, destination guide and straight-line distance visible. There is no teleportation, GPS tracking or route planning.
