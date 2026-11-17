@@ -37,6 +37,8 @@ jobs:
           node-version: '22'
       - name: Install pinned Sui SDK and bundler
         run: npm install --no-audit --no-fund
+      - name: Validate NFT BCS decoding against installed Sui SDK
+        run: npm run test:chain
       - name: Build optional Sui Wallet Standard browser module
         run: npm run build:chain
       - name: Assemble browser-only site (no node_modules)
