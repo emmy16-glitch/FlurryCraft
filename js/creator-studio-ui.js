@@ -34,6 +34,23 @@ export function initCreatorStudioUI({game,B,panel,openDialog,closeDialog,showCap
  '#flurryModal .fc-studio-search{margin:7px 0;width:100%}',
  '.fc-studio-tag{font:800 9px system-ui;letter-spacing:.08em;color:#8eecff}',
  '.fc-studio-hash{word-break:break-all;white-space:pre-wrap;background:#092637;padding:10px;border-radius:10px;color:#a6f4e7;font:700 12px monospace}',
+ '.fc-studio-tabs{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin:9px 0;background:#0a2a3c;border-radius:12px;padding:4px}',
+ '#flurryModal .fc-studio-tabs button{margin:0;border:0;border-radius:9px;min-height:39px;background:transparent;color:#a6c7d6;font:750 12px system-ui}',
+ '#flurryModal .fc-studio-tabs button.selected{background:#315c73;color:#f1fcff;box-shadow:0 2px 8px #001a2b77}',
+ '#flurryModal .fc-studio-toolbar button{margin:0;min-height:40px}',
+ '#flurryModal .fc-studio-toolbar button.primary{background:#8ee4f0;color:#053347;border-color:#bff9ff}',
+ '.fc-studio-advanced{padding:5px 2px;border-bottom:1px solid #33586e;margin:2px 0 7px}',
+ '.fc-studio-advanced summary{list-style:none;cursor:pointer;padding:7px 2px;color:#9bc4d5;font:600 11px system-ui}',
+ '.fc-studio-advanced summary::-webkit-details-marker{display:none}',
+ '.fc-studio-backup{padding:8px;background:#0c3043;border-radius:8px}',
+ '.fc-studio-backup p{font:500 11px/1.4 system-ui;color:#9cbdcd;margin:5px 2px}',
+ '.fc-studio-empty{grid-column:1/-1;text-align:center;padding:22px 10px;border:1px dashed #46778d;border-radius:12px;color:#bddbe7}',
+ '.fc-studio-empty p{font:600 13px system-ui}',
+ '.fc-studio-card-more{border-top:1px solid #275168;margin-top:8px;padding-top:6px}',
+ '.fc-studio-card-more summary{list-style:none;font:650 11px system-ui;color:#9dcee0;cursor:pointer;padding:3px 0}',
+ '.fc-studio-card-more summary::-webkit-details-marker{display:none}',
+ '#flurryModal .fc-studio-card-actions button.primary{background:#8ee4f0;border-color:#adf3ff;color:#07364a;min-height:38px;flex:1}',
+ '#flurryModal .fc-studio-card-actions button{min-height:34px}',
  '@media(max-height:520px){#flurryModal .fPanel.fc-studio-wide{padding:10px}.fc-studio-card canvas{height:82px}.fc-studio-card-body{padding:6px}}'
  ].join('\n');
  document.head.appendChild(style);
@@ -68,7 +85,7 @@ export function initCreatorStudioUI({game,B,panel,openDialog,closeDialog,showCap
   const data=valid(value);heading('🔐 Creation Fingerprint');
   const caption=text('Generating SHA-256 fingerprint…');
   const output=el('div');output.className='fc-studio-hash';panel.appendChild(output);
-  text('A fingerprint identifies block geometry. It does not prove authorship, ownership, NFT status or financial value.');
+  text('Identifies the exact blocks, not ownership.');
   btn(panel,'Back to Studio',open,'muted');
   blueprintFingerprint(data).then(hash=>{
    if(!output.isConnected)return;
@@ -83,69 +100,90 @@ export function initCreatorStudioUI({game,B,panel,openDialog,closeDialog,showCap
   }).catch(err=>{caption.textContent='Fingerprint unavailable on this browser.';output.textContent=err.message;});
  }
  function open(){
-  if(game.state!=='play'||!game.world){notify(game,'Enter a game world first.');return;}
-  heading('🏠 Creator Studio');
-  text('Build, preview and share real houses. This is a free local gallery, NOT an NFT marketplace.');
+  if(game.state!=='play'||!game.world){notify(game,'Enter a world first.');return;}
+  heading('My Builds');
   const tools=el('div');tools.className='fc-studio-toolbar';panel.appendChild(tools);
-  btn(tools,'📦 Capture House',showCapture);
-  btn(tools,'📂 Import JSON',()=>{closeDialog();upload.click();});
-  btn(tools,'⬇ Back Up All',()=>{
+  btn(tools,'＋ Save Building',showCapture,'primary');
+  btn(tools,'Import File',()=>{closeDialog();upload.click();});
+  const advanced=el('details');advanced.className='fc-studio-advanced';
+  advanced.appendChild(el('summary','Storage & Backup'));
+  const backup=el('div');backup.className='fc-studio-backup';
+  btn(backup,'Download All Builds',()=>{
    const all=entries().map(item=>item.blueprint);
-   if(!all.length){notify(game,'No saved creations yet.');return;}
+   if(!all.length){notify(game,'No saved buildings yet.');return;}
    downloadJSON({format:'flurrycraft-library-v1',blueprints:all},'flurrycraft-my-builds-backup.json');
   });
-  const hint=text('Saved locally on this device. Download a backup before clearing browser data.');
-  hint.className='flurryLibraryHint';
+  backup.appendChild(el('p','Builds are saved on this device. Back up before clearing browser data.'));
+  advanced.appendChild(backup);panel.appendChild(advanced);
+  const tabs=el('div');tabs.className='fc-studio-tabs';tabs.setAttribute('role','tablist');panel.appendChild(tabs);
+  let source=entries().length?'mine':'starter';
   const search=el('input');search.type='search';search.className='fc-studio-search';
-  search.placeholder='Search creations and creators';search.setAttribute('aria-label','Search creations');
-  panel.appendChild(search);
+  search.placeholder='Search buildings';search.setAttribute('aria-label','Search buildings');panel.appendChild(search);
   const gallery=el('div');gallery.className='fc-studio-gallery';panel.appendChild(gallery);
+  const mine=btn(tabs,'My Builds',()=>changeTab('mine'));
+  const starters=btn(tabs,'Starter Homes',()=>changeTab('starter'));
+  mine.setAttribute('role','tab');starters.setAttribute('role','tab');
+  function updateTabs(){
+   for(const [tab,id] of [[mine,'mine'],[starters,'starter']]){
+    const on=source===id;tab.classList.toggle('selected',on);tab.setAttribute('aria-selected',String(on));
+   }
+  }
+  function changeTab(next){source=next;search.value='';updateTabs();render();}
   function render(){
    gallery.replaceChildren();
-   const q=search.value.trim().toLowerCase();
-   const all=[...entries().reverse().map(x=>({...x,kind:'saved'})),
-    ...demos.map(blueprint=>({blueprint,index:null,kind:'starter'}))]
-    .filter(x=>(x.blueprint.name+' '+x.blueprint.author).toLowerCase().includes(q));
-   if(!all.length){gallery.appendChild(el('p','No designs match. Try a free starter house.'));return;}
+   const query=search.value.trim().toLowerCase();
+   const all=(source==='mine'
+     ? entries().reverse().map(x=>({...x,kind:'saved'}))
+     : demos.map(blueprint=>({blueprint,index:null,kind:'starter'})))
+     .filter(x=>(x.blueprint.name+' '+x.blueprint.author).toLowerCase().includes(query));
+   if(!all.length){
+    const empty=el('div');empty.className='fc-studio-empty';
+    empty.appendChild(el('p',query?'No matching buildings.':
+      source==='mine'?'No saved buildings yet.':'No starter homes found.'));
+    if(source==='mine'&&!query)btn(empty,'Browse Starter Homes',()=>changeTab('starter'),'primary');
+    gallery.appendChild(empty);return;
+   }
    for(const item of all){
     const {blueprint:data,index,kind}=item,card=el('article');card.className='fc-studio-card';
     const canvas=el('canvas');canvas.width=260;canvas.height=148;
-    canvas.setAttribute('aria-label','Isometric diagram of '+data.name);
+    canvas.setAttribute('aria-label','Preview of '+data.name);
     drawBlueprintCard(canvas,data,color);
     const body=el('div');body.className='fc-studio-card-body';
-    const tag=el('div',kind==='starter'?'FREE STARTER DESIGN':'SAVED ON THIS DEVICE');tag.className='fc-studio-tag';
     const title=el('span',data.name);title.className='fc-studio-card-title';
-    const summary=blueprintSummary(data);
-    const meta=el('div',data.author+' · '+summary.dimensions+' · '+summary.blockCount+' blocks');meta.className='fc-studio-card-meta';
-    const actions=el('div');actions.className='fc-studio-card-actions';
-    btn(actions,'▶ Preview',()=>startPreview(data),'primary');
-    btn(actions,'↓ File',()=>download(data));
-    btn(actions,'↗ Share',()=>share(data));
-    btn(actions,'🔐 ID',()=>proof(data));
-    if(onMintTestnet)btn(actions,'⛓ NFT Testnet',()=>onMintTestnet(data));
-    if(kind==='saved'){
-     btn(actions,'✕ Delete',()=>{
-      if(!confirm('Delete "'+data.name+'" from this device? Download a backup first.'))return;
-      const current=read();if(index<0||index>=current.length)return;
-      current.splice(index,1);
-      if(!write(current)){notify(game,'Could not update browser storage.');return;}
-      render();
-     },'delete');
-    }else{
-     btn(actions,'+ Save',()=>{
+    const size=blueprintSummary(data);
+    const meta=el('div',size.dimensions+' · '+size.blockCount+' blocks');meta.className='fc-studio-card-meta';
+    const primary=el('div');primary.className='fc-studio-card-actions';
+    btn(primary,'Preview & Place',()=>startPreview(data),'primary');
+    if(kind==='starter'){
+     btn(primary,'Save',()=>{
       const status=add(data);
-      notify(game,status==='saved'?'Starter design added to My Builds.':
-       status==='exists'?'Already saved locally.':
-       status==='full'?'Gallery is full. Download backups or delete an old design.':
-       'Device storage full. Download the JSON instead.');
-      if(status==='saved')render();
+      if(status==='saved'){notify(game,'Saved to My Builds');changeTab('mine');}
+      else notify(game,status==='exists'?'Already in My Builds':
+       status==='full'?'Gallery full. Remove an old build or download a backup.':
+       'Storage full. Download the blueprint instead.');
      });
     }
-    body.append(tag,title,meta,actions);card.append(canvas,body);gallery.appendChild(card);
+    const options=el('details');options.className='fc-studio-card-more';
+    options.appendChild(el('summary','More options'));
+    const actions=el('div');actions.className='fc-studio-card-actions';
+    btn(actions,'Download',()=>download(data));
+    btn(actions,'Share',()=>share(data));
+    btn(actions,'Fingerprint',()=>proof(data));
+    if(onMintTestnet)btn(actions,'NFT Testnet',()=>onMintTestnet(data));
+    if(kind==='saved'){
+     btn(actions,'Delete',()=>{
+      if(!confirm('Delete "'+data.name+'" from this device?'))return;
+      const current=read();if(index<0||index>=current.length)return;
+      current.splice(index,1);
+      if(!write(current)){notify(game,'Could not update storage.');return;}
+      render();
+     },'delete');
+    }
+    options.appendChild(actions);
+    body.append(title,meta,primary,options);card.append(canvas,body);gallery.appendChild(card);
    }
   }
-  search.addEventListener('input',render);render();
-  btn(panel,'Close Studio',closeDialog,'muted');
+  search.addEventListener('input',render);updateTabs();render();
  }
  async function importSource(source){
   if(!source)return;
