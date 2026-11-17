@@ -1,0 +1,6 @@
+[package]
+name = "flurrycraft"
+edition = "2024"
+
+[addresses]
+flurrycraft = "0x0"
