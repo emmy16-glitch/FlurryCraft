@@ -1,3 +1,5 @@
+// This module bundles with the Sui wallet SDK. It is never loaded while
+// playing the regular game without opening the optional marketplace.
 // Only the optional Sui Testnet interface imports this bundled module.
 // Sui dApp Kit (2026), Wallet Standard, Sui gRPC. No private keys.
 import { createDAppKit } from '@mysten/dapp-kit-core';
@@ -26,6 +28,24 @@ const decodeString=bytes=>decoder.decode(Uint8Array.from(bytes));
 const client=()=>kit.getClient('testnet');
 const nftType=pkg=>pkg+'::market::BuildNFT';
 const listingType=pkg=>pkg+'::market::Listing';
+let checkedPackage=null;
+export async function checkPackage(value){
+  const id=verifiedPackage(value);
+  if(checkedPackage===id)return id;
+  // Reject a syntactically valid but unknown package before any wallet signing.
+  for(const name of ['mint','list','buy','cancel']){
+    const result=await client().getMoveFunction({packageId:id,moduleName:'market',name});
+    if(!result?.function || result.function.visibility!=='public')
+      throw new Error('This is not the expected FlurryCraft marketplace contract.');
+  }
+  checkedPackage=id;
+  return id;
+}
+export async function testnetBalance(){
+  const owner=requireAccount();
+  const result=await client().getBalance({owner});
+  return fromMist(result.balance?.balance ?? 0);
+}
 function verifiedPackage(value){
   const id=packageId(value);
   if(!id)throw new Error('The FlurryCraft contract is not yet published/configured on Sui Testnet. No transaction can be signed.');
@@ -62,6 +82,8 @@ async function submit(tx){
     throw new Error(result.FailedTransaction.status?.error?.message||'Sui Testnet execution failed.');
   if(!result.Transaction?.digest)
     throw new Error('No confirmed Sui transaction digest returned.');
+  // Indexes can lag execution; wait before refreshing ownership or listings.
+  await client().waitForTransaction({digest:result.Transaction.digest});
   return result.Transaction.digest;
 }
 async function validateParsedNFT(nft){
@@ -77,7 +99,7 @@ async function decodeNFT(raw,objectId){
   return {objectId,...parsed};
 }
 export async function mint(pkg,blueprint){
-  const id=verifiedPackage(pkg),content=canonicalBytes(blueprint);
+  const id=await checkPackage(pkg),content=canonicalBytes(blueprint);
   const title=new TextEncoder().encode(String(blueprint.name||'My building').slice(0,48));
   if(title.length<1||title.length>48)throw new Error('Name must be 1–48 bytes.');
   const tx=new Transaction();
@@ -110,23 +132,34 @@ export async function getListing(pkg,listingId){
   const parsed=listingBcs.parse(object.content);
   // Never offer a sale in the UI without verifying the escrowed voxel bytes,
   // their SHA-256 and the listing's declared digest/title.
-  let blocks=0;
+  let blocks=0,blueprint=null;
   if(parsed.nft){
     const checked=await validateParsedNFT(parsed.nft);
     if(checked.digest!==toHex(parsed.digest)||checked.title!==decodeString(parsed.name))
       throw new Error('Listing metadata does not match its NFT.');
     blocks=checked.blocks;
+    blueprint=checked.blueprint;
   }
   return {listingId,seller:parsed.seller,priceMist:BigInt(parsed.price).toString(),
     priceSui:fromMist(parsed.price),title:decodeString(parsed.name),
-    digest:toHex(parsed.digest),active:!!parsed.nft,nftId:parsed.nft?.id||null,blocks};
+    digest:toHex(parsed.digest),active:!!parsed.nft,nftId:parsed.nft?.id||null,blocks,blueprint};
 }
 export async function listings(pkg){
   const id=verifiedPackage(pkg),found=[],seen=new Set();
-  const page=await client().listEvents({
+  let page=await client().listEvents({
     filter:{eventType:id+'::market::Listed'},order:'descending',limit:45,
   });
-  for(const e of page.events||[]){
+  const events=[...(page.events||[])];
+  // The event stream is a discovery surface, not an ownership oracle.
+  // Read a bounded number of older pages and validate every listing object.
+  for(let i=0;i<2&&page.hasNextPage&&page.endCursor;i++){
+    page=await client().listEvents({
+      filter:{eventType:id+'::market::Listed'},order:'descending',
+      before:page.endCursor,limit:45,
+    });
+    events.push(...(page.events||[]));
+  }
+  for(const e of events){
     const j=e.json||{},oid=String(j.listing_id||j.listingId||'');
     if(!oid||seen.has(oid))continue;
     seen.add(oid);
@@ -135,7 +168,7 @@ export async function listings(pkg){
   return found;
 }
 export async function list(pkg,nftId,priceText){
-  const id=verifiedPackage(pkg);requireAccount();
+  const id=await checkPackage(pkg);requireAccount();
   const assets=await owned(id);
   if(!assets.nfts.some(n=>n.objectId===nftId))
     throw new Error('You do not own this NFT.');
@@ -146,7 +179,7 @@ export async function list(pkg,nftId,priceText){
   return await submit(tx);
 }
 export async function cancel(pkg,listingId){
-  const id=verifiedPackage(pkg),addr=requireAccount();
+  const id=await checkPackage(pkg),addr=requireAccount();
   const item=await getListing(id,listingId);
   if(!item.active)throw new Error('The listing has ended.');
   if(item.seller.toLowerCase()!==addr.toLowerCase())throw new Error('Only its seller can cancel.');
@@ -155,7 +188,7 @@ export async function cancel(pkg,listingId){
   return await submit(tx);
 }
 export async function buy(pkg,listingId,expectedPriceMist){
-  const id=verifiedPackage(pkg),addr=requireAccount();
+  const id=await checkPackage(pkg),addr=requireAccount();
   const item=await getListing(id,listingId);
   if(!item.active)throw new Error('Listing no longer active.');
   if(item.seller.toLowerCase()===addr.toLowerCase())throw new Error('You already own the listing.');
