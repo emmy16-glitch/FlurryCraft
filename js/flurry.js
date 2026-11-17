@@ -84,7 +84,7 @@ export function initFlurry(game) {
   const style = document.createElement('style');
   style.textContent = [
     ':root{--flurry-cyan:#a6ebff}',
-    '#flurryActions{position:fixed;z-index:26;top:12px;left:12px;display:none;gap:7px;flex-wrap:wrap;max-width:min(530px,64vw);pointer-events:auto}',
+    '#flurryActions{position:fixed;z-index:26;top:10px;left:10px;display:none;gap:6px;flex-wrap:wrap;max-width:min(420px,60vw);pointer-events:auto}',
     '.flurryBtn{padding:9px 11px;border:1px solid #b7eafa;border-radius:13px;color:white;background:rgba(17,43,60,.85);font:700 12px system-ui;box-shadow:0 4px 18px #0018;cursor:pointer;touch-action:manipulation}',
     '.flurryBtn:active{background:#1684a5}',
     '.flurryBtn.build{background:#168c9a;border:2px solid #d2faff;box-shadow:0 0 0 2px #003343,0 3px 16px #0008;font-weight:900;letter-spacing:.04em}',
@@ -92,7 +92,7 @@ export function initFlurry(game) {
     '#flurryModal .flurryTile{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;padding:9px 3px;margin:0;min-height:74px;background:#16465e;box-shadow:inset 0 0 0 1px #5bb3c8}',
     '.flurryTile img{width:36px;height:36px;object-fit:contain;image-rendering:pixelated}',
     '#flurryHelp{position:fixed;left:50%;bottom:69px;transform:translateX(-50%);width:max-content;max-width:78vw;z-index:14;padding:7px 13px;border:1px solid #a4e9ff;border-radius:12px;background:#082b40d9;color:#f0fcff;font:700 12px/1.3 system-ui;pointer-events:none;text-align:center;text-shadow:1px 1px #012;display:none}',
-    '#flurryQuest{position:fixed;z-index:14;left:12px;top:65px;max-width:250px;padding:10px 12px;border-radius:12px;color:#e7faff;background:rgba(9,36,50,.74);font:600 12px/1.5 system-ui;pointer-events:none;display:none}',
+    '#flurryQuest{position:fixed;z-index:14;left:12px;top:58px;max-width:250px;padding:10px 12px;border-radius:12px;color:#e7faff;background:rgba(9,36,50,.74);font:600 12px/1.5 system-ui;pointer-events:none;display:none}',
     '#flurryQuest strong{display:block;color:#90ebff;letter-spacing:.06em;font-size:10px;margin-bottom:2px}',
     '#flurryModal{position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;padding:16px;background:rgba(1,15,28,.85);color:#e7faff;font:14px/1.5 system-ui}',
     '#flurryModal .fPanel{width:min(440px,94vw);max-height:90vh;overflow:auto;border:1px solid #78cde5;border-radius:18px;padding:20px;background:linear-gradient(165deg,#214b65,#0c2332);box-shadow:0 14px 50px #0009}',
@@ -105,7 +105,7 @@ export function initFlurry(game) {
     '#flurryMenuButton{background:linear-gradient(90deg,#2b7797,#4b91ae);border-color:#81d9fa;color:white}',
     '#flurryModal .note{font:12px/1.5 system-ui;color:#b1d3e4;margin:10px 0}',
     '@media(max-height:520px){#flurryHelp{bottom:55px;max-width:65vw;font-size:10px;padding:5px 8px} .flurryTiles{grid-template-columns:repeat(4,minmax(0,1fr))} #flurryModal .flurryTile{min-height:57px;padding:5px 2px}.flurryTile img{width:28px;height:28px}}',
-    '@media(max-height:520px){#flurryActions{top:5px;left:7px;gap:4px} .flurryBtn{padding:6px 7px;font-size:10px}#flurryQuest{top:38px;font-size:10px;padding:5px 7px}#flurryModal .fPanel{padding:10px}}'
+    '@media(max-height:520px){#flurryActions{top:5px;left:7px;gap:4px} .flurryBtn{padding:6px 7px;font-size:10px}#flurryQuest{top:37px;font-size:10px;padding:5px 7px}#flurryModal .fPanel{padding:10px}}'
   ].join('\n'); document.head.appendChild(style);
 
   const actions = document.createElement('div'); actions.id = 'flurryActions';
@@ -115,9 +115,18 @@ export function initFlurry(game) {
   };
   const buildAction = action('🧱 BUILD', () => showBuildMenu()); buildAction.classList.add('build');
   action('👁 View', () => { third=!third; notify(game, third ? 'Third-person Yeti view' : 'First-person building view'); });
-  action('🎨 Yeti', () => showCustomizer());
-  action('🏠 Blueprint', () => showBlueprint());
-  action('📂 Import', () => chooseImport());
+  const extras = [
+    action('🎨 Yeti', () => showCustomizer()),
+    action('🏠 Save Build', () => showBlueprint()),
+    action('📂 Import', () => chooseImport())
+  ];
+  extras.forEach(btn => btn.style.display = 'none');
+  let moreOpen = false;
+  const more = action('⋯ More', () => {
+    moreOpen = !moreOpen;
+    extras.forEach(btn => btn.style.display = moreOpen ? 'flex' : 'none');
+    more.textContent = moreOpen ? '✕ Close' : '⋯ More';
+  });
   document.body.appendChild(actions);
   const questView = document.createElement('div'); questView.id='flurryQuest'; document.body.appendChild(questView);
   const helpView = document.createElement('div'); helpView.id='flurryHelp'; document.body.appendChild(helpView);

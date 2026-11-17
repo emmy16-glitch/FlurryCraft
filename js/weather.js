@@ -5,14 +5,14 @@ import { BIOME } from './worldgen.js';
 export class Weather {
   constructor(scene, game) {
     this.game = game; this.scene = scene;
-    this.intensity = 0; this.target = 0; this.timer = 120 + Math.random() * 240; this.flash = 0; this.thunderIn = -1;
-    this.N = 1400;
+    this.intensity = 0.46; this.target = 0.46; this.timer = 95; this.flash = 0; this.thunderIn = -1;
+    this.N = (typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches) ? 720 : 1200;
     this.off = new Float32Array(this.N * 3); for (let i = 0; i < this.N; i++) { this.off[i * 3] = (Math.random() - 0.5) * 34; this.off[i * 3 + 1] = Math.random() * 30; this.off[i * 3 + 2] = (Math.random() - 0.5) * 34; }
     this.pos = new Float32Array(this.N * 6);
     const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(this.pos, 3)); g.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 1e5);
     this.rain = new THREE.LineSegments(g, new THREE.LineBasicMaterial({ color: 0xa9c4ff, transparent: true, opacity: 0.5, depthWrite: false })); this.rain.frustumCulled = false; this.rain.visible = false; scene.add(this.rain);
     const g2 = new THREE.BufferGeometry(); this.spos = new Float32Array(this.N * 3); g2.setAttribute('position', new THREE.BufferAttribute(this.spos, 3)); g2.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 1e5);
-    this.snow = new THREE.Points(g2, new THREE.PointsMaterial({ color: 0xffffff, size: 0.09, transparent: true, opacity: 0.9, depthWrite: false })); this.snow.frustumCulled = false; this.snow.visible = false; scene.add(this.snow);
+    this.snow = new THREE.Points(g2, new THREE.PointsMaterial({ color: 0xf8fcff, size: 0.13, transparent: true, opacity: 0.92, depthWrite: false })); this.snow.frustumCulled = false; this.snow.visible = false; scene.add(this.snow);
     this.rainNode = null;
   }
   get raining() { return this.intensity > 0.45; }
@@ -21,17 +21,21 @@ export class Weather {
     // state machine (never rains in the desert)
     const ch = world.getChunk(Math.floor(player.x / 16), Math.floor(player.z / 16));
     const bio = ch ? ch.biome[(Math.floor(player.x) & 15) + ((Math.floor(player.z) & 15) << 4)] : 0;
-    const dry = bio === BIOME.DESERT;
     this.timer -= dt;
-    if (this.timer <= 0) { this.target = this.target > 0 ? 0 : (Math.random() < 0.85 ? 0.6 + Math.random() * 0.4 : 0); this.timer = this.target > 0 ? 90 + Math.random() * 150 : 150 + Math.random() * 300; }
-    const tgt = dry ? 0 : this.target;
-    this.intensity += (tgt - this.intensity) * Math.min(1, dt * 0.25);
+    // Permanent snowfall with intermittent heavier whiteout conditions.
+    // A shorter draw distance during storms reduces rendering work on phones.
+    if (this.timer <= 0) {
+      this.target = this.target > 0.7 ? 0.46 : 0.88;
+      this.timer = this.target > 0.7 ? 35 + Math.random() * 35 : 75 + Math.random() * 80;
+    }
+    const tgt = this.target;
+    this.intensity += (tgt - this.intensity) * Math.min(1, dt * 0.3);
     if (Math.abs(this.intensity - tgt) < 0.003) this.intensity = tgt;
-    const I = this.intensity, snowy = bio === BIOME.SNOWY || (bio === BIOME.MOUNTAIN && player.y > 74);
-    this.rain.visible = I > 0.03 && !snowy; this.snow.visible = I > 0.03 && snowy;
+    const I = this.intensity, snowy = true;
+    this.rain.visible = false; this.snow.visible = true;
     if (I > 0.03) {
       const cx = cam.position.x, cy = cam.position.y, cz = cam.position.z; const shown = Math.floor(this.N * Math.min(1, I * 1.1));
-      const fall = snowy ? 3.2 : 26, t = g.time;
+      const fall = snowy ? (4.0 + I * 2.0) : 26, t = g.time;
       for (let i = 0; i < this.N; i++) {
         let oy = this.off[i * 3 + 1] - fall * dt * (snowy ? 1 : 1) * (0.85 + (i % 7) * 0.05); if (oy < -8) oy += 30; this.off[i * 3 + 1] = oy;
         const ox = this.off[i * 3], oz = this.off[i * 3 + 2];

@@ -3,12 +3,12 @@ import * as B from './blocks.js';
 
 export const CS = 16, CH = 96, SEA = 30;
 export const BIOME = { PLAINS: 0, FOREST: 1, DESERT: 2, SNOWY: 3, MOUNTAIN: 4, OCEAN: 5, BEACH: 6 };
-export const BIOME_NAMES = ['Plains', 'Forest', 'Desert', 'Snowy Tundra', 'Mountains', 'Ocean', 'Beach'];
+export const BIOME_NAMES = ['Snowfields', 'Winter Forest', 'Frozen Wastes', 'Snowy Tundra', 'Snowy Peaks', 'Frozen Sea', 'Ice Shore'];
 // tint palettes: index 0 = none, 1..7 grass by biome, 9..15 foliage by biome
 export const TINT_TABLE = (() => {
   const t = new Array(16).fill(0).map(() => [1, 1, 1]);
-  const g = [[0.54, 0.78, 0.30], [0.42, 0.70, 0.24], [0.74, 0.76, 0.36], [0.50, 0.68, 0.48], [0.50, 0.72, 0.38], [0.52, 0.76, 0.34], [0.58, 0.78, 0.38]];
-  const f = [[0.42, 0.68, 0.22], [0.32, 0.60, 0.20], [0.66, 0.68, 0.30], [0.36, 0.56, 0.42], [0.38, 0.62, 0.28], [0.42, 0.66, 0.22], [0.46, 0.68, 0.26]];
+  const g = [[0.72,0.82,0.85],[0.72,0.82,0.85],[0.72,0.82,0.85],[0.77,0.85,0.9],[0.79,0.87,0.91],[0.8,0.86,0.9],[0.78,0.86,0.91]];
+  const f = [[0.62,0.83,0.8],[0.62,0.83,0.8],[0.62,0.83,0.8],[0.7,0.86,0.83],[0.7,0.86,0.83],[0.7,0.86,0.83],[0.7,0.86,0.83]];
   for (let i = 0; i < 7; i++) { t[1 + i] = g[i]; t[9 + i] = f[i]; }
   return t;
 })();
@@ -113,10 +113,10 @@ export class Gen {
       let top, sub, subDepth = 3;
       if (biome === BIOME.DESERT) { top = B.SAND; sub = B.SAND; subDepth = 4; }
       else if (biome === BIOME.SNOWY) { top = B.SNOWGRASS; sub = B.DIRT; }
-      else if (biome === BIOME.MOUNTAIN) { top = h > 76 ? B.SNOW : (h < 71 && this.nC.n2((ox + lx) * 0.07, (oz + lz) * 0.07) > -0.1 ? B.GRASS : B.STONE); sub = top === B.GRASS ? B.DIRT : B.STONE; }
-      else if (biome === BIOME.OCEAN) { const n = this.nC.n2((ox + lx) * 0.05, (oz + lz) * 0.05); top = n > 0.2 ? B.GRAVEL : n < -0.25 ? B.DIRT : B.SAND; sub = top === B.GRAVEL ? B.GRAVEL : top === B.DIRT ? B.DIRT : B.SAND; }
-      else if (biome === BIOME.BEACH) { top = B.SAND; sub = B.SAND; }
-      else { top = B.GRASS; sub = B.DIRT; }
+      else if (biome === BIOME.MOUNTAIN) { top = B.SNOW; sub = B.STONE; }
+      else if (biome === BIOME.OCEAN) { top = B.SNOW; sub = B.STONE; }
+      else if (biome === BIOME.BEACH) { top = B.SNOW; sub = B.DIRT; }
+      else { top = B.SNOWGRASS; sub = B.DIRT; }
       const cx3 = lx / 4, cz3 = lz / 4, gx = Math.floor(cx3), gz = Math.floor(cz3), fx = cx3 - gx, fz = cz3 - gz;
       const land = h > SEA + 2;
       for (let y = 0; y <= h; y++) {
@@ -148,11 +148,10 @@ export class Gen {
       }
       // water
       if (h < SEA) {
-        for (let y = h + 1; y <= SEA; y++) bl[lx + (lz << 4) + (y << 8)] = B.WATER;
-        if (biome === BIOME.OCEAN || biome === BIOME.BEACH) {
-          const t = this.column(ox + lx, oz + lz); // temp
-          if (t.temp < -0.3) bl[lx + (lz << 4) + (SEA << 8)] = B.ICE;
-        }
+        // All open lakes, rivers and seas freeze in FlurryCraft's perpetual winter.
+        // Only the surface is ice: water below remains useful for later survival features.
+        for (let y = h + 1; y < SEA; y++) bl[lx + (lz << 4) + (y << 8)] = B.WATER;
+        bl[lx + (lz << 4) + (SEA << 8)] = B.ICE;
       }
       fill[i] = top;
     }
@@ -190,7 +189,7 @@ export class Gen {
       if (biome === BIOME.PLAINS) { if (r < 0.16) bl[k] = B.TALLGRASS; else if (r < 0.175) bl[k] = B.FLOWER_R; else if (r < 0.19) bl[k] = B.FLOWER_Y; }
       else if (biome === BIOME.FOREST) { if (r < 0.07) bl[k] = B.TALLGRASS; else if (r < 0.075) bl[k] = B.FLOWER_R; }
       else if (biome === BIOME.MOUNTAIN && r < 0.03) bl[k] = B.TALLGRASS;
-      else if (biome === BIOME.SNOWY && r < 0.05) bl[k] = B.TALLGRASS;
+      else if (biome === BIOME.SNOWY && r < 0.008) bl[k] = B.TALLGRASS;
     }
     // small cabins with loot
     chunk.loot = [];
@@ -299,6 +298,13 @@ export class Gen {
         }
       }
       for (let i = 0; i < ht; i++) put(x, y + i, z, B.SPRUCE_LOG, false);
+      // Snow caps on the spruce crown and upper boughs, in addition to icy leaf tint.
+      put(x, top + 2, z, B.SNOW);
+      if (ht > 6) {
+        for (const [dx,dz] of [[-1,0],[1,0],[0,-1],[0,1]]) {
+          if (hash3(x+dx,z+dz,ht,this.seed) > 0.55) put(x+dx, top-1, z+dz, B.SNOW);
+        }
+      }
     }
   }
 }

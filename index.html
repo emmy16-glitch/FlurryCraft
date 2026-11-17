@@ -120,6 +120,55 @@ body.touch #hotbar{bottom:6px}
 #pause .box,#death .box{text-align:center;min-width:360px}
 #death{background:rgba(120,0,0,.6);z-index:30}
 #death h1{font:900 54px "Arial Black",sans-serif;margin:0 0 10px;text-shadow:3px 3px 0 #300}
+
+/* FlurryCraft winter-first menu — compact, readable and touch-friendly. */
+#menu.fc-menu{overflow:auto;padding:14px 10px;display:flex;align-items:center;justify-content:center;background:linear-gradient(160deg,rgba(7,25,40,.82),rgba(9,28,46,.56)),radial-gradient(ellipse at 10% 0%,#c3f5ff44,transparent 58%)}
+#menu.fc-menu:before{background:none}
+.fc-menu-inner{position:relative;width:min(440px,94vw);max-height:100%;display:flex;flex-direction:column;align-items:center;gap:6px}
+.fc-kicker{font:800 10px/1.5 system-ui;letter-spacing:.21em;color:#b2e9fb;text-align:center}
+#menu #logo{font:900 clamp(32px,6.8vw,58px)/1.03 system-ui;letter-spacing:-.055em;color:#fff;text-shadow:0 3px 12px #07182d80;margin:0;text-align:center}
+#menu #logo span{color:#8eeaff;text-shadow:0 3px 16px #041b2d90}
+#menu #tag{font:500 13px/1.45 system-ui;color:#d7eefa;text-shadow:0 1px 10px #041726;margin:0 0 7px;text-align:center}
+#menu .fc-menu-card{width:100%;min-width:0;max-height:min(74vh,480px);overflow-y:auto;border:1px solid rgba(177,228,246,.42);border-radius:20px;outline:0;padding:16px;background:linear-gradient(150deg,rgba(13,39,57,.97),rgba(13,30,45,.95));box-shadow:0 17px 60px #001a29aa;color:#f4fbff}
+.fc-card-heading{font:800 10px/1.4 system-ui;letter-spacing:.18em;color:#95cde0;margin-bottom:8px}
+#menu .hint{font:500 12px/1.5 system-ui;color:#a8c7d5;padding:7px 1px 12px;text-align:left}
+#menu #worldlist{max-height:145px;overflow:auto;margin-bottom:7px}
+#menu .wrow{border:1px solid #466b80;border-radius:11px;background:#153a51;padding:8px 9px;margin:5px 0;gap:8px}
+#menu .wi{font:600 11px/1.4 system-ui;min-width:0}
+#menu .wi b{font:750 14px system-ui;color:#fff}
+#menu .wi span{font:400 10px/1.4 system-ui;color:#b6ceda}
+#menu .wb{border:0;border-radius:8px;background:#68d6ee;color:#082e42;font:800 12px system-ui;padding:9px 13px;touch-action:manipulation}
+#menu .wb.del{background:#344f60;color:#dbe9f1;border:0;padding:8px 12px}
+#menu .btn{font:800 15px system-ui;letter-spacing:0;text-shadow:none;box-shadow:none;padding:12px;margin:8px 0;border-radius:12px;border:1px solid #61859b;background:#24506b;touch-action:manipulation}
+#menu .fc-start{background:linear-gradient(105deg,#a3efff,#53d4ed);color:#042c40;border:1px solid #cbf7ff;box-shadow:0 4px 20px #47dfff36;font-weight:900}
+#menu #flurryMenuButton{background:#234b64;color:#ddf5ff;border:1px solid #41758f}
+#menu .fc-settings{margin:9px 0 0;border-top:1px solid #42667c;padding-top:8px;font:600 12px system-ui;color:#d3edfa}
+#menu .fc-settings summary{cursor:pointer;list-style:none;display:flex;align-items:center;justify-content:space-between;padding:6px 3px}
+#menu .fc-settings summary::-webkit-details-marker{display:none}
+#menu .fc-settings summary span{color:#86adbf;font-size:10px}
+#menu .fc-settings-body{margin-top:10px;border-radius:10px;padding:8px;background:#102e42}
+#menu .opt{font:500 12px system-ui;gap:6px;flex-wrap:wrap;justify-content:space-between}
+#menu .seg{gap:4px}
+#menu .seg span{font:650 11px system-ui;border:1px solid #4f7b94;border-radius:8px;padding:6px 8px;background:#1b4056}
+#menu .seg span.on{background:#2e91aa;border-color:#a2edfb;color:#fff}
+#menu .opt input[type=text]{min-width:120px;width:48%;max-width:170px;background:#062333;border:1px solid #508099;border-radius:7px;padding:8px;font:12px system-ui}
+#menu .opt input[type=range]{width:140px;accent-color:#78ddf6}
+.fc-menu-hint{margin-top:12px;font:500 10px/1.4 system-ui;text-align:center;color:#9fbece}
+.fc-menu-foot{font:750 10px system-ui;letter-spacing:.18em;color:#b6daea;margin:7px 0}
+.fc-menu-foot span{padding:0 6px;color:#55d8f7}
+@media (max-height:570px){
+ #menu.fc-menu{justify-content:flex-start;padding:7px 8px}
+ .fc-menu-inner{gap:1px;width:min(450px,92vw)}
+ #menu #logo{font-size:clamp(29px,6vw,41px)}
+ #menu #tag{margin:0 0 3px;font-size:11px}
+ #menu .fc-menu-card{max-height:calc(100vh - 108px);padding:10px 13px;border-radius:15px}
+ #menu .btn{padding:9px 10px;margin:5px 0;font-size:13px}
+ #menu #worldlist{max-height:64px}
+ #menu .wrow{padding:5px 6px}
+ .fc-menu-foot,.fc-menu-hint{font-size:9px}
+}
+@media (prefers-reduced-motion:reduce){#menu *,#menu *:before,#menu *:after{animation:none!important}}
+
 </style>
 </head>
 <body>
@@ -153,17 +202,27 @@ body.touch #hotbar{bottom:6px}
   <div class="btn" id="bQuit">Save &amp; Quit to Title</div></div></div>
 <div class="overlay" id="death"><div class="box"><h1>You died!</h1><div id="deathmsg" style="margin-bottom:14px;font:16px 'Courier New',monospace"></div><div class="btn" id="bRespawn">Respawn</div></div></div>
 <div id="loading"><div id="loadtitle">Generating world...</div><div id="bar"><i></i></div><div id="loadmsg">Carving caves, planting trees</div></div>
-<div id="menu">
-  <div id="logo">FLURRY<b>CRAFT</b><span id="splash">Build your world!</span></div>
-  <div id="tag">A snowy Yeti sandbox · Build • Mine • Explore</div>
-  <div class="box">
-    <div id="worldlist"></div>
-    <div class="btn" id="bNew">New World</div>
-    <div class="opt"><span>Game mode</span><div class="seg" id="mMode"><span data-v="s">Survival</span><span data-v="c" class="on">Creative (free build)</span></div></div>
-    <div class="opt"><span>Difficulty</span><div class="seg" id="mDiff"><span data-v="0">Peaceful</span><span data-v="1" class="on">Normal</span><span data-v="2">Hard</span></div></div>
-    <div class="opt"><span>Seed</span><input type="text" id="mSeed" placeholder="random"></div>
-    <div class="opt"><span>Render distance</span><input type="range" id="mRender" min="3" max="14" value="7"><b id="mRenderV">7</b></div>
-    <div id="keys"><kbd>WASD</kbd> move &nbsp; <kbd>Space</kbd> jump/swim<br><kbd>Shift</kbd> sprint &nbsp; <kbd>C</kbd> sneak<br><kbd>LMB</kbd> mine/attack<br><kbd>RMB</kbd> place/use/eat<br><kbd>E</kbd> inventory<br><kbd>1-9</kbd>/wheel hotbar<br><kbd>Q</kbd> drop &nbsp; <kbd>F3</kbd> debug<br><kbd>Space x2</kbd> fly (creative)<br><kbd>MMB</kbd> pick block<br>TNT: RMB with Flint &amp; Steel (iron + coal)</div>
+<div id="menu" class="fc-menu">
+  <div class="fc-menu-inner">
+    <div class="fc-kicker">❄ A WORLD MADE OF WINTER</div>
+    <div id="logo">FLURRY<span>CRAFT</span></div>
+    <div id="tag">Explore. Build. Make it yours.</div>
+    <div class="box fc-menu-card">
+      <div class="fc-card-heading">YOUR WORLDS</div>
+      <div id="worldlist"></div>
+      <div class="btn fc-start" id="bNew">＋ Create Snow World</div>
+      <details class="fc-settings" id="fcAdvanced">
+        <summary>⚙ Game settings <span>Optional</span></summary>
+        <div class="fc-settings-body">
+          <div class="opt"><span>Game mode</span><div class="seg" id="mMode"><span data-v="s">Survival</span><span data-v="c" class="on">Creative</span></div></div>
+          <div class="opt"><span>Difficulty</span><div class="seg" id="mDiff"><span data-v="0">Peaceful</span><span data-v="1" class="on">Normal</span><span data-v="2">Hard</span></div></div>
+          <div class="opt"><span>Seed</span><input type="text" id="mSeed" placeholder="Random world"></div>
+          <div class="opt"><span>View distance</span><input type="range" id="mRender" min="3" max="14" value="4"><b id="mRenderV">4</b></div>
+        </div>
+      </details>
+      <div class="fc-menu-hint">Creative starts with building blocks. No wallet required.</div>
+    </div>
+    <div class="fc-menu-foot">FLURRYCRAFT <span>·</span> EARLY ACCESS</div>
   </div>
 </div>
 <script type="importmap">{"imports":{"three":"./vendor/three.module.min.js"}}</script>

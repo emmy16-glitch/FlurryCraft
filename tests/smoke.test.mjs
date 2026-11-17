@@ -7,6 +7,8 @@ import { spawnSync } from 'node:child_process';
 test('browser HTML and bundled dependencies exist', () => {
   const html = readFileSync('index.html','utf8');
   assert.match(html, /<title>FlurryCraft/);
+  assert.match(html, /Create Snow World/);
+  assert.match(html, /id="fcAdvanced"/);
   assert.match(html, /vendor\/three\.module\.min\.js/);
   assert.match(html, /js\/main\.js/);
   assert.ok(existsSync('vendor/three.module.min.js'));
@@ -28,6 +30,8 @@ test('custom game systems are connected', () => {
   assert.match(flurry,/function createYeti/);
   assert.match(flurry,/function showBlueprint/);
   assert.match(flurry,/function placeBlueprint/);
+  assert.match(readFileSync('js/worldgen.js','utf8'), /All open lakes, rivers and seas freeze/);
+  assert.match(readFileSync('js/weather.js','utf8'), /Permanent snowfall/);
   assert.match(flurry,/function showBuildMenu/);
   assert.match(flurry,/function selectBlock/);
   assert.match(flurry,/MeshBasicMaterial/);
