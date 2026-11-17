@@ -37,7 +37,7 @@ test('custom game systems are connected', () => {
   assert.match(flurry,/function redoLastEdit/);
   assert.match(flurry,/function updatePlacementGhost/);
   assert.match(flurry,/placementGhost\.visible=true/);
-  assert.match(readFileSync('js/touch.js','utf8'),/#fcQuickMenu,#fcBlueprintPreview,#menu/);
+  assert.match(readFileSync('js/touch.js','utf8'),/#fcQuickMenu,#fcBlueprintPreview,#fcMiniMap,#menu/);
   assert.match(flurry,/nativeRightAction/);
   assert.match(flurry,/nativeBreakBlock/);
   assert.match(flurry,/editHistory\.push\(world/);

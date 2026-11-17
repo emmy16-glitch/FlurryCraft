@@ -29,7 +29,7 @@ export function initExplorerMap({game,panel,openDialog,closeDialog,notify,dialog
     places=sanitizePlaces(value);
     loadedWorld=game.world;
     active=null;
-    miniCenter=null;miniTerrain=null;miniJob++;miniFirstDraw=true;miniTimer=0;
+    miniCenter=null;miniTerrain=null;miniJob++;miniDrawing=false;miniFirstDraw=true;miniTimer=0;
   }
   function persist(next){
     const cleaned=sanitizePlaces(next);
@@ -124,6 +124,8 @@ export function initExplorerMap({game,panel,openDialog,closeDialog,notify,dialog
   const miniCtx=miniCanvas.getContext('2d',{alpha:false});
   const miniCache=$('canvas');miniCache.width=miniCache.height=MINI_SIZE;
   const miniCacheCtx=miniCache.getContext('2d',{alpha:false});
+  const miniWork=$('canvas');miniWork.width=miniWork.height=MINI_SIZE;
+  const miniWorkCtx=miniWork.getContext('2d',{alpha:false});
 
   function drawMini(){
     if(!miniTerrain||!miniCenter||!miniCtx)return;
@@ -141,7 +143,17 @@ export function initExplorerMap({game,panel,openDialog,closeDialog,notify,dialog
       miniCtx.beginPath();miniCtx.moveTo(player.x,player.y);miniCtx.lineTo(ax,ay);
       miniCtx.lineWidth=2;miniCtx.strokeStyle='#f5ca7c';
       miniCtx.setLineDash([3,3]);miniCtx.stroke();miniCtx.setLineDash([]);
-      miniCtx.fillStyle='#ffda89';miniCtx.beginPath();miniCtx.arc(ax,ay,4,0,Math.PI*2);miniCtx.fill();
+      // Destination marker remains on the map edge when it's far away.
+      miniCtx.save();miniCtx.translate(ax,ay);
+      if(factor<1){
+        miniCtx.rotate(Math.atan2(dz,dx)+Math.PI/2);
+        miniCtx.fillStyle='#ffda89';miniCtx.beginPath();
+        miniCtx.moveTo(0,-5);miniCtx.lineTo(4,4);miniCtx.lineTo(-4,4);miniCtx.closePath();
+        miniCtx.fill();
+      }else{
+        miniCtx.fillStyle='#ffda89';miniCtx.beginPath();miniCtx.arc(0,0,4,0,Math.PI*2);miniCtx.fill();
+      }
+      miniCtx.restore();
     }
     const home=places.home;
     if(home){
@@ -175,12 +187,12 @@ export function initExplorerMap({game,panel,openDialog,closeDialog,notify,dialog
     }
   }
   function scheduleMiniTerrain(){
-    if(!game.world||!miniCacheCtx||!miniCtx)return;
+    if(!game.world||!miniCacheCtx||!miniCtx||!miniWorkCtx||miniDrawing)return;
+    miniDrawing=true;
     const token=++miniJob;
-    miniCenter=pos();
-    const c={...miniCenter},world=game.world;
+    const c=pos(),world=game.world;
     let index=0;
-    miniCacheCtx.fillStyle='#254e61';miniCacheCtx.fillRect(0,0,MINI_SIZE,MINI_SIZE);
+    miniWorkCtx.fillStyle='#254e61';miniWorkCtx.fillRect(0,0,MINI_SIZE,MINI_SIZE);
     const columnHeights=new Int16Array(MINI_SAMPLES);
     function frame(){
       if(token!==miniJob||game.world!==world||game.state!=='play')return;
@@ -192,13 +204,17 @@ export function initExplorerMap({game,panel,openDialog,closeDialog,notify,dialog
         const sampled=world.gen.column(wx,wz),height=sampled.h;
         const variation=row?Math.max(-1,Math.min(1,(columnHeights[col]-height)/5)):0;
         columnHeights[col]=height;
-        miniCacheCtx.fillStyle=winterMapColor(height,sampled.biome,variation);
+        miniWorkCtx.fillStyle=winterMapColor(height,sampled.biome,variation);
         const x=Math.floor(col*MINI_SIZE/MINI_SAMPLES),y=Math.floor(row*MINI_SIZE/MINI_SAMPLES);
         const x2=Math.ceil((col+1)*MINI_SIZE/MINI_SAMPLES);
         const y2=Math.ceil((row+1)*MINI_SIZE/MINI_SAMPLES);
-        miniCacheCtx.fillRect(x,y,x2-x,y2-y);
+        miniWorkCtx.fillRect(x,y,x2-x,y2-y);
       }
       if(index<MINI_SAMPLES*MINI_SAMPLES){requestAnimationFrame(frame);return;}
+      // Publish the complete frame atomically, never show half-drawn terrain.
+      miniCacheCtx.clearRect(0,0,MINI_SIZE,MINI_SIZE);
+      miniCacheCtx.drawImage(miniWork,0,0);
+      miniCenter=c;miniDrawing=false;
       miniTerrain=true;miniFirstDraw=false;drawMini();
     }
     requestAnimationFrame(frame);
@@ -399,11 +415,12 @@ export function initExplorerMap({game,panel,openDialog,closeDialog,notify,dialog
     const move=miniCenter?Math.hypot(me.x-miniCenter.x,me.z-miniCenter.z):Infinity;
     if(visible&&miniTimer<=0){
       miniTimer=.22;
-      if(!miniTerrain||!miniCenter||move>13) {
+      if(!miniDrawing&&(!miniTerrain||!miniCenter||move>13)){
         // Rate-limit terrain generation as the player walks. Fine detail is
         // rendered only in the expanded map when requested.
         scheduleMiniTerrain();
-      } else drawMini();
+      }
+      if(miniTerrain)drawMini();
     }
     if(active){
       const b=directionTo(game.player.x,game.player.z,active.x,active.z,game.player.yaw);
