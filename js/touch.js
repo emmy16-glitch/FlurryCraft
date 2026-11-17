@@ -54,5 +54,11 @@ export function initTouch(game, player, ui, hooks) {
   // before the mobile layer starts. Do not add duplicate touch handlers.
   const hb = $('hotbar'); hb.style.pointerEvents = 'auto'; hb.style.zIndex = 16;
   document.addEventListener('gesturestart', (e) => e.preventDefault());
-  document.addEventListener('touchmove', (e) => { if (e.target && e.target.closest && !e.target.closest('#panel,#creative,#book,#worldlist')) e.preventDefault(); }, { passive: false });
+  // Menus, studio cards and settings MUST scroll on phones. Only stop native
+  // browser scrolling during actual game gestures, not within UI overlays.
+  document.addEventListener('touchmove', (e) => {
+    if(e.target?.closest?.('#panel,#screen,#pause,#flurryModal,#fcQuickMenu,#fcBlueprintPreview,#menu,#creative,#book,#worldlist'))
+      return;
+    e.preventDefault();
+  }, { passive: false });
 }

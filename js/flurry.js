@@ -107,6 +107,21 @@ export function initFlurry(game) {
   let lofi = createYeti(colors, true);
   avatar.group.visible = false; lofi.group.visible = false;
   game.scene.add(avatar.group, lofi.group);
+  // One lightweight, reusable outline shows exactly where the next block
+  // would go, without spawning a new mesh for every tap or covering the HUD.
+  const placementGeo=new THREE.BoxGeometry(1.008,1.008,1.008);
+  const placementEdges=new THREE.LineSegments(
+    new THREE.EdgesGeometry(placementGeo),
+    new THREE.LineBasicMaterial({color:0x85e5fa,transparent:true,opacity:0.87,depthTest:true,depthWrite:false})
+  );
+  const placementFill=new THREE.Mesh(
+    new THREE.BoxGeometry(0.987,0.987,0.987),
+    new THREE.MeshBasicMaterial({color:0x7eddf5,transparent:true,opacity:0.085,depthWrite:false,depthTest:true})
+  );
+  const placementGhost=new THREE.Group();
+  placementGhost.name='FlurryCraft placement hint';
+  placementGhost.add(placementFill,placementEdges);placementGhost.visible=false;
+  game.scene.add(placementGhost);
   let third = false, lastQuestText = '', questPoll = 0;
   const questNames = [
     'Find Lofi the Yeti near the starter shack',
@@ -837,6 +852,27 @@ export function initFlurry(game) {
     lofi.group.position.set(npcPosition.x,npcPosition.y,npcPosition.z);lofi.group.visible=true;
     if(isNew)notify(game,'❄️ Welcome! Meet Lofi by the starter shack.');
   }
+  function updatePlacementGhost(isPlaying){
+    placementGhost.visible=false;
+    if(!isPlaying||third||previewState||selectionState||toolState||game.ui.isOpen||overlay.style.display==='flex')return;
+    const p=game.player,world=game.world,t=p.target,held=p.held();
+    if(!world||!t||!held||!B.ITEMS[held.id]?.block||!B.BLOCKS[held.id])return;
+    if(!p.sneaking&&p.isUsable(t.block))return;
+    const shape=B.SHAPE[held.id];
+    if(shape===1||shape===2||shape===3||held.id===B.TORCH)return;
+    const x=t.x+t.nx,y=t.y+t.ny,z=t.z+t.nz;
+    if(y<1||y>=96||!world.loaded(x,z))return;
+    const old=world.getBlock(x,y,z);
+    if(old!==B.AIR&&old!==B.WATER&&old!==B.LAVA&&B.SHAPE[old]!==1)return;
+    if(B.SOLID[held.id]){
+      if(x+1>p.x-p.hw&&x<p.x+p.hw&&z+1>p.z-p.hw&&z<p.z+p.hw&&y+1>p.y&&y<p.y+p.h)return;
+      for(const m of game.mobs){
+        if(!m.dead&&x+1>m.x-m.hw&&x<m.x+m.hw&&z+1>m.z-m.hw&&z<m.z+m.hw&&y+1>m.y&&y<m.y+m.h)return;
+      }
+    }
+    placementGhost.position.set(x+.5,y+.5,z+.5);
+    placementGhost.visible=true;
+  }
   function update(dt) {
     const isPlaying=game.state==='play' && !game.paused;
     actions.style.display=isPlaying&&!game.ui.isOpen&&!previewState&&overlay.style.display!=='flex'?'flex':'none';
@@ -851,7 +887,8 @@ export function initFlurry(game) {
         (id&&B.ITEMS[id] ? B.itemName(id)+' · PLACE □' : 'Tap + ALL on the bottom bar to choose a block');
       if(helpView.textContent!==text)helpView.textContent=text;
     }
-    if(!isPlaying){avatar.group.visible=false;return;}
+    if(!isPlaying){avatar.group.visible=false;placementGhost.visible=false;return;}
+    updatePlacementGhost(isPlaying);
     const p=game.player;
     avatar.group.visible=third&&!p.dead;
     avatar.group.position.set(p.x,p.y,p.z);
