@@ -24,11 +24,12 @@ The address above is a proposed URL and works ONLY after Pages has been configur
 - Illustrated winter-Yeti visual identity and simplified opening menu: create or resume a world, customize your Yeti, and open optional settings. In-game controls prioritize **BUILD**, camera and More.
 - **More → ↗ Unstuck** returns you above your spawn in safe flight mode if you get trapped underground; **More → 🪽 Fly** toggles flight; **More → ☀ Day** controls bright Creative daylight. Placement hints are limited to avoid covering gameplay.
 - **Smart Build (More → Walls / Floors):** Choose a normal block from + ALL, then mark two aimed corners to build a straight wall or flat floor/roof in one action (up to 96 new blocks). Won't overwrite existing blocks; includes More → Undo Build for the last operation. Available in Creative and in Survival when using unlimited blocks from the block library.
-- **House pack:** one-block door that opens/closes when tapped, framed glass window pane, table, chair, bed, and glowing fireplace. Find these in + ALL; they are saved as real blocks and included in exported blueprints. Current doors are one block high; furniture geometry is low-poly and collisions approximated.
+- **House pack:** matching two-high doors open/close together for a passable doorway, plus framed window panes, table, chair, bed and glowing fireplace. Find these in + ALL; the low-poly furnishings save with houses and blueprints.
 - **Direct bottom hotbar controls:** tap any filled slot to equip it; tap an empty slot to add a block; hold a filled slot to replace its material; use **+ ALL** next to the hotbar for a searchable, categorized list of every supported block item in the engine (including stairs and slabs). These work in Creative and Survival without changing modes. Library blocks are unlimited in either mode; naturally acquired Survival inventory items are kept when possible. House Pack 1 furniture is available.
 - Prominent **🧱 BUILD** menu with the same searchable material collection, starter set, and brief placement hint. Picking a building material automatically returns to first-person aiming. Creative free-building is the default for new worlds. Existing Survival saves can switch to Creative by choosing a material from BUILD.
 - **Creator Studio (🏠 Studio):** searchable local gallery, free Cozy Snow Cabin and Crystal Ice Workshop templates, schematic isometric cards, downloadable/shareable building files, JSON backup/restore, deletion and SHA-256 geometry fingerprints. This is not an NFT marketplace and fingerprints do not authenticate a seller.
-- **Creator blueprints:** choose two opposite corners of your building (up to 32 blocks per side / 6,000 occupied blocks), name it and export a version-1 JSON file. Import old or new JSON blueprints. A transparent, color-coded 3D hologram lets you rotate 90° or nudge in all directions before placing. Empty-space and player-collision checks prevent accidental overwrites. **⬇ Ground** automatically lifts the placement preview above the terrain to make installing starter houses easier. Large placements are batched across frames. All this is local only—there is no NFT minting or real-money sale.
+- **Sui Testnet integration (SOURCE ONLY):** experimental Move NFT/escrow market contract, official Sui Wallet Standard bridge, marketplace UI, onchain blueprint content/digest verification and a fresh ownership check before installing an owned NFT. View the Testnet UI under **More → ⛓ Sui Testnet** or a Studio card's **⛓ NFT Testnet**. The contract is **NOT deployed** and signing/trading stay disabled until a verified Testnet package ID is provided. See [Sui Testnet setup](docs/SUI_TESTNET.md).
+- **Creator blueprints:** choose two opposite corners of your building (up to 32 blocks per side / 6,000 occupied blocks), name it and export a version-1 JSON file. Import old or new JSON blueprints. A transparent, color-coded 3D hologram lets you rotate 90° or nudge in all directions before placing. Empty-space and player-collision checks prevent accidental overwrites. **⬇ Ground** automatically lifts the placement preview above the terrain to make installing starter houses easier. Large placements are batched across frames. Offline blueprint placement remains free. An experimental Testnet NFT integration exists in source, but it is not yet published or live.
 
 ## Creator Studio: build and share
 
@@ -40,6 +41,12 @@ The address above is a proposed URL and works ONLY after Pages has been configur
 
 All saved creations currently live in browser storage. A hash proves only that two normalized blueprint files have identical geometry. It does not establish copyright, authorship, ownership, exclusivity, or resale value.
 
+## Sui Testnet (not live yet)
+
+The codebase includes a Move 2024 contract and a wallet-aware browser UI for experimental Testnet minting, listing, buying, cancellation and verifying ownership. **No contract package ID has been published or configured**, and no onchain sale has happened. The official Sui SDK bundle builds in GitHub Actions, but the Move contract still requires a real Sui CLI build, review and Testnet deployment. See [docs/SUI_TESTNET.md](docs/SUI_TESTNET.md).
+
+Blueprint geometry would be stored publicly inside the onchain NFT, so a buyer could retrieve the actual building. Anyone can still copy public voxel data; the token is not copyright or an exclusivity guarantee. Never enter wallet recovery phrases into the game.
+
 ## Controls
 
 Phone: **🏠 Studio** is the main entry to starter houses, your designs, import, sharing and fingerprints. **More → Save Build** to mark both corners and download your house. **More → Import** to choose a blueprint, then use hologram buttons (Rotate, Left, Right, Forward, Back, Up, Down, Place or Cancel). Phone: use **More → Walls / Floors** for two-point construction after selecting a material, tap the MARK 1 and MARK 2 + BUILD buttons at the top while aiming at surfaces. **More → Undo Build** reverses your last smart operation. Tap a block in the bottom hotbar to equip it. Tap **+ ALL** to browse or search every currently supported building block, including slabs/stairs; choose one and it replaces your selected hotbar slot. Tap an empty slot to fill it or long-press a filled slot to change its contents. Works in Creative or Survival. Aim the crosshair at the ground or wall, tap the cyan **□ PLACE** button to place; hold **⚒ MINE** to remove. Left thumb joystick moves; swipe the right half to look. The FlurryCraft buttons near the upper left offer BUILD, 🏠 Studio, 👁 View and ⋯ More. Use landscape orientation.
@@ -50,11 +57,11 @@ Use shorter render distance from the menu if mobile performance is poor.
 
 ## Important status
 
-The code has undergone static JavaScript syntax validation, but has not yet been tested end-to-end in a real phone browser. Browser data is stored locally on the user's device. Uploading/minting Sui NFTs, paid marketplace listings, real earnings, royalties, multiplayer and actual cloud storage are planned, NOT implemented. See docs/ROADMAP.md.
+The code has undergone static JavaScript syntax validation, but has not yet been tested end-to-end in a real phone browser. Browser data is stored locally on the user's device. Wallet/Mint/List/Buy/Cancel code is present but NOT live: the contract has not been compiled or published and a Testnet package ID has not been configured. Real earnings, Mainnet payments, royalties, multiplayer and cloud storage are NOT implemented. See docs/ROADMAP.md.
 
 ## Development
 
-No npm install is needed to play the game. Developers can run the optional syntax smoke tests with Node 20+ using npm test.
+No npm install is needed for users to play the deployed game. Developers can run Node 22+ tests with npm test. GitHub Actions installs the pinned Sui SDK dependencies and runs npm run build:chain to bundle the optional wallet bridge; it publishes only the browser assets, not node_modules.
 
 ## Licensing
 

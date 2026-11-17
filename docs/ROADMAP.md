@@ -21,14 +21,16 @@ Performance goals (not benchmarks): smooth 30 FPS on modest Android phones and 6
 - Implemented first house pack: doors, windows, low-poly table/chair/bed/fireplace.
 - Implemented 2-point walls and floors/roofs with safe empty-cell checks, 96-block limit and one-action undo.
 - Implemented adjustable two-corner blueprint selection, JSON v1 export, color-coded 3D hologram preview, 90-degree rotation, terrain-height snapping, safe placement checks and batched installation.
-- Creator Studio gallery: free starter house blueprints, isometric thumbnails, native file sharing, local backups, JSON import, deletion and deterministic SHA-256 content fingerprints. No NFT minting or trading is available yet.
+- Creator Studio gallery: free starter blueprints, isometric thumbnails, native file sharing, local backups, import/deletion and deterministic SHA-256 fingerprints. A separate Sui Testnet NFT implementation exists in source but is not deployed.
 - Next: full two-high doors, rotation and expanded furniture, snapping blueprints to terrain and collision-tested device QA.
 - Expand NPC conversations, quests, world progression and creator building tools.
 - Validate high/medium/low Android configurations.
 
 ## Phase 3: Sui Testnet creator market
 
-Players build → capture a normalized 3D blueprint → store its hash and content → mint a Sui NFT representing edition/ownership → list → buy → verify current ownership → install a full building in-game. Need reviewed Move contracts, wallet connection, marketplace transaction handling, asset integrity, anti-spam checks and storage. Use Testnet before any mainnet or fee.
+**Implemented in source:** Move package for BuildNFT with stored voxel geometry, SHA2-256, shared escrow and exact-price Testnet sale; new Sui dApp Kit core wallet integration and Testnet UI; code for mint/list/cancel/buy, marketplace event discovery, integrity checks and fresh ownership verification before installation. Source tests and frontend SDK bundle run in GitHub Actions.
+
+**Not completed:** Sui CLI compilation/tests, formal review, actual Testnet publication/package ID, wallet/browser end-to-end testing, production indexer, backend-authoritative entitlement, royalties, mainnet launch or real payments. Read docs/SUI_TESTNET.md. Use Testnet only; no mainnet fees.
 
 Design choice: unlimited placement while holding the blueprint NFT, subject to an explicit creator license. NFTs do not automatically convey copyrights or prevent copying. No sale or income is guaranteed.
 

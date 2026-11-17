@@ -6,7 +6,8 @@
   "description": "Browser-native snowy voxel sandbox",
   "scripts": {
     "test": "node --test tests/*.test.mjs",
-    "build:chain": "esbuild js/sui-bridge.js --bundle --format=esm --platform=browser --target=es2022 --minify --outfile=dist/sui-bridge.js"
+    "build:chain": "esbuild js/sui-bridge.js --bundle --format=esm --platform=browser --target=es2022 --minify --outfile=dist/sui-bridge.js",
+    "test:move": "cd move/flurrycraft && sui move test"
   },
   "dependencies": {
     "@mysten/sui": "2.39.1",
