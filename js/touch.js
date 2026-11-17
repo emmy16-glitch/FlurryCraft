@@ -37,9 +37,13 @@ export function initTouch(game, player, ui, hooks) {
   const hold = (id, on, off) => { const el = $(id); el.addEventListener('pointerdown', (e) => { e.preventDefault(); el.setPointerCapture(e.pointerId); el.classList.add('down'); on(); }); const up = () => { el.classList.remove('down'); if (off) off(); }; el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up); };
   hold('tbJump', () => { T.jump = true; const now = performance.now(); if (player.creative && now - (game._lastTapJump || 0) < 300) { player.flying = !player.flying; player.vy = 0; } game._lastTapJump = now; }, () => { T.jump = false; });
   hold('tbBreak', () => { T.left = true; }, () => { T.left = false; });
+  let lastPlacementTip = -10000;
   hold('tbPlace', () => { T.right = true; T.rightPressed = true;
-    if (!player.held()) ui.toast('Choose a block first: tap 🧱 BUILD at the top-left.');
-    else if (!player.target) ui.toast('Look at the ground or a wall, then tap PLACE.');
+    // Avoid flooding the view with large repeated messages while building.
+    if (performance.now()-lastPlacementTip>7000) {
+      if (!player.held()) {ui.toast('Choose a block with 🧱 BUILD first.');lastPlacementTip=performance.now();}
+      else if (!player.target) {ui.toast('Aim the + at the SIDE or TOP of a block.');lastPlacementTip=performance.now();}
+    }
   }, () => { T.right = false; });
   const tap = (id, fn) => $(id).addEventListener('pointerdown', (e) => { e.preventDefault(); fn(e); });
   tap('tbSneak', () => { T.sneak = !T.sneak; $('tbSneak').classList.toggle('on', T.sneak); });

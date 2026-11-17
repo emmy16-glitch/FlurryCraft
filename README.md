@@ -16,12 +16,13 @@ The address above is a proposed URL and works ONLY after Pages has been configur
 
 ## Current features (pre-alpha)
 
-- Persistent winter landscape with snow-covered beaches, mountains and frozen seas, plus continual falling snow and periodic blizzards, alongside caves, day/night and basic survival/creative modes.
+- Persistent winter landscape with snow-covered beaches, mountains and frozen seas, plus continual falling snow and periodic blizzards. New worlds start in daylight; Creative defaults to a bright world with a toggle in More. Survival retains a day/night cycle.
 - Mining, block placement, crafting, inventory, tool hotbar, local world save, touch joystick and swipe camera from the upstream engine.
 - Custom Yeti model; change fur and scarf colors and show/hide a winter hat. The model uses unlit materials so its colors remain visible in third-person.
 - Optional first/third-person camera; default first person for accurate building.
 - Lofi starter shack with a simple four-stage quest.
 - Simplified opening menu: create a world or resume, customize Yeti, and optional game settings tucked away; in-game controls prioritize **BUILD**, camera and More.
+- **More → ↗ Unstuck** returns you above your spawn in safe flight mode if you get trapped underground; **More → 🪽 Fly** toggles flight; **More → ☀ Day** controls bright Creative daylight. Placement hints are limited to avoid covering gameplay.
 - Prominent **🧱 BUILD** menu with labeled material tiles, quick starter set, a persistent hint for the PLACE control, and feedback when placement cannot work. Picking a building material automatically returns to first-person aiming. Creative free-building is the default for new worlds. Existing Survival saves can switch to Creative by choosing a material from BUILD.
 - Save a nearby 11×12×11 building area as a JSON blueprint, then import and place it in your world. No wallet needed.
 

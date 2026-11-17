@@ -40,7 +40,7 @@ canvas#gl{position:fixed;inset:0;width:100%;height:100%;display:block;outline:no
 .advt{display:flex;align-items:center;gap:10px;background:rgba(30,30,34,.92);border:3px solid #6a6a78;padding:8px 14px 8px 8px;font:bold 13px 'Courier New',monospace;animation:advin .5s ease-out,advout .6s 4.4s forwards;box-shadow:0 4px 18px #0008}
 .advt img{width:36px;height:36px;image-rendering:pixelated;background:#555;padding:2px}.advt b{display:block;color:#ffe45c;font-size:12px}
 @keyframes advin{from{transform:translateX(120%)}to{transform:none}}@keyframes advout{to{transform:translateX(120%);opacity:0}}
-#toasts{position:absolute;left:50%;top:14%;transform:translateX(-50%);text-align:center;font:bold 18px "Courier New",monospace}
+#toasts{position:absolute;left:50%;top:12%;transform:translateX(-50%);text-align:center;font:700 13px/1.35 system-ui;max-width:75vw;width:max-content;text-shadow:1px 1px 2px #081623}
 #toasts div{text-shadow:2px 2px 0 #222;margin:4px;animation:fade 3.5s forwards}
 @keyframes fade{0%{opacity:0;transform:translateY(-6px)}8%{opacity:1;transform:none}80%{opacity:1}100%{opacity:0}}
 #clock{position:absolute;right:10px;top:8px;font:bold 13px "Courier New",monospace;text-shadow:1px 1px 0 #000;text-align:right;opacity:.85}

@@ -115,11 +115,40 @@ export function initFlurry(game) {
   };
   const buildAction = action('🧱 BUILD', () => showBuildMenu()); buildAction.classList.add('build');
   action('👁 View', () => { third=!third; notify(game, third ? 'Third-person Yeti view' : 'First-person building view'); });
+  let brightWorld = read('flurrycraft_bright_world_v1', true) !== false;
+  const toggleDay = () => {
+    brightWorld = !brightWorld;
+    save('flurrycraft_bright_world_v1', brightWorld);
+    if (brightWorld) game.env.tod = 0.25;
+    daylightBtn.textContent = brightWorld ? '☀ Day: ON' : '🌙 Day: OFF';
+    notify(game, brightWorld ? 'Bright winter daylight enabled!' : 'Natural day/night cycle enabled.');
+  };
+  const rescue = () => {
+    if(game.state !== 'play' || !game.world) return;
+    const p=game.player, sp=p.spawn;
+    if (!sp || !Number.isFinite(sp.x) || !Number.isFinite(sp.z)) {notify(game,'Spawn point is unavailable.');return;}
+    // Hover above the saved spawn; never overwrite existing structures/terrain.
+    // Free-flight avoids trapping the player in the same dug-out hole again.
+    enterBuildMode();
+    const y=Math.min(88, Math.max(8,sp.y+10));
+    game.tp(sp.x,y,sp.z);
+    p.vx=p.vy=p.vz=0;p.onGround=false;p.flying=true;
+    third=false;
+    notify(game,'Back near spawn! Flying enabled: JUMP goes up, DOWN goes down.');
+  };
   const extras = [
     action('🎨 Yeti', () => showCustomizer()),
     action('🏠 Save Build', () => showBlueprint()),
-    action('📂 Import', () => chooseImport())
+    action('📂 Import', () => chooseImport()),
+    action('↗ Unstuck', rescue),
+    action('🪽 Fly', () => {
+      const p=game.player; enterBuildMode(); p.flying=!p.flying;
+      if(p.flying) p.vy=0;
+      notify(game,p.flying?'Flying enabled: JUMP ↑ and DOWN ↓.':'Flying disabled.');
+    }),
+    action(brightWorld?'☀ Day: ON':'🌙 Day: OFF', toggleDay)
   ];
+  const daylightBtn=extras[extras.length-1];
   extras.forEach(btn => btn.style.display = 'none');
   let moreOpen = false;
   const more = action('⋯ More', () => {
@@ -279,6 +308,7 @@ export function initFlurry(game) {
   function onWorldReady(isNew){
     const p=game.player,w=game.world;
     equipStarterBlocks();
+    if (p.creative && brightWorld) game.env.tod=0.25;
     // Existing survival worlds used to start with an empty hotbar. Show
     // the building picker the first time a returning player opens one.
     if (!read('flurrycraft_builder_help_seen_v2',false) && p.inv.slice(0,9).every(s=>!s)) {
@@ -352,7 +382,7 @@ export function initFlurry(game) {
     const p=game.player;
     if(Math.hypot(x-p.x,y-p.y,z-p.z)<7)placed++;
   };
-  game.flurry={update,onWorldReady,countPlayerPlacement,isThird:()=>third};
+  game.flurry={update,onWorldReady,countPlayerPlacement,isThird:()=>third,daylightLocked:()=>brightWorld};
   document.addEventListener('keydown', e=>{
     if(e.target && /INPUT|TEXTAREA/.test(e.target.tagName))return;
     if(e.code==='Escape' && overlay.style.display==='flex'){close();e.stopImmediatePropagation();return;}

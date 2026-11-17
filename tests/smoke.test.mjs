@@ -34,5 +34,8 @@ test('custom game systems are connected', () => {
   assert.match(readFileSync('js/weather.js','utf8'), /Permanent snowfall/);
   assert.match(flurry,/function showBuildMenu/);
   assert.match(flurry,/function selectBlock/);
+  assert.match(flurry,/daylightLocked/);
+  assert.match(flurry,/Unstuck/);
+  assert.match(readFileSync('js/touch.js','utf8'),/lastPlacementTip/);
   assert.match(flurry,/MeshBasicMaterial/);
 });

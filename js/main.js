@@ -316,7 +316,7 @@ function startGame(cont, id) {
     ui.restore(save.containers); Object.assign(player, save.player); player.inv = save.player.inv; game.env.tod = save.tod; game.adv = new Set(save.adv || []);
   } else {
     const sp = world.gen.findSpawn(); player.x = sp.x; player.y = sp.y; player.z = sp.z; player.spawn = { x: sp.x, y: sp.y, z: sp.z };
-    game.env.tod = 0.05;
+    game.env.tod = 0.25; // Clear midday for a comfortable first building session.
   }
   player.creative = settings.mode === 'c'; player.flying = false;
   if (!save) { if (player.creative) ui.toast('Creative: double-tap Space to fly'); }
@@ -413,7 +413,7 @@ function frame(now) {
     if (game.force) Object.assign(input, game.force);
     player.update(dt, input); player.updateInteraction(dt, input);
     // world time
-    game.env.tod = (game.env.tod + dt / 720) % 1;
+    game.env.tod = (game.flurry && game.flurry.daylightLocked() && player.creative) ? 0.25 : (game.env.tod + dt / 720) % 1;
     w.processFalls();
   }
   w.maxGen = 1; w.maxMesh = 2;
