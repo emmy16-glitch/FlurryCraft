@@ -417,7 +417,10 @@ function frame(now) {
   if (game.state === 'menu') { menuFrame(dt); return; }
   if (game.state !== 'play') { return; }
   const w = game.world;
-  const active = !game.paused;
+  // Full-screen in-game panels are non-combat spaces: prevent accidental
+  // mining, movement and monster attacks while reading progress or building.
+  const flurryDialogOpen=document.getElementById('flurryModal')?.style.display==='flex';
+  const active = !game.paused&&!flurryDialogOpen;
   game.time += dt; $('toasts').style.display = ui.isOpen ? 'none' : 'block';
   if (active) {
     const open = ui.isOpen || player.dead;

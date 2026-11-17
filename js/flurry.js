@@ -363,6 +363,12 @@ export function initFlurry(game) {
   const button = (title, fn, muted=false) => {const el=make('button',title); if(muted)el.className='muted'; el.addEventListener('click',fn); return el;};
   const open = title => {
     setMoreMenu(false);
+    // Cancel held touch input so no attack or mine resumes after a dialog.
+    if(game.touch){
+      game.touch.left=false;game.touch.right=false;game.touch.rightPressed=false;
+      game.touch.jump=false;game.touch.fwd=0;game.touch.strafe=0;
+      game.touch.sprint=false;
+    }
     panel.replaceChildren();panel.classList.remove('fc-studio-wide','fc-sui-panel','fc-map-panel');
     const head=make('header');head.className='fc-dialog-head';
     const h=document.createElement('h2');h.textContent=title;

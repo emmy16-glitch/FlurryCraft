@@ -85,6 +85,8 @@ test('custom game systems are connected', () => {
   assert.match(readFileSync('js/adventure.js','utf8'),/fcLevelNotice/);
   assert.match(readFileSync('js/adventure.js','utf8'),/fc-level-overview/);
   assert.match(readFileSync('js/adventure.js','utf8'),/actionForTarget/);
+  assert.match(readFileSync('js/main.js','utf8'),/flurryDialogOpen/);
+  assert.match(flurry,/game\.touch\.left=false/);
   assert.match(readFileSync('js/combat-hud-core.js','utf8'),/function aimedCreature/);
   assert.match(readFileSync('index.html','utf8'),/data-action="mine" data-label="MINE"/);
   assert.match(readFileSync('index.html','utf8'),/#tbBreak\[data-action=attack\]/);

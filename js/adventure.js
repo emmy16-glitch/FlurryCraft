@@ -333,8 +333,8 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
     }
   }
   function update(dt){
-    const play=game.state==='play'&&!game.paused&&!game.player.dead;
-    const unobstructed=play&&!game.ui.isOpen&&!isInterfaceBusy();
+    const play=game.state==='play'&&!game.paused&&!game.player.dead&&!isInterfaceBusy();
+    const unobstructed=play&&!game.ui.isOpen;
     pill.style.display=unobstructed&&!game.player.creative?'flex':'none';
     syncAimUI(unobstructed);
     if(levelNoticeTime>0){
