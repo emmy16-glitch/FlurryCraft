@@ -393,7 +393,7 @@ function trySpawnHostile() {
 
 // ---------------------------------------------------------------- main loop
 let last = performance.now(), fpsAcc = 0, fpsN = 0, fps = 0, camY = 1.62, fovNow = 75, rollNow = 0;
-const input = { fwd: 0, strafe: 0, jump: false, sneak: false, sprint: false, left: false, right: false, rightPressed: false };
+const input = { fwd: 0, strafe: 0, jump: false, sneak: false, sprint: false, left: false, attackPressed:false, right: false, rightPressed: false };
 function resize() { const w = window.innerWidth, h = window.innerHeight; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); handCam.aspect = w / h; handCam.updateProjectionMatrix(); }
 window.addEventListener('resize', resize); resize();
 
@@ -426,10 +426,10 @@ function frame(now) {
     const open = ui.isOpen || player.dead;
     input.fwd = open ? 0 : (keys.KeyW ? 1 : 0) - (keys.KeyS ? 1 : 0); input.strafe = open ? 0 : (keys.KeyD ? 1 : 0) - (keys.KeyA ? 1 : 0);
     input.jump = !open && !!keys.Space; input.sneak = !open && (!!keys.KeyC || !!keys.ControlLeft); input.sprint = !open && (!!keys.ShiftLeft || !!keys.ShiftRight);
-    input.left = !open && mouseL && controlOn(); input.right = !open && mouseR && controlOn(); input.rightPressed = rightPressed && !open; rightPressed = false;
+    input.left = !open && mouseL && controlOn(); input.attackPressed=false; input.right = !open && mouseR && controlOn(); input.rightPressed = rightPressed && !open; rightPressed = false;
     if (!open && lockFail && !locked() && mouseIn && !game.touchMode) { const dz = (v) => { const a = Math.abs(v); return a < 0.12 ? 0 : Math.sign(v) * (a - 0.12) / 0.88; }; const nx = (mouseX - innerWidth / 2) / (innerWidth / 2), ny = (mouseY - innerHeight / 2) / (innerHeight / 2); player.yaw -= dz(nx) * 3.0 * dt * settings.sens / 100; player.pitch = Math.max(-1.55, Math.min(1.55, player.pitch - dz(ny) * 2.0 * dt * settings.sens / 100)); }
     if (!open && (keys.ArrowLeft || keys.ArrowRight || keys.ArrowUp || keys.ArrowDown)) { player.yaw += ((keys.ArrowLeft ? 1 : 0) - (keys.ArrowRight ? 1 : 0)) * 2 * dt; player.pitch = Math.max(-1.55, Math.min(1.55, player.pitch + ((keys.ArrowUp ? 1 : 0) - (keys.ArrowDown ? 1 : 0)) * 1.6 * dt)); }
-    if (!open && game.touch) { const T = game.touch; input.fwd = Math.max(-1, Math.min(1, input.fwd + T.fwd)); input.strafe = Math.max(-1, Math.min(1, input.strafe + T.strafe)); input.jump = input.jump || T.jump; input.sneak = input.sneak || T.sneak; input.sprint = input.sprint || T.sprint; input.left = input.left || T.left; input.right = input.right || T.right; input.rightPressed = input.rightPressed || T.rightPressed; T.rightPressed = false; }
+    if (!open && game.touch) { const T = game.touch; input.attackPressed=!!T.attackPressed;T.attackPressed=false; input.fwd = Math.max(-1, Math.min(1, input.fwd + T.fwd)); input.strafe = Math.max(-1, Math.min(1, input.strafe + T.strafe)); input.jump = input.jump || T.jump; input.sneak = input.sneak || T.sneak; input.sprint = input.sprint || T.sprint; input.left = input.left || T.left; input.right = input.right || T.right; input.rightPressed = input.rightPressed || T.rightPressed; T.rightPressed = false; }
     if (game.force) Object.assign(input, game.force);
     player.update(dt, input); player.updateInteraction(dt, input);
     // world time

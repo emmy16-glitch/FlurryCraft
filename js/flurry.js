@@ -365,7 +365,7 @@ export function initFlurry(game) {
     setMoreMenu(false);
     // Cancel held touch input so no attack or mine resumes after a dialog.
     if(game.touch){
-      game.touch.left=false;game.touch.right=false;game.touch.rightPressed=false;
+      game.touch.left=false;game.touch.attackPressed=false;game.touch.right=false;game.touch.rightPressed=false;
       game.touch.jump=false;game.touch.fwd=0;game.touch.strafe=0;
       game.touch.sprint=false;
     }
@@ -879,6 +879,16 @@ export function initFlurry(game) {
     explorer.reset();
     game.adventure.resetWorld(isNew);
     equipStarterBlocks();
+    // New survival players should be able to defeat their first Frostling
+    // without crafting for several minutes or using bare-hand melee.
+    if(isNew&&!p.creative&&!p.inv.some(it=>it?.id===B.toolId(3,0))){
+      const swordSlot=p.inv.findIndex(it=>!it);
+      if(swordSlot>=0){
+        p.inv[swordSlot]={id:B.toolId(3,0),n:1};
+        p.sel=swordSlot<9?swordSlot:p.sel;
+        game.ui.dirtyInv=true;
+      }
+    }
     if (p.creative && brightWorld) game.env.tod=0.25;
     // Existing survival worlds used to start with an empty hotbar. Show
     // the building picker the first time a returning player opens one.

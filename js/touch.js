@@ -4,7 +4,7 @@ export function initTouch(game, player, ui, hooks) {
   if (game.touchEl) return;
   document.body.classList.add('touch');
   const root = $('touch'); game.touchEl = root; root.style.display = 'block';
-  const T = game.touch = { fwd: 0, strafe: 0, jump: false, left: false, right: false, rightPressed: false, sneak: false, sprint: false };
+  const T = game.touch = { fwd: 0, strafe: 0, jump: false, left: false, attackPressed:false, right: false, rightPressed: false, sneak: false, sprint: false };
   const sens = () => 0.0052 * (hooks.settings.sens / 100);
   // ---- joystick
   const jz = $('joyzone'), base = $('joybase'), knob = $('joyknob'); let jid = null, ox = 0, oy = 0; const R = 52;
@@ -38,7 +38,7 @@ export function initTouch(game, player, ui, hooks) {
   hold('tbJump', () => { T.jump = true; const now = performance.now(); if (player.creative && now - (game._lastTapJump || 0) < 300) { player.flying = !player.flying; player.vy = 0; } game._lastTapJump = now; }, () => { T.jump = false; });
   // The same input attacks creatures or mines blocks. The action indicator
   // follows the player's live crosshair target in adventure.update().
-  hold('tbBreak', () => { T.left = true; }, () => { T.left = false; });
+  hold('tbBreak', () => { T.left = true; T.attackPressed = true; }, () => { T.left = false; });
   let lastPlacementTip = -10000;
   hold('tbPlace', () => { T.right = true; T.rightPressed = true;
     // Avoid flooding the view with large repeated messages while building.

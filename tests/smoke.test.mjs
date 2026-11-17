@@ -88,6 +88,11 @@ test('custom game systems are connected', () => {
   assert.match(readFileSync('js/main.js','utf8'),/flurryDialogOpen/);
   assert.match(flurry,/game\.touch\.left=false/);
   assert.match(readFileSync('js/combat-hud-core.js','utf8'),/function aimedCreature/);
+  assert.match(readFileSync('js/combat-targeting.js','utf8'),/function assistedMeleeTarget/);
+  assert.match(readFileSync('js/player.js','utf8'),/assistedMeleeTarget/);
+  assert.match(readFileSync('js/touch.js','utf8'),/T\.attackPressed = true/);
+  assert.match(main,/input\.attackPressed=!!T\.attackPressed/);
+  assert.match(flurry,/B\.toolId\(3,0\)/);
   assert.match(readFileSync('index.html','utf8'),/data-action="mine" data-label="MINE"/);
   assert.match(readFileSync('index.html','utf8'),/#tbBreak\[data-action=attack\]/);
   assert.match(flurry,/isInterfaceBusy:/);

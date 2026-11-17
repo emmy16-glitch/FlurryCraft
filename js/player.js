@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import * as B from './blocks.js';
 import { Arrow } from './entities.js';
+import { assistedMeleeTarget } from './combat-targeting.js';
 
 const REACH = 5.0;
 export class Player {
@@ -178,7 +179,11 @@ export class Player {
       const t = rayAABB(ex, ey, ez, dx, dy, dz, m.x - m.hw, m.y, m.z - m.hw, m.x + m.hw, m.y + m.h, m.z + m.hw);
       if (t !== null && t <= 3.8 && (!hit || t < hit.t) && (!best || t < best.t)) best = { m, t };
     }
-    this.mobTarget = best ? best.m : null;
+    // Normal precise hitboxes stay intact on desktop; Android gets a slight,
+    // strictly wall-aware tolerance for moving arctic creatures.
+    const assist=!best&&g.touchMode?
+      assistedMeleeTarget([ex,ey,ez],[dx,dy,dz],g.mobs,hit?.t??Infinity):null;
+    this.mobTarget=best?.m||assist||null;
     this.target = this.mobTarget ? null : hit;
   }
   updateInteraction(dt, input) {
@@ -186,7 +191,7 @@ export class Player {
     if (this.dead) return;
     this.aim();
     // left
-    if (input.left) {
+    if (input.left || (input.attackPressed && this.mobTarget)) {
       if (this.mobTarget) {
         if (this.attackCd <= 0) this.attack(this.mobTarget);
         this.mineKey = '';
@@ -307,6 +312,7 @@ export class Player {
     const crit = !this.onGround && this.vy < -0.5 && !this.inWater;
     if (crit) dmg *= 1.5;
     m.hurt(dmg, this.x, this.z, true);
+    this.game.adventure?.hitFeedback?.(m,dmg);
     if (crit) g.particles.burst(m.x, m.y + m.h * 0.7, m.z, [255, 240, 180], 10, 4);
     this.attackCd = it && it.tool && it.tool.type === 'sword' ? 0.42 : 0.55; this.swing = 1; this.exh += 0.1;
     if (it && it.tool) this.useHeld(it.tool.type === 'sword' ? 1 : 2);
