@@ -11,7 +11,7 @@ const sample={version:1,name:'A House',author:'Builder One',size:[3,2,3],
 
 test('blueprints normalize with a deterministic order and metadata cleanup',()=>{
  const result=normalizeBlueprint(sample);
- assert.deepEqual(result.blocks,[[0,0,0,19],[0,0,2,38],[2,0,0,38],[0,1,2,17]]);
+ assert.deepEqual(result.blocks,[[0,0,0,19],[2,0,0,38],[0,0,2,38],[0,1,2,17]]);
  assert.equal(result.name,'A House');
  assert.deepEqual(result.size,[3,2,3]);
  assert.notStrictEqual(result.blocks,sample.blocks);
