@@ -5,12 +5,13 @@ export const AIR = 0, STONE = 1, GRASS = 2, DIRT = 3, COBBLE = 4, SAND = 5, GRAV
   FLOWER_Y = 25, CACTUS = 26, BRICKS = 27, WOOL = 28, ICE = 29, SNOWGRASS = 30, CHEST = 31, TNT = 32,
   BIRCH_LOG = 33, SPRUCE_LOG = 34, STONE_BRICKS = 35, WOOL_RED = 36, WOOL_YELLOW = 37, SPRUCE_PLANKS = 38, BIRCH_PLANKS = 39,
   DOOR_CLOSED = 72, DOOR_OPEN = 73, WOOD_TABLE = 74, WOOD_CHAIR = 75, COZY_BED = 76, FIREPLACE = 77, WINDOW_PANE = 78,
+  FROST_BRICK = 79, WARD_BEACON = 80,
   DEAD_BUSH = 40, WHEAT_1 = 47, WHEAT_2 = 48, WHEAT_3 = 49, WHEAT_4 = 50, FARMLAND = 51, STONE_SLAB = 41, COBBLE_SLAB = 42, PLANK_SLAB = 43, BRICK_SLAB = 44, SANDSTONE_SLAB = 45, STONEBRICK_SLAB = 46;
 
 // Non-block items
 export const STICK = 256, COAL = 257, IRON_INGOT = 258, GOLD_INGOT = 259, DIAMOND = 260, APPLE = 261,
   PORK_RAW = 262, PORK_COOKED = 263, BEEF_RAW = 264, BEEF_COOKED = 265, MUTTON_RAW = 266, MUTTON_COOKED = 267,
-  ROTTEN_FLESH = 268, GUNPOWDER = 269, BONE = 270, ARROW = 271, STRING = 272, BOW = 273, SEEDS = 274, WHEAT = 275, BREAD = 276, FLINT_STEEL = 277, HOE_BASE = 320;
+  ROTTEN_FLESH = 268, GUNPOWDER = 269, BONE = 270, ARROW = 271, STRING = 272, BOW = 273, SEEDS = 274, WHEAT = 275, BREAD = 276, FLINT_STEEL = 277, FROST_SHARD = 278, HOE_BASE = 320;
 export const ARMOR_BASE = 300; // kind*2 + tier: helmet, chest, legs, boots; iron, diamond
 export const ARMOR_KINDS = ['helmet', 'chestplate', 'leggings', 'boots'];
 export const ARMOR_TIERS = [{ name: 'Iron', col: '#dcdcdc', dark: '#9a9a9a', pts: [2, 6, 5, 2], dur: [165, 240, 225, 195] }, { name: 'Diamond', col: '#4ee8e0', dark: '#1fa9b0', pts: [3, 8, 6, 3], dur: [363, 528, 495, 429] }];
@@ -405,6 +406,8 @@ def(WOOD_TABLE, 'Spruce Table', { top:'spruce_planks', opaque:false, opacity:1, 
 def(WOOD_CHAIR, 'Spruce Chair', { top:'spruce_planks', opaque:false, opacity:1, shape:8, hardness:1.3, tool:'axe', sound:'wood' });
 def(COZY_BED, 'Snowy Bed', { top:'wool', side:'spruce_planks', opaque:false, opacity:1, shape:8, hardness:1.0, tool:'axe', sound:'wool' });
 def(FIREPLACE, 'Stone Fireplace', { top:'stone_bricks', opaque:false, opacity:1, shape:8, hardness:2.4, tool:'pickaxe', need:1, sound:'stone', emit:11 });
+def(FROST_BRICK, 'Froststone Brick', {top:'ice',side:'stone_bricks',bottom:'stone_bricks',hardness:2.5,tool:'pickaxe',need:1,sound:'stone'});
+def(WARD_BEACON, 'Winter Ward', {top:'diamond_ore',side:'ice',bottom:'stone_bricks',hardness:3,tool:'pickaxe',need:1,sound:'glass',emit:12});
 const slab = (id, name, tile, side, snd, tool) => def(id, name, { top: tile, side: side || tile, hardness: 1.8, tool: tool || 'pickaxe', need: tool === 'axe' ? 0 : 1, opaque: false, opacity: 0, shape: 5, sound: snd || 'stone' });
 slab(STONE_SLAB, 'Stone Slab', 'stone'); slab(COBBLE_SLAB, 'Cobblestone Slab', 'cobble'); slab(PLANK_SLAB, 'Oak Slab', 'planks', null, 'wood', 'axe');
 slab(BRICK_SLAB, 'Brick Slab', 'bricks'); slab(SANDSTONE_SLAB, 'Sandstone Slab', 'sandstone_top', 'sandstone_side'); slab(STONEBRICK_SLAB, 'Stone Brick Slab', 'stone_bricks');
@@ -424,6 +427,7 @@ function item(id, name, o = {}) { ITEMS[id] = Object.assign({ id, name, stack: 6
 item(STICK, 'Stick', { fuel: 5 });
 item(COAL, 'Coal', { fuel: 80 });
 item(IRON_INGOT, 'Iron Ingot'); item(GOLD_INGOT, 'Gold Ingot'); item(DIAMOND, 'Diamond');
+item(FROST_SHARD, 'Frost Shard');
 item(APPLE, 'Apple', { food: 4 });
 item(PORK_RAW, 'Raw Porkchop', { food: 3 }); item(PORK_COOKED, 'Cooked Porkchop', { food: 8 });
 item(BEEF_RAW, 'Raw Beef', { food: 3 }); item(BEEF_COOKED, 'Steak', { food: 8 });
@@ -640,6 +644,13 @@ function drawItemBuf(id) {
   else if (id === IRON_INGOT || id === GOLD_INGOT) {
     const c = id === IRON_INGOT ? ['#e8e8e8', '#b8b8b8', '#8a8a8a'] : ['#fbe25a', '#dcb230', '#a87f18'];
     for (let y = 5; y < 11; y++) for (let x = 2 + (10 - y) * 0.5; x < 12 + (10 - y) * 0.5; x++) bput(buf, x, y, hex(y < 7 ? c[0] : y < 10 ? c[1] : c[2]));
+  } else if (id === FROST_SHARD) {
+    for(let y=1;y<=14;y++){
+      const half=y<7?(y-1)*.68:(14-y)*.6;
+      for(let x=Math.ceil(8-half);x<=Math.floor(8+half);x++)
+        bput(buf,x,y,hex(y<6?'#e6ffff':x<8?'#6ce6f5':'#2ba6d4'));
+    }
+    bline(buf,8,2,7,11,hex('#f4ffff'));
   } else if (id === DIAMOND) {
     const g = [['#b8fff8', 8, 3, 9], ['#6ff0e6', 6, 5, 11], ['#2fc4c0', 4, 8, 13]];
     for (let y = 3; y <= 13; y++) { const half = y < 6 ? 2 + (y - 3) * 1.2 : 5.6 - (y - 6) * 0.65; for (let x = 8 - half; x <= 8 + half; x++) bput(buf, x, y, hex(y < 6 ? '#a8fff6' : (x < 8 ? '#5fe6dc' : '#2db8b4'))); }
