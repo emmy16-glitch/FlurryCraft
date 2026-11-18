@@ -42,3 +42,11 @@ test('guided demo creates only a new Survival world and is available from menu',
   assert.match(flurry,/initJudgeTour/);
   assert.match(flurry,/judgeTour\.close\(\)/);
 });
+
+test('desktop input never captures camera or attacks while judge UI and dialogs are active',()=>{
+  const main=code('js/main.js');
+  assert.match(main,/const interactiveUI=game\.tourActive/);
+  assert.match(main,/#flurryModal,#fcJudgeTour,#fcQuickMenu,#flurryActions/);
+  assert.match(main,/!touchMode && !interactiveUI/);
+  assert.match(main,/if \(game\.paused \|\| ui\.isOpen \|\| interactiveUI\) return/);
+});
