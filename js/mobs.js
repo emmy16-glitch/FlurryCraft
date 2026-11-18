@@ -224,6 +224,7 @@ export class Mob {
     this.game = game; this.kind = kind; this.sp = sp;
     this.level=sp.iceNative?Math.max(1,Math.min(sp.chapter2?20:10,Math.floor(options.level||game.adventure?.mobLevel(kind)||1))):1;
     this.trialId=options.trialId||null;
+    this.raidId=options.raidId||null;
     this.attackScale=1+(this.level-1)*(sp.chapter2 ? .035 : .055);
     this.x = x; this.y = y; this.z = z; this.vx = this.vy = this.vz = 0; this.hw = sp.hw; this.h = sp.h;
     this.hp = Math.round(sp.hp*(1+(this.level-1)*.09));this.maxHp=this.hp; this.yaw = Math.random() * 6.28; this.dead = false; this.deadT = 0; this.hurtT = 0; this.fleeT = 0;
@@ -299,8 +300,14 @@ export class Mob {
     }
     // AI
     let wantX = 0, wantZ = 0, speed = 0, face = null;
-    const dxp = p.x - this.x, dzp = p.z - this.z, dist = Math.hypot(dxp, dzp), dyp = p.y - this.y;
-    const canSee = !p.dead && !p.creative && !(g.adventure?.isShielded(p.x,p.y,p.z));
+    // During an opt-in siege, enemies actively attack the fortified Ward.
+    // A shielded player cannot accidentally disable siege AI by hiding inside.
+    const raidTarget=this.raidId?g.adventure?.siegeWardTarget?.(this):null;
+    const objective=raidTarget||p;
+    const dxp = objective.x - this.x, dzp = objective.z - this.z;
+    const dist = Math.max(.001,Math.hypot(dxp,dzp)), dyp=objective.y-this.y;
+    const canSee=!!raidTarget||(!this.raidId&&!p.dead&&!p.creative&&
+      !(g.adventure?.isShielded(p.x,p.y,p.z)));
     if (sp.passive) {
       if (this.fleeT > 0 && this.fleeFrom) { this.fleeT -= dt; const fx = this.x - this.fleeFrom.x, fz = this.z - this.fleeFrom.z; const d = Math.hypot(fx, fz) || 1; wantX = fx / d; wantZ = fz / d; speed = sp.spd * 2.4; }
       else {
@@ -360,7 +367,10 @@ export class Mob {
           this.cool -= dt;
           if (sp.spider && dist < 4 && dist > 1.6 && this.onGround && this.cool <= 0) { this.vy = 6.5; this.vx = wantX * 7; this.vz = wantZ * 7; this.cool = 1.2; }
           const inReach = dist < (sp.spider ? 1.45 : spacing.attack) && Math.abs(dyp) < (sp.boss ? 2.9 : 1.7);
-          if (inReach && this.cool <= 0) { this.windup = (this.windup || 0) + dt; speed *= 0.3; this.armSwing = Math.max(this.armSwing || 0, 0.15); if (this.windup > 0.5) { this.windup = 0; this.cool = 1.1; p.hurt(sp.dmg * this.attackScale * g.difficulty, this.x, this.z); this.armSwing = 0.3; } }
+          if (inReach && this.cool <= 0) { this.windup = (this.windup || 0) + dt; speed *= 0.3; this.armSwing = Math.max(this.armSwing || 0, 0.15); if (this.windup > 0.5) { this.windup = 0; this.cool = 1.1; if(raidTarget){
+              g.adventure?.siegeWardHit?.(this,sp.dmg*this.attackScale*g.difficulty);
+            }else p.hurt(sp.dmg * this.attackScale * g.difficulty, this.x, this.z);
+            this.armSwing = 0.3; } }
           else if (!inReach) this.windup = 0;
         }
       } else {
