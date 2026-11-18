@@ -66,7 +66,7 @@ function createHarness(){
   }
  };
  const B={toolId:(kind,tier)=>280+kind*4+tier,AIR:0,ICE:29,STONE_BRICKS:35,SNOW:17,TORCH:22,FROST_BRICK:79,
-  WARD_BEACON:80,FROST_SHARD:278};
+  WARD_BEACON:80,FROST_SHARD:278,AURORA_CRYSTAL:279,AURORA_BLADE:324};
  const nav=[];
  const explorer={guideTo(where){nav.push(where);}};
  const openDialog=()=>{panel.children.length=0;};
@@ -475,5 +475,121 @@ test('player death immediately fails active defense and removes raid monsters',(
   assert.equal(h.adventure.serialize().castle.losses,1);
   assert.ok(mobs.every(m=>m.dead));
   assert.equal(h.world.getBlock(0,43,0),h.B.WARD_BEACON);
+ }finally{h.restore();}
+});
+
+test('Chapter 3 remains locked unless Level 20 and a Stormspire clear are both earned',()=>{
+ const h=createHarness();try{
+  h.adventure.load({level:19,storm:{clears:1}});h.adventure.resetWorld(false);
+  h.adventure.open();
+  assert.equal(h.panel.findButton('Scout Aurora Citadel Site'),null);
+  assert.equal(h.adventure.serialize().aurora.site,null);
+  h.adventure.load({level:20,storm:{clears:0}});h.adventure.resetWorld(false);
+  h.adventure.open();
+  assert.equal(h.panel.findButton('Scout Aurora Citadel Site'),null);
+  assert.match(h.panel.renderedText,/LOCKED/);
+  h.adventure.load({level:20,storm:{clears:1}});h.adventure.resetWorld(false);
+  h.adventure.open();
+  assert.ok(h.panel.findButton('Scout Aurora Citadel Site'));
+ }finally{h.restore();}
+});
+
+test('Aurora Citadel scouts without editing, builds when confirmed, and clears all four halls',()=>{
+ const h=createHarness();try{
+  h.adventure.load({level:20,clears:2,den:{x:31,y:43,z:17},
+   denBuilt:true,dungeonVersion:2,
+   storm:{site:{x:102,y:43,z:14},built:true,version:1,clears:1},
+   castle:{wins:3,losses:1,bestTier:3}});
+  h.adventure.resetWorld(false);
+  h.adventure.open();
+  const scout=h.panel.findButton('Scout Aurora Citadel Site');
+  assert.ok(scout);scout.listeners.click();
+  const site=h.adventure.serialize().aurora.site;
+  assert.ok(site);
+  assert.equal(h.adventure.serialize().aurora.built,false);
+  assert.equal(h.world.getBlock(site.x,site.y-1,site.z),0,
+   'scouting never edits terrain');
+  assert.ok(h.nav.some(p=>p.name==='Aurora Citadel'));
+  const build=h.panel.findButton('Build Aurora Citadel');
+  assert.ok(build);build.listeners.click();
+  for(let i=0;i<1300;i++)h.adventure.update(.02);
+  const built=h.adventure.serialize();
+  assert.equal(built.aurora.built,true);
+  assert.equal(built.aurora.version,1);
+  assert.equal(h.world.getBlock(site.x,site.y-1,site.z),h.B.FROST_BRICK);
+  assert.equal(built.storm.clears,1);
+  assert.equal(built.clears,2);
+  h.game.player.x=site.x+.5;h.game.player.z=site.z-8.5;h.game.player.y=site.y;
+  h.adventure.update(.016);
+  const entry=h.document.getElementById('fcDungeonEntry');
+  assert.equal(entry.textContent,'Enter Aurora Citadel');
+  assert.equal(entry.style.display,'block');
+  h.adventure.open();
+  const enter=h.panel.findButton('Enter Aurora Citadel');
+  assert.ok(enter);enter.listeners.click();
+  const offsets=[0,17,34,51];
+  for(let wave=0;wave<4;wave++){
+   const live=h.game.mobs.filter(m=>!m.dead&&m.trialId);
+   assert.equal(live.length,wave===3?1:2,'wave '+wave);
+   if(wave===0)assert.ok(live.every(m=>m.kind==='aurora_wisp'));
+   if(wave===1)assert.ok(live.some(m=>m.kind==='prism_stalker'));
+   if(wave===3)assert.equal(live[0].kind,'boreal_sovereign');
+   for(const mob of live){mob.dead=true;h.adventure.monsterDefeated(mob,true);}
+   if(wave<3){
+    h.game.player.x=site.x+.5;h.game.player.z=site.z+offsets[wave+1]+.5;
+   }
+   h.adventure.update(1);
+  }
+  const done=h.adventure.serialize();
+  assert.equal(done.aurora.clears,1);
+  assert.equal(done.storm.clears,1);
+  assert.equal(done.clears,2);
+  assert.equal(done.castle.wins,3);
+  assert.equal(h.game.player.countItem(h.B.AURORA_CRYSTAL),5);
+  assert.equal(h.game.player.countItem(h.B.AURORA_BLADE),1);
+  assert.equal(h.game.player.countItem(h.B.FROST_SHARD),12);
+  assert.equal(h.game.player.countItem(h.B.FROST_BRICK),28);
+  h.adventure.load(done);h.adventure.resetWorld(false);
+  assert.deepEqual(h.adventure.serialize().aurora,done.aurora);
+ }finally{h.restore();}
+});
+
+test('Aurora Citadel build waits for loaded chunks and does not overwrite a world on scouting',()=>{
+ const h=createHarness();try{
+  h.adventure.load({level:20,storm:{clears:1}});h.adventure.resetWorld(false);
+  h.adventure.open();
+  h.panel.findButton('Scout Aurora Citadel Site').listeners.click();
+  const site=h.adventure.serialize().aurora.site;
+  const old=h.world.loaded;
+  h.world.loaded=(x,z)=>Math.abs(x-site.x)>30;
+  h.panel.findButton('Build Aurora Citadel').listeners.click();
+  for(let i=0;i<50;i++)h.adventure.update(.03);
+  assert.equal(h.adventure.serialize().aurora.built,false);
+  assert.equal(h.world.getBlock(site.x,site.y-1,site.z),0);
+  h.world.loaded=old;
+  for(let i=0;i<1300;i++)h.adventure.update(.02);
+  assert.equal(h.adventure.serialize().aurora.built,true);
+ }finally{h.restore();}
+});
+
+test('Aurora first-clear sword is unique; subsequent clears still award crystals',()=>{
+ const h=createHarness();try{
+  const site={x:188,y:44,z:10};
+  h.adventure.load({level:25,clears:3,storm:{clears:1},
+   aurora:{site,built:true,version:1,clears:1}});
+  h.adventure.resetWorld(false);
+  h.game.player.x=site.x+.5;h.game.player.y=site.y;h.game.player.z=site.z-8.5;
+  h.adventure.open();
+  h.panel.findButton('Enter Aurora Citadel').listeners.click();
+  for(let wave=0;wave<4;wave++){
+   const live=h.game.mobs.filter(m=>!m.dead&&m.trialId);
+   for(const m of live){m.dead=true;h.adventure.monsterDefeated(m,true);}
+   if(wave<3){h.game.player.x=site.x+.5;h.game.player.z=site.z+17*(wave+1)+.5;}
+   h.adventure.update(1);
+  }
+  assert.equal(h.adventure.serialize().aurora.clears,2);
+  assert.equal(h.game.player.countItem(h.B.AURORA_CRYSTAL),5);
+  assert.equal(h.game.player.countItem(h.B.AURORA_BLADE),0,
+    'repeat clears do not duplicate first-clear swords');
  }finally{h.restore();}
 });
