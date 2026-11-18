@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import * as B from './blocks.js';
 import { Arrow } from './entities.js';
 import { assistedMeleeTarget } from './combat-targeting.js';
+import { playerAttackDamage } from './combat-progression.js';
 
 const REACH = 5.0;
 export class Player {
@@ -308,9 +309,9 @@ export class Player {
   }
   attack(m) {
     const g = this.game, s = this.held(), it = s && B.ITEMS[s.id];
-    let dmg = 1; if (it && it.tool) dmg = it.tool.dmg;
+    const baseDmg = it?.tool?.dmg ?? 1;
     const crit = !this.onGround && this.vy < -0.5 && !this.inWater;
-    if (crit) dmg *= 1.5;
+    const dmg=playerAttackDamage(baseDmg,g.adventure?.level||1,crit);
     m.hurt(dmg, this.x, this.z, true);
     this.game.adventure?.hitFeedback?.(m,dmg);
     if (crit) g.particles.burst(m.x, m.y + m.h * 0.7, m.z, [255, 240, 180], 10, 4);
