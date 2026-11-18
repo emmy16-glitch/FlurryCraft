@@ -616,7 +616,16 @@ function frame(now) {
     if (!open && (keys.ArrowLeft || keys.ArrowRight || keys.ArrowUp || keys.ArrowDown)) { player.yaw += ((keys.ArrowLeft ? 1 : 0) - (keys.ArrowRight ? 1 : 0)) * 2 * dt; player.pitch = Math.max(-1.55, Math.min(1.55, player.pitch + ((keys.ArrowUp ? 1 : 0) - (keys.ArrowDown ? 1 : 0)) * 1.6 * dt)); }
     if (!open && game.touch) { const T = game.touch; input.attackPressed=!!T.attackPressed;T.attackPressed=false; input.fwd = Math.max(-1, Math.min(1, input.fwd + T.fwd)); input.strafe = Math.max(-1, Math.min(1, input.strafe + T.strafe)); input.jump = input.jump || T.jump; input.sneak = input.sneak || T.sneak; input.sprint = input.sprint || T.sprint; input.left = input.left || T.left; input.right = input.right || T.right; input.rightPressed = input.rightPressed || T.rightPressed; input.guard = input.guard || T.guard; T.rightPressed = false; }
     if (game.force) Object.assign(input, game.force);
+    const beforeTravelX=player.x,beforeTravelZ=player.z;
     player.update(dt, input); player.updateInteraction(dt, input);
+    // Sample genuine physics-resolved on-foot movement; never credit flying,
+    // teleports, tab stalls or a world change. Core travel-step checks bound
+    // each segment. Reward writes are batched to avoid work on every frame.
+    if(!open&&!player.creative&&!player.dead&&!player.flying&&
+       !player.inWater&&Math.abs(input.fwd)+Math.abs(input.strafe)>.12){
+      game.rewards?.recordTravel?.(
+        Math.hypot(player.x-beforeTravelX,player.z-beforeTravelZ),dt);
+    }
     // world time
     game.env.tod = (game.flurry && game.flurry.daylightLocked() && player.creative) ? 0.25 : (game.env.tod + dt / 720) % 1;
     w.processFalls();

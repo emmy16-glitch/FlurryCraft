@@ -71,7 +71,11 @@ export class Player {
     if(guard.blocked){
       dmg=guard.damage;
       this.game.sound.play('hit',{vol:guard.perfect?.75:.4});
-      if(guard.perfect)this.game.ui?.toast?.('✦ Perfect Parry!');
+      if(guard.perfect){
+        this.game.ui?.toast?.('✦ Perfect Parry!');
+        // Only a real frontal, stamina-paid hit enters the Winter Trial ledger.
+        this.game.rewards?.recordParry?.();
+      }
     }
     this.health -= dmg; this.invuln = 0.5; this.hurtFlash = guard.blocked ? .22 : .5;
     if (Number.isFinite(sx)&&Number.isFinite(sz)) {

@@ -4,6 +4,20 @@ Browser-first, free-to-play voxel sandbox for Android, iPhone and desktop. Flurr
 
 Built on the MIT-licensed [Yet Another VoxelCraft](https://github.com/GoldwinXS/YetAnotherVoxelCraft) engine by GoldwinXS, with a local bundled Three.js r160. Original attribution is preserved in UPSTREAM_LICENSE.txt.
 
+## ❄ Lofi's Winter Trials — sword skill and winter exploration
+
+Daily and weekly Survival challenges now reward **real Perfect Parries**
+and **on-foot world exploration** with additional local Flurry Points.
+The combat damage pipeline counts successful, well-timed frontal parries;
+physics-resolved walking earns travel progress while rejecting teleports,
+flying and invalid frame jumps. Lofi offers a direct Winter Trials entry
+point. A tiny, rate-limited snow-step puff adds life to snowy paths without
+adding scene meshes. Counters are world-specific and compatible with
+existing saves, daily/weekly UTC resets and one-time claims.
+
+These remain **local game points only, not cryptocurrency, SUI or cash**.
+[See Winter Trials rules and QA checklist](docs/WINTER_TRIALS.md).
+
 ## ❄ Talk to Lofi — the 3D Expedition Captain
 
 Meet the existing Lofi Yeti by the starter shack, then **press F** on

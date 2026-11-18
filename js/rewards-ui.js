@@ -2,12 +2,16 @@
 // No wallet signature, payout request, or server call is made by this module.
 import {createRewardsState,rewardCards,collectLocalPoints,recordRewardPlacement,
   requestCryptoPayout,CRYPTO_REWARDS_ENABLED,acceptExpeditionMission,
-  collectExpeditionMission} from './rewards-core.js';
+  collectExpeditionMission,recordRewardParry,recordRewardTravel} from './rewards-core.js';
+import {isValidTravelStep,trialProgressText} from './winter-trials.js';
+import * as B from './blocks.js';
 import {expeditionGuideTarget} from './expedition-guide.js';
 
 export function initRewardsHub({game,panel,openDialog,notify,onOpenMarketplace,
   onNavigate=()=>{},onExpeditionEvent=()=>{}}){
   let state=createRewardsState(null,null);
+  let pendingTravel=0; // Sub-two-block movement batches reduce frame work on phones.
+  let trailDistance=0; // Optional snow-step effect, never more than once per 8 blocks.
   const el=(tag,text,parent=panel)=>{
     const node=document.createElement(tag);if(text!==undefined)node.textContent=String(text);
     parent.appendChild(node);return node;
@@ -58,10 +62,12 @@ export function initRewardsHub({game,panel,openDialog,notify,onOpenMarketplace,
     tracker.style.display='block';
   }
   function load(raw){
+    pendingTravel=0; trailDistance=0; // Do not leak counters between worlds.
     state=createRewardsState(raw,adventure());
     hudTick=0;update();
   }
   function serialize(){
+    flushTravel();
     state=createRewardsState(state,adventure());
     return JSON.parse(JSON.stringify(state));
   }
@@ -106,9 +112,63 @@ export function initRewardsHub({game,panel,openDialog,notify,onOpenMarketplace,
     onNavigate(point);
     return true;
   }
-  const section=(title)=>{const h=el('h3',title);h.className='fc-reward-label';};
+  const allowed=()=>game.state==='play'&&!game.paused&&!game.player?.creative&&
+    !game.player?.dead&&document.visibilityState!=='hidden';
+  function notifyTrial(previous,next,kind){
+    const all=kind==='parries'?
+      [{id:'daily-parry',name:'Daily Sword Trial'},
+       {id:'weekly-parry',name:'Weekly Sword Trial'}]:
+      [{id:'daily-travel',name:'Daily Trail Trial'},
+       {id:'weekly-travel',name:'Weekly Trail Trial'}];
+    for(const entry of all){
+      const was=[...previous.daily,...previous.weekly].find(x=>x.id===entry.id);
+      const is=[...next.daily,...next.weekly].find(x=>x.id===entry.id);
+      if(was&&!was.ready&&is?.ready){
+        notify(game,'❄ '+entry.name+' complete · Open Rewards Hub to collect points');
+        // Do not synchronously serialize the world from a gameplay frame.
+        // Normal autosave and the eventual claim persist the trial ledger.
+      }
+    }
+  }
+  function recordParry(){
+    if(!allowed())return;
+    const totals=adventure(),before=rewardCards(state,totals,false);
+    state=recordRewardParry(state,totals);
+    hudTick=0;notifyTrial(before,rewardCards(state,totals,false),'parries');
+  }
+  function flushTravel(){
+    if(pendingTravel<=0)return;
+    const distance=pendingTravel;pendingTravel=0;
+    const totals=adventure(),before=rewardCards(state,totals,false);
+    state=recordRewardTravel(state,totals,distance);
+    hudTick=0;notifyTrial(before,rewardCards(state,totals,false),'travel');
+  }
+  function recordTravel(distance,dt){
+    if(!allowed()||game.player?.flying||!isValidTravelStep(distance,dt))return;
+    pendingTravel=Math.min(4,pendingTravel+distance);
+    trailDistance+=distance;
+    if(trailDistance>=8){
+      trailDistance%=8;
+      const p=game.player,w=game.world;
+      if(p?.onGround&&w?.getBlock&&game.particles?.burst){
+        const ground=w.getBlock(Math.floor(p.x),Math.floor(p.y)-1,Math.floor(p.z));
+        if(ground===B.SNOW||ground===B.ICE||ground===B.PACKED_ICE){
+          // Modest snow-footstep dust. No new scene meshes or per-frame draws.
+          game.particles.burst(p.x,p.y+.08,p.z,[226,237,246],
+            game.touchMode?2:4,.45);
+        }
+      }
+    }
+    if(pendingTravel>=2)flushTravel();
+  }
+  function winterTrials(){
+    const v=rewardCards(state,adventure(),!!game.player?.creative);
+    return trialProgressText([...v.daily,...v.weekly]);
+  }
+  const section=(title)=>{const h=el('h3',title);h.className='fc-reward-label';return h;};
   const message=text=>{const p=el('p',text);p.className='fc-reward-intro';return p;};
-  function open(){
+  function open(focus=''){
+    flushTravel();
     state=createRewardsState(state,adventure());
     const view=rewardCards(state,adventure(),!!game.player?.creative);
     openDialog('✦ Flurry Rewards Hub');
@@ -157,7 +217,8 @@ export function initRewardsHub({game,panel,openDialog,notify,onOpenMarketplace,
     }
     message('Expedition progress only counts after accepting each contract in Survival. Claims are one-time and saved per world.');
     const renderGroup=(heading,cards)=>{
-      section(heading);
+      const h=section(heading);
+      if(heading.startsWith('❄ Daily Winter Trials'))h.id='fcWinterTrialStart';
       for(const card of cards){
         const box=el('div',undefined);box.className='fc-reward-card';
         el('div',card.title+' · +'+card.points+' points',box).className='fc-reward-title';
@@ -177,8 +238,11 @@ export function initRewardsHub({game,panel,openDialog,notify,onOpenMarketplace,
         });
       }
     };
-    renderGroup('Daily missions · reset 00:00 UTC',view.daily);
-    renderGroup('Weekly missions · reset Monday UTC',view.weekly);
+    const isTrial=c=>c.kind==='parries'||c.kind==='travel';
+    renderGroup('Daily missions · reset 00:00 UTC',view.daily.filter(c=>!isTrial(c)));
+    renderGroup('❄ Daily Winter Trials · sword skill and exploration',view.daily.filter(isTrial));
+    renderGroup('Weekly missions · reset Monday UTC',view.weekly.filter(c=>!isTrial(c)));
+    renderGroup('❄ Weekly Winter Trials · sword skill and exploration',view.weekly.filter(isTrial));
     renderGroup('Level and dungeon milestones · one-time',view.milestones);
     section('Crypto and marketplace');
     message('Crypto payouts are locked until a funded treasury, a trusted gameplay-verification server, secure identity/anti-abuse checks and a verified blockchain contract are live.');
@@ -195,7 +259,9 @@ export function initRewardsHub({game,panel,openDialog,notify,onOpenMarketplace,
       row.style.margin='6px 0';row.title=new Date(h.at).toISOString();
     }
     message('NFT sale proceeds, if any, are separate on-chain payments. No NFT sale or wallet balance is inferred from local points.');
+    if(focus==='trials')document.getElementById('fcWinterTrialStart')?.scrollIntoView?.({block:'start',behavior:'auto'});
   }
-  return {open,load,serialize,recordPlacement,update,current,acceptMission,claimMission,
+  return {open,load,serialize,recordPlacement,recordParry,recordTravel,winterTrials,
+    update,current,acceptMission,claimMission,
     guideMission,get points(){return state.points;}};
 }

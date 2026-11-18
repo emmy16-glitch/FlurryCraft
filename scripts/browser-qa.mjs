@@ -57,6 +57,16 @@ async function smoke(label,options){
     if(!(await tour.innerText()).includes('Complete quests'))throw new Error('Rewards tour step missing');
     await page.locator('.fc-tour-open').click({timeout:10000});
     await page.getByText('LOCAL GAME POINTS — NOT CRYPTO').waitFor({state:'visible',timeout:15000});
+    // New objectives must render on both desktop and touch browsers, without
+    // adding any invented progress to a fresh world.
+    await page.getByText('Daily Winter Trials · sword skill and exploration')
+      .waitFor({state:'visible',timeout:10000});
+    const initialTrials=await page.evaluate(()=>{
+      const r=window.game.rewards.serialize();
+      return {parries:r.dailyParries,travel:r.dailyTravel,points:r.points};
+    });
+    if(initialTrials.parries!==0||initialTrials.travel!==0||initialTrials.points!==0)
+      throw new Error('Winter Trials started with fabricated credit: '+JSON.stringify(initialTrials));
     // Accept a real expedition via the visible UI, without awarding fake kills
     // or scripted XP. Claimed/active status persists in the world-scoped ledger.
     await page.locator('#flurryModal .fc-expedition-card button')
@@ -124,6 +134,7 @@ async function smoke(label,options){
     // in the landscape emulation. No coordinate teleporting or fake XP.
     const position=()=>page.evaluate(()=>({x:window.game.player.x,z:window.game.player.z}));
     const before=await position();
+    const travelBefore=await page.evaluate(()=>window.game.rewards.serialize().dailyTravel);
     if(options.isMobile){
       const box=await page.locator('#joyzone').boundingBox();
       if(!box)throw new Error('Touch joystick not visible');
@@ -138,6 +149,10 @@ async function smoke(label,options){
     const after=await position();
     const travelled=Math.hypot(after.x-before.x,after.z-before.z);
     if(travelled<.08)throw new Error('Live movement failed: '+travelled.toFixed(3)+' blocks');
+    const travelAfter=await page.evaluate(()=>window.game.rewards.serialize().dailyTravel);
+    if(!(travelAfter>travelBefore))
+      throw new Error('On-foot Winter Trial did not reflect real movement: '+
+        JSON.stringify({travelBefore,travelAfter,travelled}));
     // Browser rAF timing is a software-renderer diagnostic, not a real
     // physical phone FPS claim. Capture a distribution, not one FPS guess.
     const timing=await page.evaluate(()=>new Promise(resolve=>{
@@ -189,6 +204,7 @@ async function smoke(label,options){
     // Exercise the real sword-guard input and hurt pipeline inside WebGL.
     // Restore all temporary player attributes: this is a QA encounter,
     // not an achievement, score, NFT or cryptographic reward.
+    const parriesBefore=await page.evaluate(()=>window.game.rewards.serialize().dailyParries);
     const defense=await page.evaluate(async()=>{
       const B=await import('/js/blocks.js');
       const p=window.game.player;
@@ -221,6 +237,13 @@ async function smoke(label,options){
         defense.guarded>=defense.unguarded*.5)
       throw new Error('Real sword guard failed: '+JSON.stringify(defense));
     console.log(label+' real sword guard passed '+JSON.stringify(defense));
+    const parryLedger=await page.evaluate(()=>{
+      const r=window.game.rewards.serialize();
+      return {parries:r.dailyParries,points:r.points};
+    });
+    if(parryLedger.parries!==parriesBefore+1||parryLedger.points!==0)
+      throw new Error('Perfect Parry trial event invalid: '+JSON.stringify({
+        parriesBefore,...parryLedger}));
     // Press the *actual keyboard key* on desktop. Earlier Blocks shortcut G
     // collided with Guard; G now raises sword while N opens the block catalog.
     if(!options.isMobile){

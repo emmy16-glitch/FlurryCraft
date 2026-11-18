@@ -103,3 +103,52 @@ test('quest-guidance only navigates for real active dungeon contracts',()=>{
    assert.equal(h.hub.points,80);
  }finally{h.close();}
 });
+
+test('Winter Trials record real hooks, batch walking, persist and honor player state',()=>{
+  const h=harness();try{
+    h.hub.load(null);
+    h.hub.recordParry();
+    h.hub.recordParry();
+    let ledger=h.hub.serialize();
+    assert.equal(ledger.dailyParries,2);
+    assert.equal(ledger.weeklyParries,2);
+    assert.equal(h.hub.winterTrials().ready,1,'Lofi sees parry trial ready');
+    assert.ok(h.notes.some(n=>n.includes('Daily Sword Trial')));
+
+    // Several real frame-sized steps are batched before writing saved state.
+    for(let i=0;i<12;i++)h.hub.recordTravel(.25,.05);
+    ledger=h.hub.serialize();
+    assert.equal(ledger.dailyTravel,3);
+    assert.equal(ledger.weeklyTravel,3);
+    assert.equal(h.hub.points,0,'progress never auto-pays local points');
+
+    h.hub.recordTravel(99,.05); // Teleport-sized delta
+    h.hub.recordTravel(.25,2); // Background stall
+    assert.equal(h.hub.serialize().dailyTravel,3);
+
+    h.p.creative=true;h.hub.recordParry();h.hub.recordTravel(.2,.05);
+    h.p.creative=false;h.p.dead=true;
+    h.hub.recordParry();h.hub.recordTravel(.2,.05);
+    h.p.dead=false;h.game.paused=true;
+    h.hub.recordParry();h.hub.recordTravel(.2,.05);
+    h.game.paused=false;
+    assert.equal(h.hub.serialize().dailyParries,2);
+    assert.equal(h.hub.serialize().dailyTravel,3);
+    const prior=h.hub.serialize();
+    h.hub.load(JSON.parse(JSON.stringify(prior)));
+    assert.equal(h.hub.serialize().dailyParries,2);
+    assert.equal(h.hub.serialize().dailyTravel,3);
+    assert.equal(h.hub.winterTrials().ready,1);
+  }finally{h.close();}
+});
+test('Winter Trial travel buffer cannot leak when the player switches worlds',()=>{
+  const h=harness();try{
+    h.hub.load(null);
+    h.hub.recordTravel(.25,.05);
+    h.hub.recordTravel(.25,.05);
+    h.hub.load(null);
+    assert.equal(h.hub.serialize().dailyTravel,0);
+    h.hub.recordTravel(.2,.05);
+    assert.equal(h.hub.serialize().dailyTravel,.2);
+  }finally{h.close();}
+});

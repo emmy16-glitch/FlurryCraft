@@ -536,6 +536,14 @@ export function initFlurry(game) {
       });
     }
     button('Open Expedition Board',()=>game.rewards.open(),true);
+    // Lofi now offers skill and exploration objectives beyond the story chain.
+    const winter=game.rewards.winterTrials();
+    const trialHint=make('p');
+    trialHint.className='note';
+    trialHint.textContent='❄ Winter Trials: '+winter.completed+'/'+winter.total+
+      ' collected · '+winter.ready+' ready to claim. Practice Perfect Parry and explore on foot.';
+    button('❄ View Winter Trials'+(winter.ready?' · '+winter.ready+' ready':''),
+      ()=>game.rewards.open('trials'),true);
     if(expeditionGuideTarget(exp,game.adventure?.serialize?.())){
       button('🧭 Guide to Frost Ruins',()=>{
         if(!game.rewards.guideMission())notify(game,'Dungeon location is unavailable.');
