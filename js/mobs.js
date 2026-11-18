@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import * as B from './blocks.js';
 import { Arrow } from './entities.js';
+import { winterMeleeSpacing } from './winter-survival-core.js';
 
 const S = 1 / 16;
 const rnd = (x, y, s) => { let h = Math.imul(x * 374761393 + y * 668265263 + s * 2147483647, 1274126177); h ^= h >>> 13; return ((h * 1274126177) >>> 0) / 4294967296; };
@@ -290,10 +291,13 @@ export class Mob {
             wantX = dxp / dist; wantZ = dzp / dist; speed = sp.spd;
           }
         } else {
-          wantX = dxp / dist; wantZ = dzp / dist; speed = dist < 1.15 ? 0 : sp.spd;
+          // Winter monsters stop short of the camera but retain matching melee reach.
+          // This prevents Frostlings from filling the whole phone screen during fights.
+          const spacing=winterMeleeSpacing(this.kind);
+          wantX = dxp / dist; wantZ = dzp / dist; speed = dist < spacing.stop ? 0 : sp.spd;
           this.cool -= dt;
           if (sp.spider && dist < 4 && dist > 1.6 && this.onGround && this.cool <= 0) { this.vy = 6.5; this.vx = wantX * 7; this.vz = wantZ * 7; this.cool = 1.2; }
-          const inReach = dist < (sp.spider ? 1.45 : 1.3) && Math.abs(dyp) < 1.7;
+          const inReach = dist < (sp.spider ? 1.45 : spacing.attack) && Math.abs(dyp) < (sp.boss ? 2.9 : 1.7);
           if (inReach && this.cool <= 0) { this.windup = (this.windup || 0) + dt; speed *= 0.3; this.armSwing = Math.max(this.armSwing || 0, 0.15); if (this.windup > 0.5) { this.windup = 0; this.cool = 1.1; p.hurt(sp.dmg * this.attackScale * g.difficulty, this.x, this.z); this.armSwing = 0.3; } }
           else if (!inReach) this.windup = 0;
         }
