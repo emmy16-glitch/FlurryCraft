@@ -42,6 +42,9 @@ test('unpublished Testnet package shows a calm non-trading experience',async()=>
   await ui.open({blueprint:example});
   const content=panel.renderedText;
   assert.match(content,/Testnet launch in preparation/);
+  assert.match(content,/Check Testnet Wallet \(read only\)/);
+  assert.match(content,/No NFT mint, listing or payment/);
+  assert.match(content,/A connection never signs a transaction/);
   assert.match(content,/Frost Cottage/);
   assert.doesNotMatch(content,/Confirm Purchase|Confirm Mint|Connect Wallet/);
   assert.equal(calls.includes('Sui Marketplace'),true);
