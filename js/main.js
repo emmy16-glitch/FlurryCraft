@@ -261,6 +261,15 @@ $('pSens').value = settings.sens; $('pSens').oninput = (e) => { settings.sens = 
 sound.volume = settings.vol / 100;
 $('bResume').onclick = () => { showPause(false); game.requestPointer(); };
 $('bSave').onclick = () => { if(saveGame())ui.toast('World saved'); };
+// A direct pause-menu export saves first so the backup includes the most
+// recent castle and dungeon changes, not only the last autosave.
+const inGameBackup=document.createElement('button');
+inGameBackup.type='button';inGameBackup.id='bWorldBackup';
+inGameBackup.className='btn';inGameBackup.textContent='Save & Download World Backup';
+inGameBackup.addEventListener('click',()=>{
+  if(saveGame())downloadWorldBackup(currentId);
+});
+$('bSave').insertAdjacentElement('afterend',inGameBackup);
 $('bQuit').onclick = () => { if(game.flurry?.buildInProgress()){ui.toast('Finish placing your building before exiting');return;}if(saveGame()) location.reload();else ui.toast('Still in game. Save before exiting.'); };
 $('bRespawn').onclick = () => { $('death').style.display = 'none'; player.respawn(); ui.dirtyInv = true; game.requestPointer(); };
 // ---- world list (multiple save slots)
@@ -336,6 +345,11 @@ function renderWorlds() {
     return `<div class="wrow"><div class="wi"><b>${name}</b><span>${w.mode==='c'?'Creative':'Survival'} &middot; ${played?Math.floor(played/3600)+'h '+Math.floor(played%3600/60)+'m played &middot; ':''}${escapeWorldText(stamp)}</span></div><div class="wb play" role="button" tabindex="0" data-id="${id}">Play</div><div class="wb backup" role="button" tabindex="0" data-id="${id}">Backup</div><div class="wb del" role="button" tabindex="0" data-id="${id}" aria-label="Delete world">&times;</div></div>`;
   }).join('');
 }
+$('worldlist').addEventListener('keydown',e=>{
+  if(e.target.closest?.('.wb')&&['Enter',' '].includes(e.key)){
+    e.preventDefault();e.target.click();
+  }
+});
 $('worldlist').addEventListener('click', (e) => {
   const b = e.target.closest('.wb'); if (!b) return; const id = b.dataset.id;
   if(b.classList.contains('play')){sound.init();startGame(true,id);}
