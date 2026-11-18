@@ -74,13 +74,25 @@ export class UI {
       this.lastSel = p.sel; this.lastHeldId = p.inv[p.sel] && p.inv[p.sel].id; this.dirtyInv = false;
     }
     if (this.namePop > 0) { this.namePop -= dt; if (this.namePop <= 0) $('itemname').style.opacity = 0; }
-    const sig = `${Math.ceil(p.health)}|${p.hunger}|${Math.ceil(p.air)}|${p.creative}|${p.headWater}`;
+    const sig = `${Math.ceil(p.health)}|${p.maxHealth}|${p.hunger}|${Math.ceil(p.air)}|${p.creative}|${p.headWater}`;
     if (sig !== this.sig) {
       this.sig = sig;
       $('bars').style.display = p.creative ? 'none' : 'flex';
       let h = '', f = '';
       const hp = Math.ceil(p.health);
-      for (let i = 0; i < 10; i++) { const v = hp - i * 2; h += `<img class="pix" src="${v >= 2 ? IMG.h1 : v === 1 ? IMG.h05 : IMG.h0}">`; const fv = p.hunger - i * 2; f += `<img class="pix" src="${fv >= 2 ? IMG.f1 : fv === 1 ? IMG.f05 : IMG.f0}">`; }
+      const maxHp=Number.isFinite(p.maxHealth)?Math.max(20,Math.min(50,p.maxHealth)):20;
+      const heartCount=Math.ceil(maxHp/2);
+      for (let i = 0; i < heartCount; i++) {
+        const v = hp - i * 2;
+        h += `<img class="pix" src="${v >= 2 ? IMG.h1 : v === 1 ? IMG.h05 : IMG.h0}">`;
+      }
+      // Hunger remains 20 points / 10 drumsticks even when max HP increases.
+      for(let i=0;i<10;i++){
+        const fv=p.hunger-i*2;
+        f+=`<img class="pix" src="${fv >= 2 ? IMG.f1 : fv === 1 ? IMG.f05 : IMG.f0}">`;
+      }
+      // Leave armor icons above multiple rows of bonus health hearts.
+      $('armorbar').style.transform='translateY(-'+((Math.ceil(heartCount/10)-1)*20)+'px)';
       $('hearts').innerHTML = h; $('food').innerHTML = f;
       let a = ''; if (p.headWater && !p.creative) for (let i = 0; i < Math.ceil(p.air); i++) a += `<img class="pix" src="${IMG.air}">`;
       $('air').innerHTML = a;
