@@ -31,3 +31,11 @@ export function checkFrostRecovery(player, shards, cooldown = 0) {
 export function recoveredHealth(health) {
   return Math.min(MAX_HEALTH, Math.max(0, finite(health, 0)) + FROST_RECOVERY_HEAL);
 }
+
+/** Comfortable minimum spacing for winter creatures on a first-person phone screen. */
+export function winterMeleeSpacing(kind) {
+  if (kind === 'glacier_guardian') return { stop: 2.35, attack: 2.85 };
+  if (kind === 'snow_prowler') return { stop: 1.65, attack: 1.9 };
+  if (kind === 'frostling') return { stop: 1.65, attack: 1.9 };
+  return { stop: 1.15, attack: 1.3 };
+}
