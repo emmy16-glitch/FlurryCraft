@@ -30,6 +30,26 @@ The regular FlurryCraft browser game remains free and playable without a wallet.
 - These safeguards are covered by `tests/sui-response-guard.test.mjs`. They are source-level tests, **not** a real two-wallet Testnet demonstration.
 
 
+## Wallet-authorized Testnet publication flow (source prepared, not executed)
+
+**No wallet has signed or published the FlurryCraft package as of this guide update.** The project now includes a secure *self-custodial* browser flow so the person who owns the publishing wallet can authorize the required Testnet transaction without exposing their private key to GitHub or ChatGPT.
+
+When GitHub Actions successfully compiles and tests the Move package, the Pages site includes an optional public `dist/flurrycraft-publish.json` containing compiled Move bytecode, dependency IDs, 32-byte package digest and exact Git commit SHA. This is public code, **not** a signed transaction, a package ID, or a wallet secret. If compilation fails, the publish bundle is withheld and the free game still deploys.
+
+From a compatible Sui wallet browser:
+
+1. Make sure your wallet is on **Sui Testnet** and has faucet-provided Testnet SUI to pay deployment gas. The official Testnet web faucet is https://faucet.sui.io/. Do **not** buy Mainnet SUI for this experiment.
+2. Open the FlurryCraft site and enter a world. Open **Menu → Sui Testnet**.
+3. Expand **Developer · Publish Sui Testnet Contract** and press **Check compiled Testnet contract**. If the compiled bundle is missing, stop; the GitHub Actions Move compiler must pass first.
+4. Open the **Check Testnet Wallet (read only)** wallet panel and connect the wallet you own. Connecting alone never signs.
+5. Expand the developer section again, check the displayed source SHA and code size, and tap **Review and sign Testnet publication**.
+6. Read the irreversible Testnet gas/public-code warning and explicitly approve. Then **approve the publish transaction in your wallet**. The wallet's UpgradeCap is transferred to **your own address**; no one should request your seed phrase.
+7. If successful, save/copy the **transaction digest** and open it in Sui Explorer. Identify the new **published package ID**, also visible in the transaction's changed objects. Keep your UpgradeCap safe for future upgrades.
+8. **Do not assume NFTs are enabled yet.** Before release, run `sui client verify-source` against the published bytecode and `npm run check:sui` with the verified address. A contract ABI check on its own is not proof of audited or expected code.
+9. Once verification is complete, register that exact 0x + 64-hex Testnet ID in `js/sui-config.js` and redeploy. This **separately** unlocks mint/list/buy/cancel. Test using two different Testnet wallets before a public demo.
+
+The publishing action must run under the wallet owner's direct control. ChatGPT and the GitHub repository **cannot sign on behalf of a wallet they do not have access to**. Do not upload or paste private keys, keystores or recovery phrases.
+
 ## Before real Testnet transactions are possible
 
 The Move contract has **NOT** been compiled with a Sui CLI, audited or published. SUI_PACKAGE_ID is intentionally empty. No NFT has been minted or sold by this implementation. Do NOT claim the Testnet feature is operational until verified.
