@@ -1,7 +1,7 @@
 // Browser-only Creator Studio. No wallet or marketplace payments.
 import { normalizeBlueprint, canonicalBlueprintContent, blueprintFingerprint,
  blueprintSummary, downloadName, makeStarterBlueprints, drawBlueprintCard } from './creator-studio.js';
-import {uploadWalrusBlueprint,fetchWalrusBlueprint,walrusTestnetURL}
+import {uploadWalrusBlueprint,fetchWalrusBlueprint,walrusTestnetURL,walrusBlueprintReceipt}
  from './walrus-blueprints.js';
 const KEY='flurrycraft_blueprints_v1',LIMIT=30;
 const el=(tag,text)=>{const node=document.createElement(tag);if(text!==undefined)node.textContent=text;return node;};
@@ -18,6 +18,22 @@ export function initCreatorStudioUI({game,B,panel,openDialog,closeDialog,showCap
   id!==B.WATER&&id!==B.LAVA&&id!==B.BEDROCK&&id!==B.TALLGRASS);
  const demos=makeStarterBlueprints(B);
  const upload=el('input');upload.type='file';upload.accept='.json,application/json';upload.style.display='none';document.body.appendChild(upload);
+ const receiptUpload=el('input');receiptUpload.type='file';receiptUpload.accept='.json,application/json';
+ receiptUpload.style.display='none';receiptUpload.setAttribute('aria-label','Walrus verification receipt');
+ document.body.appendChild(receiptUpload);
+ receiptUpload.addEventListener('change',async()=>{
+  const file=receiptUpload.files?.[0];receiptUpload.value='';
+  if(!file)return;
+  if(file.size>8192){notify(game,'Walrus receipt must be smaller than 8 KB.');return;}
+  try{
+   const receipt=walrusBlueprintReceipt(JSON.parse(await file.text()));
+   const found=await fetchWalrusBlueprint(receipt);
+   const status=add(found.blueprint);
+   if(status==='saved'){notify(game,'Verified Walrus receipt imported: '+found.blueprint.name);open();}
+   else notify(game,status==='exists'?'Already in My Builds':
+     status==='full'?'My Builds is full. Export a backup first.':'Local storage unavailable.');
+  }catch(error){notify(game,'Walrus receipt import failed: '+error.message);}
+ });
  const style=el('style');
  style.textContent=[
  '#flurryModal .fPanel.fc-studio-wide{width:min(760px,96vw);max-height:90vh;padding:16px}',
@@ -147,6 +163,7 @@ export function initCreatorStudioUI({game,B,panel,openDialog,closeDialog,showCap
   });
   backup.appendChild(el('p','Builds are saved on this device. Back up before clearing browser data.'));
   backup.appendChild(el('p','Walrus Testnet is optional, PUBLIC storage for shareable building designs, not a private world backup or NFT.'));
+  btn(backup,'Import Walrus Receipt File',()=>receiptUpload.click());
   const blobInput=el('input');blobInput.type='text';
   blobInput.placeholder='Walrus Testnet blob ID (43 characters)';
   blobInput.setAttribute('aria-label','Walrus Testnet blob ID');
