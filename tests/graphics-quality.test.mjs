@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   GRAPHICS_MODES,normalizeGraphicsMode,graphicsPixelRatios,
-  createGraphicsController
+  createGraphicsController,nextAdaptiveViewRadius
 } from '../js/graphics-quality.js';
 function frames(controller,seconds,fps,active=true){
   const n=Math.ceil(seconds*fps);
@@ -64,6 +64,21 @@ test('fixed graphic presets never adapt but can be changed explicitly',()=>{
   const auto=g.reset('unknown');
   assert.equal(g.mode,'auto');
   assert.ok(auto>performance);
+});
+test('adaptive view distance sheds at most two rings only when resolution cannot recover FPS',()=>{
+  assert.equal(nextAdaptiveViewRadius(7,7,20,true),6);
+  assert.equal(nextAdaptiveViewRadius(5,7,20,true),5);
+  assert.equal(nextAdaptiveViewRadius(7,7,20,false),7);
+  assert.equal(nextAdaptiveViewRadius(5,7,60,true),6);
+  assert.equal(nextAdaptiveViewRadius(7,7,60,true),7);
+  assert.equal(nextAdaptiveViewRadius(7,7,45,true),7);
+  assert.equal(nextAdaptiveViewRadius(NaN,7,20,true),6);
+});
+test('very slow foreground frames trigger adaptation instead of freezing it',()=>{
+  const controller=createGraphicsController('auto',true,3);
+  const original=controller.ratio;
+  for(let i=0;i<12;i++)controller.sample(.31,true);
+  assert.ok(controller.ratio<original);
 });
 test('game wires live graphics selectors, budgeted remesh and hidden-tab throttle',async()=>{
   const {readFileSync}=await import('node:fs');
