@@ -96,6 +96,39 @@ async function smoke(label,options){
       requestAnimationFrame(measure);
     }));
     console.log(label+' movement '+travelled.toFixed(2)+' blocks; rAF frame timing '+JSON.stringify(timing));
+    // Run a deterministic Frostling combat *test encounter* through the
+    // real targeting + melee damage pipeline. No fabricated kill count, loot,
+    // token claims or saved-world achievements are awarded.
+    const combat=await page.evaluate(()=>{
+      const g=window.game,p=g.player;
+      const savedYaw=p.yaw,savedPitch=p.pitch;
+      let creature=null,aimed=false;
+      for(const offset of [0,Math.PI/2,Math.PI,-Math.PI/2]){
+        const yaw=savedYaw+offset,d=1.45;
+        const x=p.x-Math.sin(yaw)*d,z=p.z-Math.cos(yaw)*d;
+        const mob=new g.Mob(g,'frostling',x,p.y,z,{level:1});
+        g.mobs.push(mob);
+        p.yaw=yaw;p.pitch=-.28;p.aim();
+        if(p.mobTarget===mob){creature=mob;aimed=true;break;}
+        g.mobs.pop();mob.remove();
+      }
+      let damage=0;
+      if(aimed){
+        const start=creature.hp;
+        p.attackCd=0;
+        p.updateInteraction(.05,{left:true,attackPressed:true,right:false,rightPressed:false});
+        damage=start-creature.hp;
+        const i=g.mobs.indexOf(creature);
+        if(i>=0)g.mobs.splice(i,1);
+        creature.remove();
+      }
+      p.yaw=savedYaw;p.pitch=savedPitch;p.aim();
+      return {aimed,damage};
+    });
+    if(!combat.aimed||combat.damage<=0)
+      throw new Error('Frostling target/attack pipeline failed: '+JSON.stringify(combat));
+    console.log(label+' controlled Frostling combat passed '+JSON.stringify(combat));
+
     await page.screenshot({path:out+'/'+label+'-moving.png'});
     // Lighting showcase only: time-of-day and camera angle for a REAL game
     // screenshot, no fabricated gameplay, minted items, or awards.
