@@ -4,6 +4,18 @@ Browser-first, free-to-play voxel sandbox for Android, iPhone and desktop. Flurr
 
 Built on the MIT-licensed [Yet Another VoxelCraft](https://github.com/GoldwinXS/YetAnotherVoxelCraft) engine by GoldwinXS, with a local bundled Three.js r160. Original attribution is preserved in UPSTREAM_LICENSE.txt.
 
+## ⚔ Sword Guard & Perfect Parry
+
+Survival sword combat now has a **front-facing defensive stance**: hold **G**
+with a sword on desktop, or hold the on-screen **🛡 GUARD** button on mobile.
+Guarding reduces eligible frontal melee/arrow damage by 60%; a correctly timed
+0.22-second Perfect Parry reduces it by 85%. Guard consumes stamina, slows
+movement, prevents attacks/building while raised, and breaks on exhaustion.
+Rear hits, environmental damage, explosions and boss area pulses bypass it.
+The weapon raises visibly and a small meter shows stamina. This is **gameplay
+only, not cryptocurrency or NFT rewards**. See [Sword Guard controls and
+rules](docs/SWORD_GUARD.md).
+
 ## 🎮 Playability and graphics polish
 
 FlurryCraft now offers **Auto · Adaptive**, **Sharp · Quality**, and

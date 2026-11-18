@@ -13,6 +13,7 @@ import { initTouch } from './touch.js';
 import { initFlurry } from './flurry.js';
 import { saveWorldSafely,loadWorldSafely,exportWorldBackup,importWorldBackup,WORLD_BACKUP_MAX_CHARS } from './world-save-guard.js';
 import { migratePlayerHealth } from './combat-progression.js';
+import { isSwordEquipped, GUARD_MAX_STAMINA } from './combat-guard.js';
 import { createGraphicsController,normalizeGraphicsMode,nextAdaptiveViewRadius } from './graphics-quality.js';
 
 const $ = (id) => document.getElementById(id);
@@ -447,6 +448,7 @@ function startGame(cont, id) {
   game.worldId = currentId;game.worldName = currentName;
   if(game.adventure)game.adventure.load(save?.adventure);
   if(game.rewards)game.rewards.load(save?.rewards);
+  player.resetGuard(); // Stance and temporary stamina never persist across worlds.
   game.difficulty = [0, 1, 1.5][settings.diff];
   if (touchMode) { try { document.documentElement.requestFullscreen && document.documentElement.requestFullscreen(); if (screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(() => {}); } catch (e) {} }
   $('menu').style.display = 'none'; $('loading').style.display = 'flex'; game.state = 'loading'; disposeMenuWorld(); camera.fov = settings.fov; camera.updateProjectionMatrix();
@@ -559,7 +561,7 @@ function trySpawnHostile() {
 
 // ---------------------------------------------------------------- main loop
 let last = performance.now(), fpsAcc = 0, fpsN = 0, fps = 0, camY = 1.62, fovNow = 75, rollNow = 0;
-const input = { fwd: 0, strafe: 0, jump: false, sneak: false, sprint: false, left: false, attackPressed:false, right: false, rightPressed: false };
+const input = { fwd: 0, strafe: 0, jump: false, sneak: false, sprint: false, left: false, attackPressed:false, right: false, rightPressed: false, guard:false };
 function resize() { const w = window.innerWidth, h = window.innerHeight; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); handCam.aspect = w / h; handCam.updateProjectionMatrix(); }
 window.addEventListener('resize', resize); resize();
 
@@ -608,10 +610,11 @@ function frame(now) {
     const open = ui.isOpen || player.dead;
     input.fwd = open ? 0 : (keys.KeyW ? 1 : 0) - (keys.KeyS ? 1 : 0); input.strafe = open ? 0 : (keys.KeyD ? 1 : 0) - (keys.KeyA ? 1 : 0);
     input.jump = !open && !!keys.Space; input.sneak = !open && (!!keys.KeyC || !!keys.ControlLeft); input.sprint = !open && (!!keys.ShiftLeft || !!keys.ShiftRight);
+    input.guard = !open && !!keys.KeyG;
     input.left = !open && mouseL && controlOn(); input.attackPressed=false; input.right = !open && mouseR && controlOn(); input.rightPressed = rightPressed && !open; rightPressed = false;
     if (!open && lockFail && !locked() && mouseIn && !game.touchMode) { const dz = (v) => { const a = Math.abs(v); return a < 0.12 ? 0 : Math.sign(v) * (a - 0.12) / 0.88; }; const nx = (mouseX - innerWidth / 2) / (innerWidth / 2), ny = (mouseY - innerHeight / 2) / (innerHeight / 2); player.yaw -= dz(nx) * 3.0 * dt * settings.sens / 100; player.pitch = Math.max(-1.55, Math.min(1.55, player.pitch - dz(ny) * 2.0 * dt * settings.sens / 100)); }
     if (!open && (keys.ArrowLeft || keys.ArrowRight || keys.ArrowUp || keys.ArrowDown)) { player.yaw += ((keys.ArrowLeft ? 1 : 0) - (keys.ArrowRight ? 1 : 0)) * 2 * dt; player.pitch = Math.max(-1.55, Math.min(1.55, player.pitch + ((keys.ArrowUp ? 1 : 0) - (keys.ArrowDown ? 1 : 0)) * 1.6 * dt)); }
-    if (!open && game.touch) { const T = game.touch; input.attackPressed=!!T.attackPressed;T.attackPressed=false; input.fwd = Math.max(-1, Math.min(1, input.fwd + T.fwd)); input.strafe = Math.max(-1, Math.min(1, input.strafe + T.strafe)); input.jump = input.jump || T.jump; input.sneak = input.sneak || T.sneak; input.sprint = input.sprint || T.sprint; input.left = input.left || T.left; input.right = input.right || T.right; input.rightPressed = input.rightPressed || T.rightPressed; T.rightPressed = false; }
+    if (!open && game.touch) { const T = game.touch; input.attackPressed=!!T.attackPressed;T.attackPressed=false; input.fwd = Math.max(-1, Math.min(1, input.fwd + T.fwd)); input.strafe = Math.max(-1, Math.min(1, input.strafe + T.strafe)); input.jump = input.jump || T.jump; input.sneak = input.sneak || T.sneak; input.sprint = input.sprint || T.sprint; input.left = input.left || T.left; input.right = input.right || T.right; input.rightPressed = input.rightPressed || T.rightPressed; input.guard = input.guard || T.guard; T.rightPressed = false; }
     if (game.force) Object.assign(input, game.force);
     player.update(dt, input); player.updateInteraction(dt, input);
     // world time
@@ -620,6 +623,22 @@ function frame(now) {
   }
   w.maxGen = 1; w.maxMesh = 2;
   if (game.touchEl) game.touchEl.style.display = (!ui.isOpen && !game.paused && !player.dead) ? 'block' : 'none';
+  const guardReady=!player.creative&&!player.dead&&isSwordEquipped(player.held(),B.ITEMS);
+  const guardUI=$('guardMeter'), guardButton=$('tbGuard');
+  if(guardUI){
+    guardUI.style.display=guardReady&&!ui.isOpen&&!game.paused?'block':'none';
+    if(guardReady){
+      const label=player.guardCooldown>0?'Guard recovering':player.guarding?'Sword Guard':'Sword Guard · G / hold';
+      const next=label+' · '+Math.round(player.guardStamina/GUARD_MAX_STAMINA*100)+'%';
+      if(guardUI.textContent!==next)guardUI.textContent=next;
+      guardUI.classList.toggle('active',player.guarding);
+    }
+  }
+  if(guardButton){
+    guardButton.style.opacity=guardReady?'1':'.38';
+    guardButton.classList.toggle('on',player.guarding);
+    guardButton.setAttribute('aria-disabled',guardReady?'false':'true');
+  }
   w.update(player.x, player.z, active ? (touchMode ? 3.5 : 5) : 2);
   w.flushUrgent(touchMode ? 2 : 3, touchMode ? 2 : 3);
   if (active) {
@@ -674,6 +693,7 @@ function frame(now) {
     const lightv = game.lightAt(player.x, player.y + 1.5, player.z);
     if (hand.mesh) {
       if (hand.bow) { hand.mesh.position.set(0.48 + bobx, -0.36 + bob - (1 - hand.equip) * 0.6 - sw * 0.12, -0.75); hand.mesh.rotation.set(0.05, -0.55, 0.1); }
+      else if (player.guarding && hand.tool) { hand.mesh.position.set(0.27+bobx,-0.23+bob,-0.56); hand.mesh.rotation.set(0.7,-0.48,0.68); }
       else if (hand.isBlock) { hand.mesh.position.set(0.5 + bobx, -0.42 + bob - (1 - hand.equip) * 0.6 - sw * 0.18, -0.85 - sw * 0.25); hand.mesh.rotation.set(0.15 + sw * 0.5, -0.6 - sw * 0.35, 0); }
       else { hand.mesh.position.set(0.5 + bobx, -0.4 + bob - (1 - hand.equip) * 0.6 - sw * 0.14, -0.8 - sw * 0.2); hand.mesh.rotation.set(0.1 - sw * 0.9, hand.tool ? -1.15 : -0.9, hand.tool ? -0.35 + sw * 0.4 : -0.1); }
       if (player.drawT > 0) { const dw = Math.min(1, player.drawT); hand.mesh.position.x -= dw * 0.1; hand.mesh.position.z += dw * 0.12; hand.mesh.rotation.z += dw * 0.15; hand.mesh.position.x += Math.sin(game.time * 40) * 0.002 * dw; }

@@ -3,6 +3,8 @@ import * as B from './blocks.js';
 import { Arrow } from './entities.js';
 import { assistedMeleeTarget } from './combat-targeting.js';
 import { playerAttackDamage,playerMaxHealth } from './combat-progression.js';
+import {guardDamage,isSwordEquipped,GUARD_MAX_STAMINA,GUARD_DRAIN_PER_SECOND,
+  GUARD_REGEN_PER_SECOND,GUARD_BREAK_COOLDOWN} from './combat-guard.js';
 
 const REACH = 5.0;
 export class Player {
@@ -14,8 +16,13 @@ export class Player {
     this.inv = new Array(36).fill(null); this.sel = 0; this.xp = 0; this.armor = [null, null, null, null]; this.drawT = 0;
     this.fallDist = 0; this.regenT = 0; this.starveT = 0; this.stepT = 0; this.bob = 0; this.hurtFlash = 0;
     this.mineT = 0; this.mineKey = ''; this.attackCd = 0; this.placeCd = 0; this.eatT = 0; this.swing = 0;
+    this.resetGuard();
     this.target = null; this.mobTarget = null; this.jumpCd = 0; this.lastSpace = 0; this.inWater = false; this.headWater = false;
     this.spawn = { x: 0, y: 80, z: 0 }; this.kbx = 0; this.kbz = 0; this.step = true;
+  }
+  resetGuard() {
+    this.guarding=false; this.guardStamina=GUARD_MAX_STAMINA;
+    this.guardElapsed=0; this.guardCooldown=0;
   }
   get eyeY() { return this.y + (this.sneaking ? 1.47 : 1.62); }
   get maxHealth() { return playerMaxHealth(this.game.adventure?.level||1); }
@@ -47,15 +54,33 @@ export class Player {
   }
   consumeHeld() { const s = this.held(); if (!s || this.creative || s.flurryUnlimited) return; s.n--; if (s.n <= 0) this.inv[this.sel] = null; this.game.ui.dirtyInv = true; }
   // ------------------------------------------------------------ damage
-  hurt(dmg, sx, sz) {
+  hurt(dmg, sx, sz, type='environment') {
     if (this.dead || this.creative || this.invuln > 0) return;
     const pts = this.armorPts();
     if (pts > 0 && dmg > 0.5) { dmg *= 1 - Math.min(20, pts) * 0.04; for (let i = 0; i < 4; i++) { const a = this.armor[i]; if (a) { if (a.d === undefined) a.d = B.ITEMS[a.id].armor.dur; a.d--; if (a.d <= 0) { this.armor[i] = null; this.game.sound.play('break', { sound: 'stone', vol: 0.8 }); } } } this.game.ui.dirtyInv = true; this.game.ui.armorSig = ''; }
     // Winter Wards reduce incoming damage without making a castle invincible.
     if(Number.isFinite(sx)&&Number.isFinite(sz)&&this.game.adventure?.isShielded(this.x,this.y,this.z))
       dmg=Math.max(.4,dmg*.4);
-    this.health -= dmg; this.invuln = 0.5; this.hurtFlash = 0.5;
-    if (sx !== undefined) { const dx = this.x - sx, dz = this.z - sz, d = Math.hypot(dx, dz) || 1; this.kbx = dx / d * 5.5; this.kbz = dz / d * 5.5; this.vy = Math.max(this.vy, 4.2); this.onGround = false; }
+    const guard=guardDamage({damage:dmg,guarding:this.guarding,
+      elapsed:this.guardElapsed,stamina:this.guardStamina,yaw:this.yaw,
+      x:this.x,z:this.z,sourceX:sx,sourceZ:sz,type});
+    if(guard.staminaCost>0){
+      this.guardStamina=Math.max(0,this.guardStamina-guard.staminaCost);
+      if(this.guardStamina===0){this.guarding=false;this.guardCooldown=GUARD_BREAK_COOLDOWN;}
+    }
+    if(guard.blocked){
+      dmg=guard.damage;
+      this.game.sound.play('hit',{vol:guard.perfect?.75:.4});
+      if(guard.perfect)this.game.ui?.toast?.('✦ Perfect Parry!');
+    }
+    this.health -= dmg; this.invuln = 0.5; this.hurtFlash = guard.blocked ? .22 : .5;
+    if (Number.isFinite(sx)&&Number.isFinite(sz)) {
+      const dx=this.x-sx,dz=this.z-sz,d=Math.hypot(dx,dz)||1;
+      const push=guard.blocked?(guard.perfect?1.2:2.7):5.5;
+      this.kbx=dx/d*push;this.kbz=dz/d*push;
+      this.vy=Math.max(this.vy,guard.blocked?(guard.perfect?1.2:2.4):4.2);
+      this.onGround=false;
+    }
     this.game.sound.play('hurt'); this.exh += 0.1;
     if (this.health <= 0) { this.health = 0; this.die(); }
   }
@@ -67,6 +92,7 @@ export class Player {
     g.ui.dirtyInv = true; g.onPlayerDeath();
   }
   respawn() {
+    this.resetGuard();
     this.dead = false; this.health = this.maxHealth; this.hunger = 20; this.sat = 5; this.air = 10; this.vx = this.vy = this.vz = 0; this.kbx = this.kbz = 0; this.fireT = 0; this.fallDist = 0;
     this.x = this.spawn.x; this.y = this.spawn.y; this.z = this.spawn.z;
   }
@@ -77,18 +103,32 @@ export class Player {
     this.invuln = Math.max(0, this.invuln - dt); this.hurtFlash = Math.max(0, this.hurtFlash - dt);
     this.attackCd = Math.max(0, this.attackCd - dt); this.placeCd = Math.max(0, this.placeCd - dt); this.jumpCd = Math.max(0, this.jumpCd - dt);
     this.swing = Math.max(0, this.swing - dt * 4.5);
+    this.guardCooldown=Math.max(0,this.guardCooldown-dt);
+    const sword=isSwordEquipped(this.held(),B.ITEMS);
+    const guardWanted=!!input.guard&&sword&&!this.creative&&!this.flying&&this.guardCooldown<=0&&this.guardStamina>0;
+    this.guarding=guardWanted;
+    if(guardWanted){
+      this.guardElapsed+=dt;
+      this.guardStamina=Math.max(0,this.guardStamina-GUARD_DRAIN_PER_SECOND*dt);
+      if(this.guardStamina<=0){this.guarding=false;this.guardCooldown=GUARD_BREAK_COOLDOWN;}
+    }else{
+      this.guardElapsed=0;
+      if(this.guardCooldown<=0)this.guardStamina=Math.min(GUARD_MAX_STAMINA,
+        this.guardStamina+GUARD_REGEN_PER_SECOND*dt);
+    }
     const bx = Math.floor(this.x), bz = Math.floor(this.z);
     this.inWater = w.getBlock(bx, Math.floor(this.y + 0.4), bz) === B.WATER;
     this.headWater = w.getBlock(bx, Math.floor(this.eyeY), bz) === B.WATER;
     const inLava = w.getBlock(bx, Math.floor(this.y + 0.3), bz) === B.LAVA || w.getBlock(bx, Math.floor(this.y + 1.2), bz) === B.LAVA;
     this.sneaking = input.sneak && !this.flying;
-    this.sprinting = input.sprint && input.fwd > 0 && !this.sneaking && (this.hunger > 6 || this.creative);
+    this.sprinting = input.sprint && input.fwd > 0 && !this.sneaking && !this.guarding && (this.hunger > 6 || this.creative);
     // wish direction
     let f = input.fwd, s = input.strafe; const l = Math.hypot(f, s); if (l > 1) { f /= l; s /= l; }
     const sy = Math.sin(this.yaw), cy = Math.cos(this.yaw);
     const wx = -sy * f + cy * s, wz = -cy * f - sy * s;
     let speed = 4.3;
     if (this.sprinting) speed = 5.7; if (this.sneaking) speed = 1.6;
+    if (this.guarding) speed=Math.min(speed,2.5);
     if (this.flying) speed = this.sprinting ? 20 : 10.5;
     if (this.inWater && !this.flying) speed *= 0.55;
     if (this.eatT > 0) speed *= 0.5;
@@ -192,6 +232,13 @@ export class Player {
     const g = this.game, w = g.world;
     if (this.dead) return;
     this.aim();
+    // Raising the sword is a defensive stance: no simultaneous mining,
+    // attacks, eating, bow drawing or block placement.
+    if (this.guarding){
+      this.mineKey='';this.mineT=0;this.mineProgress=0;
+      this.drawT=0;this.eatT=0;this.rightHandled=false;
+      return;
+    }
     // left
     if (input.left || (input.attackPressed && this.mobTarget)) {
       if (this.mobTarget) {
