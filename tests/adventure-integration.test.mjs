@@ -450,3 +450,30 @@ test('Tier III Winter Ward requires Stormspire progression and boosts castle pro
   assert.equal(h.adventure.isShielded(.5,43,.5),false);
  }finally{h.restore();}
 });
+
+test('Winter Ward automatically fires at hostile monsters but grants no free player kills',()=>{
+ const h=createHarness();try{
+  h.adventure.load({level:7,clears:1});h.adventure.resetWorld(false);
+  h.world.setBlock(0,43,0,h.B.WARD_BEACON);
+  const enemy=new h.game.Mob(h.game,'frostling',5,43,0,{level:2});
+  enemy.hp=6;h.game.mobs.push(enemy);
+  for(let i=0;i<40;i++)h.adventure.update(.23);
+  assert.equal(enemy.dead,true,'automatic Ward shots must damage nearby monsters');
+  assert.equal(h.adventure.serialize().kills,0,'turret kills must not count as manual XP kills');
+ }finally{h.restore();}
+});
+
+test('player death immediately fails active defense and removes raid monsters',()=>{
+ const h=createHarness();try{
+  h.adventure.load({level:6,clears:1});h.adventure.resetWorld(false);
+  h.world.setBlock(0,43,0,h.B.WARD_BEACON);
+  h.adventure.open();h.panel.findButton('Start Defense Trial').listeners.click();
+  const mobs=h.game.mobs.filter(m=>m.raidId);
+  assert.equal(mobs.length,2);
+  h.game.player.dead=true;h.adventure.update(.02);
+  assert.equal(h.adventure.isSiegeActive(),false);
+  assert.equal(h.adventure.serialize().castle.losses,1);
+  assert.ok(mobs.every(m=>m.dead));
+  assert.equal(h.world.getBlock(0,43,0),h.B.WARD_BEACON);
+ }finally{h.restore();}
+});
