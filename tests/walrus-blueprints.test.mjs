@@ -85,6 +85,10 @@ test('only explicit well-formed Testnet verification receipts are accepted',()=>
   {format:'flurrycraft-walrus-blueprint-v1',network:'testnet',
    blobId:id,digest:'a'.repeat(64),name:'Snow Cabin',author:'Yeti'});
  assert.throws(()=>walrusBlueprintReceipt({format:'other',blobId:id}),/receipt/);
+ assert.throws(()=>walrusBlueprintReceipt({
+  format:'flurrycraft-walrus-blueprint-v1',network:'mainnet',
+  blobId:id,digest:'a'.repeat(64)
+ }),/not for Testnet/);
  assert.throws(()=>walrusBlueprintReceipt({format:'flurrycraft-walrus-blueprint-v1',
   blobId:id,digest:'invalid'}),/SHA-256/);
 });
