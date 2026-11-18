@@ -52,6 +52,10 @@ The codebase includes a Move 2024 contract and a wallet-aware browser UI for exp
 
 Blueprint geometry would be stored publicly inside the onchain NFT, so a buyer could retrieve the actual building. Anyone can still copy public voxel data; the token is not copyright or an exclusivity guarantee. Never enter wallet recovery phrases into the game.
 
+## Castle Defense — Winter Ward sieges
+
+**Castle Defense (source-implemented November 18):** Winter Wards now upgrade through **Tier I–III**, increasing shield radius and auto-attacking nearby hostile creatures (no free kill XP). Stand by a Ward and open **Menu → Winter Adventure → Castle Defense** to review your available upgrades, then start an **optional three-wave raid**. Monsters attack the Ward shield instead of dismantling the castle. Tap **Repair Ward** in the raid HUD (2 Frost Shards + 4 Froststone for 22 integrity) or fight enemies normally. Wins grant materials and XP; failed defenses keep your buildings and upgrades intact. Tier II requires Level 10; Tier III requires Level 15 plus a Stormspire clear. Old saved Wards become Tier I automatically, and victories/losses save per world. **No raids start automatically**; active waves do not resume after reloading. See [Castle Defense guide](docs/CASTLE_DEFENSE.md).
+
 ## Winter Adventure (two playable chapters)
 
 **November 18 mobile gameplay update:** the Survival HUD now shows live health and food below LV, with an optional **HEAL** button. Every heal costs **2 Frost Shards**, restores **up to 6 HP**, and has a **12-second cooldown**. Recovery also appears in Menu → Winter Adventure. Frostlings and Snow Prowlers stop slightly farther from the first-person camera while keeping their attack range, and newly generated spruce branches leave more room to walk and fight underneath. Nighttime ambient visibility is slightly brighter, the red damage vignette is softer, the enemy nameplate is higher, and the mobile hotbar is more compact. Existing saves and player-built blocks are kept, but unedited procedural tree foliage can change when chunks regenerate. These improvements are source-implemented; real-device regression testing is still required.
@@ -66,7 +70,7 @@ New Survival worlds get a **three-chamber Frost Ruins** with a real walk-in entr
 
 **Important:** Stormspire is a new generated structure, but creating it edits a 15 × 51-block footprint and can replace existing player builds. Check the marked area and back up the world before confirming. Existing worlds never receive the new fortress automatically. Building may pause until chunks near the site are loaded. Creature XP for this chapter is tuned to avoid jumping through the entire level range after one clear.
 
-Progress, trial clears and Wards are stored per world. Only Survival earns XP; Creative remains a free building sandbox. Chapters 1 and 2 are implemented in source; content for Levels 21–100 and advanced castle defense remain future milestones. Phone/browser gameplay verification is still pending.
+Progress, trial clears, Ward upgrades, Castle Defense victories and castle protection are stored per world. Only Survival earns XP; Creative remains a free building sandbox. Chapters 1 and 2 and Castle Defense Tier I–III are implemented in source; content for Levels 21–100, further siege types and multiplayer remain future milestones. Phone/browser gameplay verification is still pending.
 
 ## Finding places in your world
 
