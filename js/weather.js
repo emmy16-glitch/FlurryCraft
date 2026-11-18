@@ -146,7 +146,8 @@ export class Weather {
     this.intensity=Math.max(profile.min,Math.min(profile.max,this.intensity));
     const gust=Math.sin(this.time*.41)+.4*Math.sin(this.time*1.23+.7);
     this.wind=profile.wind+profile.gust*gust;
-    const budget=this._quality;
+    // Performance preset trims snow-fill cost without changing the storm mode.
+    const budget=this._quality*(this.graphicsPreset==='performance'?.72:1);
     const nearCount=snowParticleBudget(this.near.count,mode,budget,this.intensity);
     const farCount=snowParticleBudget(this.far.count,mode,budget,this.intensity);
     this._moveSnow(this.far,cam,world,dt,this.wind,this.intensity,farCount,0);
