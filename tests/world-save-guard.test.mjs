@@ -1,7 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {BACKUP_LIMIT,BACKUP_INTERVAL_MS,validateWorldSave,
-  parseWorldSave,loadWorldSafely,saveWorldSafely} from '../js/world-save-guard.js';
+  parseWorldSave,loadWorldSafely,saveWorldSafely,
+  WORLD_BACKUP_FORMAT,WORLD_BACKUP_MAX_CHARS,
+  exportWorldBackup,parseWorldBackup,importWorldBackup} from '../js/world-save-guard.js';
 
 const sample=(hp=20)=>({seed:12345,
   player:{x:3.5,y:43,z:9.5,health:hp,inv:Array(36).fill(null)},
@@ -81,4 +83,60 @@ test('malformed saves are rejected before any world blocks get changed',()=>{
  const storage=memoryStore();
  storage.setItem('vc_world_bad','malformed');
  assert.throws(()=>loadWorldSafely(storage,'bad'),/damaged/i);
+});
+
+test('portable export includes player inventory, castle progress, world edits and level',()=>{
+ const storage=memoryStore();
+ const state=sample(17);
+ state.adventure.abyss.clears=3;
+ state.adventure.castle={wins:5,bestTier:3};
+ state.player.inv[0]={id:326,n:1,d:580};
+ state.containers={'2,43,8':{type:'chest',slots:[{id:278,n:5}]}};
+ saveWorldSafely(storage,'home',state,10000);
+ const exportFile=exportWorldBackup(storage,'home',{name:'My Snow Castle',now:20000});
+ const raw=JSON.parse(exportFile);
+ assert.equal(raw.format,WORLD_BACKUP_FORMAT);
+ assert.equal(raw.createdAt,20000);
+ const parsed=parseWorldBackup(exportFile);
+ assert.equal(parsed.name,'My Snow Castle');
+ assert.equal(parsed.world.player.health,17);
+ assert.equal(parsed.world.player.inv[0].id,326);
+ assert.equal(parsed.world.adventure.abyss.clears,3);
+ assert.equal(parsed.world.adventure.castle.wins,5);
+ assert.deepEqual(parsed.world.containers,state.containers);
+ assert.deepEqual(parsed.world.edits,state.edits);
+});
+test('restore creates a new save without overwriting original and can reopen it',()=>{
+ const storage=memoryStore(),old=sample(12);
+ saveWorldSafely(storage,'original',old,10000);
+ const exportFile=exportWorldBackup(storage,'original',{name:'Old Castle'});
+ const before=storage.getItem('vc_world_original');
+ const imported=importWorldBackup(storage,'imported-1',exportFile);
+ assert.equal(imported.id,'imported-1');
+ assert.equal(imported.name,'Old Castle');
+ assert.equal(storage.getItem('vc_world_original'),before);
+ assert.equal(loadWorldSafely(storage,'imported-1').world.player.health,12);
+ assert.throws(()=>importWorldBackup(storage,'original',exportFile),/never overwritten/);
+ assert.equal(storage.getItem('vc_world_original'),before);
+});
+test('portable backup importer rejects malicious, oversized and unknown-format files',()=>{
+ const storage=memoryStore();
+ const ok=JSON.stringify({format:WORLD_BACKUP_FORMAT,name:'Valid',world:sample()});
+ for(const input of [
+  '{}',
+  JSON.stringify({...JSON.parse(ok),format:'flurrycraft-wallet-private-key-v1'}),
+  JSON.stringify({...JSON.parse(ok),world:{...sample(),edits:{1:[0,65535]}}}),
+  'x'.repeat(WORLD_BACKUP_MAX_CHARS+1),
+ ])assert.throws(()=>parseWorldBackup(input));
+ assert.throws(()=>importWorldBackup(storage,'unsafe/slot',ok),/Invalid new world slot/);
+ assert.equal(storage.keys.length,0,'invalid imports must not write anything');
+});
+test('can export a recovered world safely while retaining damaged primary',()=>{
+ const storage=memoryStore();
+ saveWorldSafely(storage,'recovery',sample(16),10000);
+ saveWorldSafely(storage,'recovery',sample(10),20000);
+ storage.setItem('vc_world_recovery','damaged primary');
+ const payload=exportWorldBackup(storage,'recovery',{name:'Recovered World'});
+ assert.equal(parseWorldBackup(payload).world.player.health,16);
+ assert.equal(storage.getItem('vc_world_recovery'),'damaged primary');
 });
