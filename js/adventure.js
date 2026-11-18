@@ -916,6 +916,7 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
   }
   function update(dt){
     if(game.player.dead&&siege)stopSiege('You fell defending your castle · Defense lost');
+    if(game.player.dead&&trial)stopTrial('Dungeon run ended on player death');
     const play=game.state==='play'&&!game.paused&&!game.player.dead&&!isInterfaceBusy();
     const unobstructed=play&&!game.ui.isOpen;
     pill.style.display=unobstructed&&!game.player.creative?'flex':'none';
@@ -941,6 +942,7 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
     }
     if(denPending)buildTick();
     if(stormPending)stormBuildTick();
+    if(auroraPending)auroraBuildTick();
     towerTick(dt);
     if(siege)tickSiege(dt);
     const dungeonReady=!game.player.creative&&progress.denBuilt&&
@@ -948,28 +950,36 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
     const atFrost=dungeonReady&&!trial&&withinDungeonEntry(game.player,progress.den);
     const atStorm=canEnterStorm()&&!trial&&progress.storm.built&&
       progress.storm.version>=STORM_VERSION&&nearStormGate(game.player,progress.storm.site);
-    entryChapter=atStorm?'storm':'frost';
-    entryButton.textContent=atStorm?'Enter Stormspire':'Enter Frost Ruins';
-    entryButton.setAttribute('aria-label',atStorm?'Enter Stormspire Keep dungeon':'Enter Frost Ruins dungeon');
-    entryButton.style.display=unobstructed&&(atStorm||atFrost)?'block':'none';
+    const atAurora=canEnterAurora()&&!trial&&progress.aurora.built&&
+      progress.aurora.version>=AURORA_VERSION&&nearAuroraGate(game.player,progress.aurora.site);
+    entryChapter=atAurora?'aurora':atStorm?'storm':'frost';
+    const dungeonName=atAurora?'Aurora Citadel':atStorm?'Stormspire':'Frost Ruins';
+    entryButton.textContent='Enter '+dungeonName;
+    entryButton.setAttribute('aria-label','Enter '+dungeonName+' dungeon');
+    entryButton.style.display=unobstructed&&(atAurora||atStorm||atFrost)?'block':'none';
     if(!trial){
       dungeonStatus.style.display='none';
       return;
     }
-    const p=game.player,stormRun=trial.chapter==='storm';
-    const d=stormRun?progress.storm.site:progress.den;
-    if(!d||p.dead||p.creative||Math.hypot(p.x-d.x,p.z-d.z)>(stormRun?54:38)){
-      stopTrial((stormRun?'Stormspire':'Frost Ruins')+' run ended');return;
+    const p=game.player,auroraRun=trial.chapter==='aurora',stormRun=trial.chapter==='storm';
+    const d=auroraRun?progress.aurora.site:stormRun?progress.storm.site:progress.den;
+    if(!d||p.dead||p.creative||
+      Math.hypot(p.x-d.x,p.z-d.z)>(auroraRun?73:stormRun?54:38)){
+      stopTrial((auroraRun?'Aurora Citadel':stormRun?'Stormspire':'Frost Ruins')+
+        ' run ended');return;
     }
-    const names=stormRun?STORM_ROOM_NAMES:ROOM_NAMES;
-    let stage=names[trial.wave]+' · '+(trial.wave+1)+'/3';
-    if(trial.remaining.size===0&&trial.wave<2)stage='Room clear · Continue deeper';
+    const names=auroraRun?AURORA_ROOM_NAMES:stormRun?STORM_ROOM_NAMES:ROOM_NAMES;
+    const lastWave=auroraRun?3:2;
+    let stage=names[trial.wave]+' · '+(trial.wave+1)+'/'+(lastWave+1);
+    if(trial.remaining.size===0&&trial.wave<lastWave)
+      stage='Room clear · Continue deeper';
     dungeonStatus.textContent=stage;
     dungeonStatus.style.display=unobstructed?'block':'none';
     if(trial.nextIn>0)trial.nextIn-=dt;
     if(trial.remaining.size===0&&trial.nextIn<=0){
-      if(trial.wave>=2){finishTrial();return;}
-      if((stormRun?inStormRoom(p,d,trial.wave+1):enteredChamber(p,d,trial.wave+1))){
+      if(trial.wave>=lastWave){finishTrial();return;}
+      if((auroraRun?inAuroraRoom(p,d,trial.wave+1):
+        stormRun?inStormRoom(p,d,trial.wave+1):enteredChamber(p,d,trial.wave+1))){
         trial.wave++;spawnWave();
       }
     }
