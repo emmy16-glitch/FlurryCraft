@@ -48,6 +48,15 @@ test('custom game systems are connected', () => {
   assert.match(readFileSync('js/edit-history.js','utf8'),/class EditHistory/);
   assert.match(main,/game\.flurry\.recordChange/);
   assert.match(main,/visibilitychange/);
+  assert.match(main,/exportWorldBackup/);
+  assert.match(main,/importWorldBackup/);
+  assert.match(main,/Save & Download World Backup/);
+  assert.match(main,/Restore World Backup/);
+  assert.match(main,/escapeWorldText/);
+  assert.match(readFileSync('js/world-save-guard.js','utf8'),/flurrycraft-world-backup-v1/);
+  assert.match(readFileSync('js/creator-studio-ui.js','utf8'),/Import Walrus Receipt File/);
+  assert.match(readFileSync('js/walrus-blueprints.js','utf8'),/Walrus receipt is not for Testnet/);
+  assert.match(readFileSync('js/sui-bridge.js','utf8'),/await o\.content/);
   assert.match(flurry,/locations.length>96/);
   assert.match(readFileSync('js/blocks.js','utf8'),/DOOR_CLOSED = 72/);
   assert.match(readFileSync('js/blocks.js','utf8'),/FIREPLACE = 77/);
