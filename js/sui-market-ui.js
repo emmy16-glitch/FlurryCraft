@@ -6,7 +6,7 @@ import { drawBlueprintCard, blueprintSummary } from './creator-studio.js';
 
 export function initSuiMarketUI({game,panel,openDialog,closeDialog,notify,startPreview}) {
   const pkg=packageId(SUI_PACKAGE_ID);
-  let sdkPromise=null,mintTarget=null,lastDigest=null,tab='explore',busy=false,generation=0;
+  let sdkPromise=null,mintTarget=null,lastDigest=null,tab='explore',busy=false,generation=0,readonlyOpen=false;
   const make=(tag,text,parent=panel)=>{
     const el=document.createElement(tag);if(text!==undefined)el.textContent=String(text);
     parent.appendChild(el);return el;
@@ -246,7 +246,26 @@ export function initSuiMarketUI({game,panel,openDialog,closeDialog,notify,startP
     if(!pkg){
       const state=make('section');state.className='fc-market-waiting';
       make('strong','Testnet launch in preparation',state);
-      make('p','The marketplace contract is being validated. NFT transactions are not available yet.',state);
+      make('p','The marketplace contract has not been published to Sui Testnet. No NFT mint, listing or payment is possible yet.',state);
+      make('p','You can still connect a compatible wallet in read-only mode to check Testnet connectivity and balance. A connection never signs a transaction by itself.',state);
+      button(state,readonlyOpen?'Refresh read-only Testnet wallet':'Check Testnet Wallet (read only)',()=>{
+        readonlyOpen=true;
+        open({tab});
+      },'fc-market-secondary');
+      if(readonlyOpen){
+        const status=make('p','Checking Sui Testnet without requesting a signature…',state);
+        try{
+          const sdk=await walletModule();
+          const network=await sdk.testnetStatus();
+          if(!isCurrent(token))return;
+          status.textContent='Sui '+network.network+' RPC reachable. No contract deployed; trading is disabled.';
+          await wallet(sdk);
+          if(!isCurrent(token))return;
+          text('Connecting a wallet here is optional and cannot initiate a mint, listing, purchase or cancellation.','fc-market-help');
+        }catch(e){
+          if(isCurrent(token))status.textContent='Wallet inspection unavailable: '+errorText(e);
+        }
+      }
       if(mintTarget){
         const {info}=card(panel,mintTarget.name,
           blueprintSummary(mintTarget).blockCount+' blocks · Ready for a future Testnet mint',mintTarget);
