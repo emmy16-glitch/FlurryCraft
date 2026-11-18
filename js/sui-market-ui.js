@@ -267,6 +267,9 @@ export function initSuiMarketUI({game,panel,openDialog,closeDialog,notify,startP
           if(isCurrent(token))status.textContent='Wallet inspection unavailable: '+errorText(e);
         }
       }
+      // Publishing is a developer action, not a normal player's earning step.
+      // ?developer=1 only declutters the UI; it is NOT access control.
+      if(new URLSearchParams(location.search).get('developer')==='1'){
       const deployment=make('details');deployment.className='fc-market-more';
       const summary=make('summary','Developer · Publish Sui Testnet Contract',deployment);
       summary.title='One-time public Testnet transaction requiring your own wallet approval';
@@ -324,6 +327,7 @@ export function initSuiMarketUI({game,panel,openDialog,closeDialog,notify,startP
             busy=false;notify(game,'Testnet publish failed: '+errorText(error));
           }
         },'fc-market-primary');
+      }
       }
       if(mintTarget){
         const {info}=card(panel,mintTarget.name,
