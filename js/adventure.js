@@ -7,6 +7,7 @@ from './adventure-core.js';
 import { DUNGEON_VERSION,ROOM_NAMES,ROOM_OFFSETS,chamberPosition,dungeonEntrance,
  withinDungeonEntry,enteredChamber,generateFrostDungeon } from './frost-dungeon.js';
 import { aimedCreature,actionForTarget } from './combat-hud-core.js';
+import { playerAttackBonus } from './combat-progression.js';
 import { AURORA_VERSION,AURORA_UNLOCK_LEVEL,AURORA_ROOM_NAMES,AURORA_ROOM_OFFSETS,
   AURORA_FOOTPRINT,AURORA_REWARDS,auroraRoom,nearAuroraGate,inAuroraRoom,
   findAuroraSite,generateAuroraCitadel } from './aurora-citadel.js';
@@ -205,6 +206,9 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
     game.sound?.play?.('levelup',{vol:.6});
     if(previous<STORM_UNLOCK_LEVEL&&progress.level>=STORM_UNLOCK_LEVEL)
       notify(game,progress.clears>0?'Stormspire Keep unlocked · Open Winter Adventure':'Level 10! Clear Frost Ruins to unlock Stormspire Keep.');
+    if(playerAttackBonus(previous)<playerAttackBonus(progress.level))
+      notify(game,'Melee power increased! Level '+progress.level+
+        ' · +'+playerAttackBonus(progress.level).toFixed(2)+' attack damage');
     if(previous<AURORA_UNLOCK_LEVEL&&progress.level>=AURORA_UNLOCK_LEVEL)
       notify(game,progress.storm.clears>0?
         'Aurora Citadel unlocked · Open Winter Adventure':
@@ -671,6 +675,7 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
     xp.className='fc-level-xp';
     const activity=make('div',undefined,hero);activity.className='fc-level-stats';
     make('span',progress.kills+' creatures defeated',activity);
+    make('span','+'+playerAttackBonus(progress.level).toFixed(2).replace(/0+$/,'').replace(/\.$/,'')+' melee power',activity);
     make('span',progress.clears+' Frost Ruins clears',activity);
     make('span',progress.storm.clears+' Stormspire clears',activity);
     make('span',progress.aurora.clears+' Aurora clears',activity);
