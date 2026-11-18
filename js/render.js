@@ -87,6 +87,18 @@ void main(){
   float hs = hash(q);
   if (hs > 0.9965 && h > -0.05) { float tw = 0.7 + 0.3*sin(uTime*2.0 + hs*80.0); col += vec3(0.9,0.95,1.0) * uNight * tw * (hs-0.9965)*250.0; }
   col = mix(col, vec3(dot(col, vec3(0.33))) * vec3(0.85,0.88,0.92), uCloudy*0.7);
+  // Atmospheric aurora curtains: subtle, animated, and only evaluated at night.
+  // Uses the existing dome material, no new draw calls or postprocessing passes.
+  if (uNight > 0.36 && h > 0.02) {
+    float angle = atan(d.x, d.z);
+    float ridge = 0.31 + 0.075*sin(angle*4.0 + uTime*0.085)
+                       + 0.035*sin(angle*10.0 - uTime*0.12);
+    float ribbon = exp(-85.0*pow(h-ridge,2.0));
+    float veil = 0.48 + 0.52*sin(angle*17.0 + uTime*0.22 + sin(h*16.0)*0.8);
+    float north = smoothstep(-0.35,0.28,d.z);
+    float brightness = ribbon*north*uNight*uNight*(1.0-uCloudy*0.75)*0.53;
+    col += mix(vec3(0.02,0.29,0.21),vec3(0.10,0.21,0.47),veil)*brightness;
+  }
   gl_FragColor = vec4(col, 1.0);
 }`;
 const CLOUD_V = `varying vec2 vUv; varying vec3 vW; void main(){ vUv = uv; vec4 w = modelMatrix*vec4(position,1.0); vW = w.xyz; gl_Position = projectionMatrix*viewMatrix*w; }`;
