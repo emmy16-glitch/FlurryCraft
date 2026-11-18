@@ -1264,7 +1264,9 @@ export function initFlurry(game) {
   all.style.pointerEvents='auto';
   all.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();showBuildMenu();});
   hotbar.appendChild(all);
-  game.flurry={update,onWorldReady,openLofiDialogue,guideToLofi,countPlayerPlacement,recordChange,isApplyingEdit:()=>editHistory.applying,buildInProgress:()=>!!buildJob,isThird:()=>third,daylightLocked:()=>brightWorld,openBlockLibrary:showBuildMenu,openCreatorStudio:()=>creatorStudio.open(),openMarketplace:()=>suiMarket.open(),startJudgeTour:()=>judgeTour.start(),showSmartBuilder,undoEdit:undoSmartBuild,redoEdit:redoLastEdit};
+  game.flurry={update,onWorldReady,openLofiDialogue,guideToLofi,
+    getLofiPosition:()=>npcPosition?{...npcPosition}:null,
+    countPlayerPlacement,recordChange,isApplyingEdit:()=>editHistory.applying,buildInProgress:()=>!!buildJob,isThird:()=>third,daylightLocked:()=>brightWorld,openBlockLibrary:showBuildMenu,openCreatorStudio:()=>creatorStudio.open(),openMarketplace:()=>suiMarket.open(),startJudgeTour:()=>judgeTour.start(),showSmartBuilder,undoEdit:undoSmartBuild,redoEdit:redoLastEdit};
   document.addEventListener('keydown', e=>{
     if(e.target && /INPUT|TEXTAREA/.test(e.target.tagName))return;
     if(e.code==='Escape' && overlay.style.display==='flex'){close();e.stopImmediatePropagation();return;}
