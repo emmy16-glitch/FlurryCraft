@@ -11,6 +11,7 @@ import { ItemEntity, FallingBlock, PrimedTNT } from './entities.js';
 import { Weather } from './weather.js';
 import { initTouch } from './touch.js';
 import { initFlurry } from './flurry.js';
+import { saveWorldSafely,loadWorldSafely } from './world-save-guard.js';
 import { migratePlayerHealth } from './combat-progression.js';
 
 const $ = (id) => document.getElementById(id);
@@ -293,7 +294,7 @@ function saveGame() {
       player: { x: player.x, y: player.y, z: player.z, yaw: player.yaw, pitch: player.pitch, health: player.health, healthCap: player.maxHealth, hunger: player.hunger, sat: player.sat, inv: player.inv, sel: player.sel, spawn: player.spawn, flying: player.flying, armor: player.armor },
       adv: [...game.adv], adventure:game.adventure?.serialize(), played: basePlayed + game.time,
     };
-    localStorage.setItem('vc_world_' + currentId, JSON.stringify(data));
+    saveWorldSafely(localStorage,currentId,data);
     const idx = loadIndex().filter((w) => w.id !== currentId); idx.push({ id: currentId, name: currentName, date: Date.now(), mode: settings.mode, played: Math.round(basePlayed + game.time) }); saveIndex(idx);
     return true;
   } catch (e) { ui.toast('Save failed: storage may be full');return false; }
@@ -307,8 +308,18 @@ document.addEventListener('visibilitychange', () => {
 // ---------------------------------------------------------------- start
 let currentName = 'World', basePlayed = 0;
 function startGame(cont, id) {
-  let save = null; if (cont) { try { save = JSON.parse(localStorage.getItem('vc_world_' + id)); } catch (e) {} }
-  if (cont && !save) return;
+  let save=null,recovered=false;
+  if(cont){
+    try{
+      const result=loadWorldSafely(localStorage,id);
+      save=result.world;recovered=result.recovered;
+    }catch(e){
+      ui.toast('World save could not be loaded safely: '+e.message);
+      return;
+    }
+  }
+  if(cont&&!save)return;
+  if(recovered)ui.toast('Your previous valid world backup was recovered. Save the world again after checking it.');
   const seedStr = $('mSeed').value.trim();
   let seed = save ? save.seed : (seedStr ? (/^-?\d+$/.test(seedStr) ? parseInt(seedStr, 10) : [...seedStr].reduce((a, c) => (Math.imul(a, 31) + c.charCodeAt(0)) | 0, 7)) : Math.floor(Math.random() * 1e9));
   if (save) { settings.mode = save.mode; settings.diff = save.diff; currentId = id; basePlayed = save.played || 0; const m = loadIndex().find((w) => w.id === id); currentName = m ? m.name : 'World'; }
