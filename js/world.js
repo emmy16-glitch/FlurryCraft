@@ -107,11 +107,20 @@ export class World {
       }
     }
   }
-  flushUrgent(maxN = 8) {
+  flushUrgent(maxN = 8, budgetMs = Infinity) {
+    // Editing many blocks marks neighbouring chunks urgent; rebuilding all of
+    // them in one frame creates visible input hitches, especially on phones.
+    // Always finish at least one eligible mesh so the edit stays responsive.
+    const started = performance.now();
     let n = 0;
     for (const c of this.chunks.values()) {
-      if (c.urgent) { if (this.hasNeighbors(c)) { this.buildMesh(c); n++; } else c.urgent = false; if (n >= maxN) break; }
+      if (!c.urgent) continue;
+      if (!this.hasNeighbors(c)) { c.urgent = false; continue; }
+      if (n > 0 && performance.now() - started >= budgetMs) break;
+      this.buildMesh(c); n++;
+      if (n >= maxN) break;
     }
+    return n;
   }
   hasNeighbors(c) {
     for (let dz = -1; dz <= 1; dz++) for (let dx = -1; dx <= 1; dx++) if ((dx || dz) && !this.getChunk(c.cx + dx, c.cz + dz)) return false;
