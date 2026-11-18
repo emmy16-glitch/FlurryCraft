@@ -2,7 +2,7 @@
 // winter-specific enemy rewards and real protective Winter Ward blocks.
 // Future chapters can reuse the 1–100 rules without cluttering gameplay.
 import { xpToNext,safeAdventure,grantXP,trialLocation,ruinBlocks,
-  FROST_CREATURES,winterMobLevel,winterKillXP,trialWaves,stormspireWaves,auroraWaves,withinWard,chooseWinterMob }
+  FROST_CREATURES,winterMobLevel,winterKillXP,trialWaves,stormspireWaves,auroraWaves,abyssWaves,withinWard,chooseWinterMob }
 from './adventure-core.js';
 import { DUNGEON_VERSION,ROOM_NAMES,ROOM_OFFSETS,chamberPosition,dungeonEntrance,
  withinDungeonEntry,enteredChamber,generateFrostDungeon } from './frost-dungeon.js';
@@ -11,6 +11,9 @@ import { playerAttackBonus,playerMaxHealth,healthAfterLevelUp } from './combat-p
 import { AURORA_VERSION,AURORA_UNLOCK_LEVEL,AURORA_ROOM_NAMES,AURORA_ROOM_OFFSETS,
   AURORA_FOOTPRINT,AURORA_REWARDS,auroraRoom,nearAuroraGate,inAuroraRoom,
   findAuroraSite,generateAuroraCitadel } from './aurora-citadel.js';
+import { ABYSS_VERSION,ABYSS_UNLOCK_LEVEL,ABYSS_ROOM_NAMES,ABYSS_ROOM_OFFSETS,
+  ABYSS_FOOTPRINT,ABYSS_REWARDS,abyssRoom,nearAbyssGate,inAbyssRoom,
+  findAbyssSite,generateFrostboundAbyss } from './frostbound-abyss.js';
 import { STORM_VERSION,STORM_UNLOCK_LEVEL,STORM_ROOM_NAMES,STORM_ROOM_OFFSETS,
   STORM_FOOTPRINT,stormRoom,nearStormGate,inStormRoom,stormSite,generateStormspire }
   from './stormspire-dungeon.js';
@@ -28,6 +31,7 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
   let siege=null,siegeCounter=0,wardFireAcc=0,wardCooldowns=new Map();
   let stormPending=false,stormBuildPlan=[],stormBuildIndex=0,entryChapter='frost';
   let auroraPending=false,auroraBuildPlan=[],auroraBuildIndex=0;
+  let abyssPending=false,abyssBuildPlan=[],abyssBuildIndex=0;
   const make=(tag,text,parent=panel)=>{
     const n=document.createElement(tag);if(text!==undefined)n.textContent=text;
     parent.appendChild(n);return n;
@@ -140,11 +144,12 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
     const {levelsGained,...saved}=progress;
     return {...saved,beacons:progress.beacons.map(b=>({...b})),
       storm:{...progress.storm,site:progress.storm.site?{...progress.storm.site}:null},
-      aurora:{...progress.aurora,site:progress.aurora.site?{...progress.aurora.site}:null}};
+      aurora:{...progress.aurora,site:progress.aurora.site?{...progress.aurora.site}:null},
+      abyss:{...progress.abyss,site:progress.abyss.site?{...progress.abyss.site}:null}};
   }
-  function load(raw){stopSiege(null,false);stopTrial(null);wardCooldowns.clear();wardFireAcc=0;progress=safeAdventure(raw);world=game.world;trial=null;denPending=false;stormPending=false;auroraPending=false;
+  function load(raw){stopSiege(null,false);stopTrial(null);wardCooldowns.clear();wardFireAcc=0;progress=safeAdventure(raw);world=game.world;trial=null;denPending=false;stormPending=false;auroraPending=false;abyssPending=false;
     buildPlan=[];buildIndex=0;stormBuildPlan=[];stormBuildIndex=0;
-    auroraBuildPlan=[];auroraBuildIndex=0;nextRun++;levelNoticeTime=0;hitTimer=0;levelNotice.hidden=true;
+    auroraBuildPlan=[];auroraBuildIndex=0;abyssBuildPlan=[];abyssBuildIndex=0;nextRun++;levelNoticeTime=0;hitTimer=0;levelNotice.hidden=true;
     enemyHUD.hidden=true;entryButton.style.display='none';dungeonStatus.style.display='none';
     lastTargetStamp='';recoveryCooldown=0;vitalsTick=0;lastVitals='';vitals.style.display='none';siegeHUD.style.display='none';refreshPill();}
   function resetWorld(isNew){
@@ -160,8 +165,8 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
     barFill.style.width=(needed()?Math.min(100,progress.xp/needed()*100):100)+'%';
     if(siege)activeLabel.textContent='DEF '+(siege.wave+1)+'/3';
     else if(trial)activeLabel.textContent=
-      (trial.chapter==='aurora'?'AURORA ':trial.chapter==='storm'?'SPIRE ':'WAVE ')+
-      (trial.wave+1)+'/'+(trial.chapter==='aurora'?4:3);
+      (trial.chapter==='abyss'?'ABYSS ':trial.chapter==='aurora'?'AURORA ':trial.chapter==='storm'?'SPIRE ':'WAVE ')+
+      (trial.wave+1)+'/'+(['abyss','aurora'].includes(trial.chapter)?4:3);
     else activeLabel.textContent='';
     pill.setAttribute('aria-label','Level '+progress.level+', '+progress.xp+
       ' of '+needed()+' XP. Open Winter Adventure');
@@ -216,6 +221,10 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
     if(playerAttackBonus(previous)<playerAttackBonus(progress.level))
       notify(game,'Melee power increased! Level '+progress.level+
         ' · +'+playerAttackBonus(progress.level).toFixed(2)+' attack damage');
+    if(previous<ABYSS_UNLOCK_LEVEL&&progress.level>=ABYSS_UNLOCK_LEVEL)
+      notify(game,progress.aurora.clears>0?
+        'Frostbound Abyss unlocked · Open Winter Adventure':
+        'Level 30 reached! Clear Aurora Citadel to unlock Frostbound Abyss.');
     if(previous<AURORA_UNLOCK_LEVEL&&progress.level>=AURORA_UNLOCK_LEVEL)
       notify(game,progress.storm.clears>0?
         'Aurora Citadel unlocked · Open Winter Adventure':
@@ -450,8 +459,9 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
       trial.remaining.delete(mob);
       if(trial.remaining.size===0){
         trial.nextIn=.75;
-        if(trial.wave<(trial.chapter==='aurora'?3:2))
-          notify(game,trial.chapter==='aurora'?'Aurora hall clear · Advance to the next seal':
+        if(trial.wave<(['aurora','abyss'].includes(trial.chapter)?3:2))
+          notify(game,trial.chapter==='abyss'?'Rift chamber cleared · Go deeper':
+            trial.chapter==='aurora'?'Aurora hall clear · Advance to the next seal':
             trial.chapter==='storm'?'Hall cleared · Continue toward the blizzard':
             'Chamber cleared · Walk deeper into the ruins');
       }
@@ -460,6 +470,40 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
   function safeItem(id,n){
     const remaining=game.player.addItem(id,n);
     if(remaining>0)game.spawnItem(id,remaining,game.player.x,game.player.y+.8,game.player.z);
+  }
+  function canEnterAbyss(){
+    return progress.level>=ABYSS_UNLOCK_LEVEL&&progress.aurora.clears>=1;
+  }
+  function guideAbyss(){
+    const site=progress.abyss.site;
+    if(site)explorer.guideTo({id:'frostbound-abyss',name:'Frostbound Abyss',
+      x:site.x,z:site.z-8});
+  }
+  function buildAbyss(fromMenu=false){
+    const state=progress.abyss;
+    if(!world||!state.site||abyssPending||
+      (state.built&&state.version>=ABYSS_VERSION))return false;
+    abyssBuildPlan=generateFrostboundAbyss(state.site,B,world.gen);
+    abyssBuildIndex=0;abyssPending=true;
+    if(fromMenu)notify(game,'Frostbound Abyss construction queued · Follow the map marker');
+    return true;
+  }
+  function abyssBuildTick(){
+    if(!abyssPending||!world||world!==game.world)return;
+    const end=Math.min(abyssBuildPlan.length,abyssBuildIndex+28);
+    for(let i=abyssBuildIndex;i<end;i++){
+      const [x,,z]=abyssBuildPlan[i];
+      if(!world.loaded(x,z))return;
+    }
+    for(;abyssBuildIndex<end;abyssBuildIndex++){
+      const [x,y,z,id]=abyssBuildPlan[abyssBuildIndex];
+      if(world.getBlock(x,y,z)!==id)world.setBlock(x,y,z,id);
+    }
+    if(abyssBuildIndex>=abyssBuildPlan.length){
+      abyssPending=false;abyssBuildPlan=[];abyssBuildIndex=0;
+      progress.abyss.built=true;progress.abyss.version=ABYSS_VERSION;
+      notify(game,'Frostbound Abyss ready! Enter the northern Rift Gate.');
+    }
   }
   function canEnterAurora(){
     return progress.level>=AURORA_UNLOCK_LEVEL&&progress.storm.clears>=1;
