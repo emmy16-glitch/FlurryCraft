@@ -4,6 +4,8 @@ const finite=(x)=>Number.isFinite(x);
 export const LOFI_TALK_RADIUS=6.2;
 export function nearLofi(player,npc,radius=LOFI_TALK_RADIUS){
   if(!player||!npc||![player.x,player.z,npc.x,npc.z,radius].every(finite)||radius<=0)return false;
+  if(Number.isFinite(player.y)&&Number.isFinite(npc.y)&&
+     Math.abs(player.y-npc.y)>4.5)return false;
   return Math.hypot(player.x-npc.x,player.z-npc.z)<=radius;
 }
 export function lofiQuestDialogue(expedition,creative=false){
