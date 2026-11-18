@@ -85,7 +85,7 @@ async function smoke(label,options){
     const timing=await page.evaluate(()=>new Promise(resolve=>{
       const deltas=[],started=performance.now();let previous=started;
       const measure=now=>{
-        if(now>previous&&now-previous<250)deltas.push(now-previous);
+        if(now>previous)deltas.push(now-previous); // Count slow frames too.
         previous=now;
         if(now-started<3000){requestAnimationFrame(measure);return;}
         deltas.sort((a,b)=>a-b);
@@ -97,6 +97,17 @@ async function smoke(label,options){
     }));
     console.log(label+' movement '+travelled.toFixed(2)+' blocks; rAF frame timing '+JSON.stringify(timing));
     await page.screenshot({path:out+'/'+label+'-moving.png'});
+    // Lighting showcase only: time-of-day and camera angle for a REAL game
+    // screenshot, no fabricated gameplay, minted items, or awards.
+    if(!options.isMobile){
+      await page.evaluate(()=>{
+        const g=window.game;
+        g.env.tod=.83;g.weather.setMode('calm');
+        g.player.pitch=.37;g.player.yaw=Math.PI;
+      });
+      await page.waitForTimeout(700);
+      await page.screenshot({path:out+'/'+label+'-aurora-lighting.png'});
+    }
     const result=await page.evaluate(()=>({
       state:window.game?.state,mode:window.game?.player?.creative?'creative':'survival',
       level:window.game?.adventure?.level??null,
