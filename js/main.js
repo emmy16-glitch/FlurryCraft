@@ -11,7 +11,7 @@ import { ItemEntity, FallingBlock, PrimedTNT } from './entities.js';
 import { Weather } from './weather.js';
 import { initTouch } from './touch.js';
 import { initFlurry } from './flurry.js';
-import { saveWorldSafely,loadWorldSafely } from './world-save-guard.js';
+import { saveWorldSafely,loadWorldSafely,exportWorldBackup,importWorldBackup,WORLD_BACKUP_MAX_CHARS } from './world-save-guard.js';
 import { migratePlayerHealth } from './combat-progression.js';
 
 const $ = (id) => document.getElementById(id);
@@ -260,26 +260,91 @@ $('pVol').value = settings.vol; $('pVol').oninput = (e) => { settings.vol = +e.t
 $('pSens').value = settings.sens; $('pSens').oninput = (e) => { settings.sens = +e.target.value; saveSettings(); };
 sound.volume = settings.vol / 100;
 $('bResume').onclick = () => { showPause(false); game.requestPointer(); };
-$('bSave').onclick = () => { saveGame(); ui.toast('World saved'); };
+$('bSave').onclick = () => { if(saveGame())ui.toast('World saved'); };
 $('bQuit').onclick = () => { if(game.flurry?.buildInProgress()){ui.toast('Finish placing your building before exiting');return;}if(saveGame()) location.reload();else ui.toast('Still in game. Save before exiting.'); };
 $('bRespawn').onclick = () => { $('death').style.display = 'none'; player.respawn(); ui.dirtyInv = true; game.requestPointer(); };
 // ---- world list (multiple save slots)
 const IDX_KEY = 'vc_index_v1'; let currentId = null;
-function saveIndex(a) { try { localStorage.setItem(IDX_KEY, JSON.stringify(a)); } catch (e) {} }
+function saveIndex(a) { try { localStorage.setItem(IDX_KEY, JSON.stringify(a));return true; } catch (e) {return false;} }
 function loadIndex() {
   let a = []; try { a = JSON.parse(localStorage.getItem(IDX_KEY) || '[]'); } catch (e) {}
   try { const old = localStorage.getItem(SAVE_KEY); if (old) { localStorage.setItem('vc_world_legacy', old); localStorage.removeItem(SAVE_KEY); if (!a.some((w) => w.id === 'legacy')) a.push({ id: 'legacy', name: 'Old World', date: Date.now(), mode: 's' }); saveIndex(a); } } catch (e) {}
   return a.filter((w) => localStorage.getItem('vc_world_' + w.id));
 }
+const escapeWorldText=value=>String(value??'').replace(/[&<>"']/g,ch=>
+  ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+function downloadWorldBackup(id){
+  try{
+    const meta=loadIndex().find(w=>w.id===id);
+    const raw=exportWorldBackup(localStorage,id,{name:meta?.name||'Snow World'});
+    const blob=new Blob([raw],{type:'application/json'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;
+    a.download='flurrycraft-world-'+String(id).replace(/[^a-zA-Z0-9_-]/g,'')+'.json';
+    document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),5000);
+    ui.toast('World backup downloaded. Store it outside the browser.');
+  }catch(error){ui.toast('World backup failed: '+error.message);}
+}
+const restoreInput=document.createElement('input');
+restoreInput.type='file';restoreInput.accept='.json,application/json';
+restoreInput.style.display='none';restoreInput.setAttribute('aria-label','Select a FlurryCraft world backup');
+document.body.appendChild(restoreInput);
+const recoveryRow=document.createElement('div');
+recoveryRow.className='fc-world-recovery';
+const recoveryButton=document.createElement('button');
+recoveryButton.type='button';recoveryButton.textContent='Restore World Backup (.json)';
+recoveryButton.addEventListener('click',()=>restoreInput.click());
+recoveryRow.appendChild(recoveryButton);
+const recoveryNote=document.createElement('small');
+recoveryNote.textContent='Backups create NEW world slots; your existing worlds are never replaced.';
+recoveryRow.appendChild(recoveryNote);
+$('worldlist').insertAdjacentElement('afterend',recoveryRow);
+restoreInput.addEventListener('change',async()=>{
+  const file=restoreInput.files?.[0];restoreInput.value='';
+  if(!file)return;
+  if(file.size>WORLD_BACKUP_MAX_CHARS){ui.toast('Backup exceeds the 20 MB import limit.');return;}
+  try{
+    const raw=await file.text();
+    const stamp=Date.now().toString(36);
+    let id='',count=0;
+    do{id='w'+stamp+'-'+(++count).toString(36);}
+    while(localStorage.getItem('vc_world_'+id)!==null&&count<1000);
+    if(count>=1000)throw new Error('Could not reserve a unique world slot');
+    const entry=importWorldBackup(localStorage,id,raw);
+    const index=loadIndex();
+    index.push({id,name:entry.name,date:Date.now(),
+      mode:entry.world.mode==='c'?'c':'s',played:Math.round(entry.world.played||0)});
+    if(!saveIndex(index)){
+      localStorage.removeItem('vc_world_'+id);
+      throw new Error('Storage is full; new world index was not saved.');
+    }
+    renderWorlds();
+    ui.toast('World restored as a separate save: '+entry.name);
+  }catch(error){ui.toast('World restore failed: '+error.message);}
+});
 function renderWorlds() {
   const el = $('worldlist'), list = loadIndex().sort((a, b) => b.date - a.date);
   if (!list.length) { el.innerHTML = '<div class="hint">Create your first world.</div>'; return; }
-  el.innerHTML = list.map((w) => `<div class="wrow"><div class="wi"><b>${w.name.replace(/</g, '')}</b><span>${w.mode === 'c' ? 'Creative' : 'Survival'} &middot; ${w.played ? Math.floor(w.played / 3600) + 'h ' + Math.floor(w.played % 3600 / 60) + 'm played &middot; ' : ''} ${new Date(w.date).toLocaleDateString()} ${new Date(w.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span></div><div class="wb play" data-id="${w.id}">Play</div><div class="wb del" data-id="${w.id}">&times;</div></div>`).join('');
+  el.innerHTML = list.map(w=>{
+    const id=escapeWorldText(w.id),name=escapeWorldText(w.name);
+    const played=Number.isFinite(w.played)&&w.played>=0?w.played:0;
+    const date=new Date(Number.isFinite(w.date)?w.date:0);
+    const stamp=date.toLocaleDateString()+' '+date.toLocaleTimeString([],{
+      hour:'2-digit',minute:'2-digit'});
+    return `<div class="wrow"><div class="wi"><b>${name}</b><span>${w.mode==='c'?'Creative':'Survival'} &middot; ${played?Math.floor(played/3600)+'h '+Math.floor(played%3600/60)+'m played &middot; ':''}${escapeWorldText(stamp)}</span></div><div class="wb play" role="button" tabindex="0" data-id="${id}">Play</div><div class="wb backup" role="button" tabindex="0" data-id="${id}">Backup</div><div class="wb del" role="button" tabindex="0" data-id="${id}" aria-label="Delete world">&times;</div></div>`;
+  }).join('');
 }
 $('worldlist').addEventListener('click', (e) => {
   const b = e.target.closest('.wb'); if (!b) return; const id = b.dataset.id;
-  if (b.classList.contains('play')) { sound.init(); startGame(true, id); }
-  else if (confirm('Delete this world permanently?')) { localStorage.removeItem('vc_world_' + id); saveIndex(loadIndex().filter((w) => w.id !== id)); renderWorlds(); }
+  if(b.classList.contains('play')){sound.init();startGame(true,id);}
+  else if(b.classList.contains('backup'))downloadWorldBackup(id);
+  else if(confirm('Delete this world permanently? Export a backup first if you want to keep it.')){
+    localStorage.removeItem('vc_world_'+id);
+    localStorage.removeItem('vc_world_'+id+'_backup');
+    saveIndex(loadIndex().filter(w=>w.id!==id));renderWorlds();
+  }
 });
 renderWorlds();
 $('bNew').onclick = () => { sound.init(); startGame(false); };
