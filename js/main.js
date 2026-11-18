@@ -44,7 +44,8 @@ const game = window.game = {
   lightAt(x, y, z) {
     const v = this.world.getLight(Math.floor(x), Math.floor(y), Math.floor(z));
     const sk = Math.pow((v >> 4) / 15, 1.55) * this.env.dayLight, bk = Math.pow((v & 15) / 15, 1.7);
-    return Math.min(1, 0.06 + Math.max(sk, bk) * 0.94);
+    // Keep a faint winter-blue visibility floor at dusk/night on mobile.
+    return Math.min(1, 0.12 + Math.max(sk, bk) * 0.88);
   },
   spawnItem(id, n, x, y, z, d, vel) {
     if (!id || n <= 0) return;
