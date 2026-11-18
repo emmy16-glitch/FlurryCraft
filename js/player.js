@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import * as B from './blocks.js';
 import { Arrow } from './entities.js';
 import { assistedMeleeTarget } from './combat-targeting.js';
-import { playerAttackDamage } from './combat-progression.js';
+import { playerAttackDamage,playerMaxHealth } from './combat-progression.js';
 
 const REACH = 5.0;
 export class Player {
@@ -10,7 +10,7 @@ export class Player {
     this.game = game;
     this.x = 0; this.y = 80; this.z = 0; this.vx = this.vy = this.vz = 0; this.hw = 0.3; this.h = 1.8;
     this.yaw = 0; this.pitch = 0; this.onGround = false; this.flying = false; this.creative = false;
-    this.health = 20; this.hunger = 20; this.sat = 5; this.exh = 0; this.air = 10; this.dead = false; this.invuln = 0;
+    this.health = playerMaxHealth(1); this.hunger = 20; this.sat = 5; this.exh = 0; this.air = 10; this.dead = false; this.invuln = 0;
     this.inv = new Array(36).fill(null); this.sel = 0; this.xp = 0; this.armor = [null, null, null, null]; this.drawT = 0;
     this.fallDist = 0; this.regenT = 0; this.starveT = 0; this.stepT = 0; this.bob = 0; this.hurtFlash = 0;
     this.mineT = 0; this.mineKey = ''; this.attackCd = 0; this.placeCd = 0; this.eatT = 0; this.swing = 0;
@@ -18,6 +18,7 @@ export class Player {
     this.spawn = { x: 0, y: 80, z: 0 }; this.kbx = 0; this.kbz = 0; this.step = true;
   }
   get eyeY() { return this.y + (this.sneaking ? 1.47 : 1.62); }
+  get maxHealth() { return playerMaxHealth(this.game.adventure?.level||1); }
   held() { return this.inv[this.sel]; }
   // ------------------------------------------------------------ inventory
   maxStack(id) { return (B.ITEMS[id] && B.ITEMS[id].stack) || 64; }
@@ -66,7 +67,7 @@ export class Player {
     g.ui.dirtyInv = true; g.onPlayerDeath();
   }
   respawn() {
-    this.dead = false; this.health = 20; this.hunger = 20; this.sat = 5; this.air = 10; this.vx = this.vy = this.vz = 0; this.kbx = this.kbz = 0; this.fireT = 0; this.fallDist = 0;
+    this.dead = false; this.health = this.maxHealth; this.hunger = 20; this.sat = 5; this.air = 10; this.vx = this.vy = this.vz = 0; this.kbx = this.kbz = 0; this.fireT = 0; this.fallDist = 0;
     this.x = this.spawn.x; this.y = this.spawn.y; this.z = this.spawn.z;
   }
   // ------------------------------------------------------------ physics
@@ -142,9 +143,9 @@ export class Player {
     if (!this.creative) {
       this.exh += moved * (this.sprinting ? 0.1 : 0.0) ;
       if (this.exh > 4) { this.exh -= 4; if (this.sat > 0) this.sat = Math.max(0, this.sat - 1); else this.hunger = Math.max(0, this.hunger - 1); }
-      if (this.hunger >= 18 && this.health < 20) { this.regenT += dt * (this.hunger >= 20 ? 2 : 1); if (this.regenT > 4) { this.regenT = 0; this.health = Math.min(20, this.health + 1); this.exh += 0.6; } }
+      if (this.hunger >= 18 && this.health < this.maxHealth) { this.regenT += dt * (this.hunger >= 20 ? 2 : 1); if (this.regenT > 4) { this.regenT = 0; this.health = Math.min(this.maxHealth, this.health + 1); this.exh += 0.6; } }
       else if (this.hunger <= 0) { this.starveT += dt; if (this.starveT > 4) { this.starveT = 0; if (this.health > 1) this.hurt(1); } } else { this.regenT = 0; this.starveT = 0; }
-    } else { this.health = 20; this.hunger = 20; }
+    } else { this.health = this.maxHealth; this.hunger = 20; }
     // footsteps + bobbing
     const hs = Math.hypot(this.vx, this.vz);
     if (this.onGround && hs > 0.5) { this.stepT += hs * dt; this.bob += hs * dt * 1.7; if (this.stepT > (this.sprinting ? 2.3 : 2.0)) { this.stepT = 0; const b = w.getBlock(Math.floor(this.x), Math.floor(this.y - 0.2), Math.floor(this.z)); g.sound.play('step', { sound: B.BLOCKS[b] ? B.BLOCKS[b].sound : 'stone' }); } }
