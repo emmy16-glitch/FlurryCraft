@@ -924,7 +924,7 @@ export function initFlurry(game) {
     game.adventure.resetWorld(isNew);
     // A fresh guided tour showcases the snowy scenery instead of opening in
     // a grey whiteout. Existing player weather preferences remain untouched.
-    winterMode=game.weather.setMode(game.isJudgeDemo?'snowfall':
+    winterMode=game.weather.setMode(game.isJudgeDemo?'calm':
       read('flurrycraft_winter_weather_v1','snowfall'));
     weatherButton.textContent='Weather: '+weatherProfile(winterMode).label;
     equipStarterBlocks();
