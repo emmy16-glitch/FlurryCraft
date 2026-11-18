@@ -598,9 +598,11 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
     }
   }
   function trialSpawn(kind,level,index){
-    const den=trial.chapter==='aurora'?progress.aurora.site:
+    const den=trial.chapter==='abyss'?progress.abyss.site:
+      trial.chapter==='aurora'?progress.aurora.site:
       trial.chapter==='storm'?progress.storm.site:progress.den;
-    const room=trial.chapter==='aurora'?auroraRoom(den,trial.wave):
+    const room=trial.chapter==='abyss'?abyssRoom(den,trial.wave):
+      trial.chapter==='aurora'?auroraRoom(den,trial.wave):
       trial.chapter==='storm'?stormRoom(den,trial.wave):chamberPosition(den,trial.wave);
     const locations=[[-2,-2],[2,2],[-2,2],[2,-2],[0,0]];
     const [dx,dz]=locations[index%locations.length];
@@ -611,12 +613,14 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
   }
   function spawnWave(){
     if(!trial)return;
-    const members=(trial.chapter==='aurora'?auroraWaves(progress.level):
+    const members=(trial.chapter==='abyss'?abyssWaves(progress.level):
+      trial.chapter==='aurora'?auroraWaves(progress.level):
       trial.chapter==='storm'?stormspireWaves(progress.level):trialWaves(progress.level))[trial.wave]||[];
     trial.remaining=new Set();trial.waiting=false;trial.nextIn=0;
     members.forEach((spec,index)=>trialSpawn(spec.kind,spec.level,index));
     refreshPill();
-    const rooms=trial.chapter==='aurora'?AURORA_ROOM_NAMES:
+    const rooms=trial.chapter==='abyss'?ABYSS_ROOM_NAMES:
+      trial.chapter==='aurora'?AURORA_ROOM_NAMES:
       trial.chapter==='storm'?STORM_ROOM_NAMES:ROOM_NAMES;
     notify(game,rooms[trial.wave]+' · Defeat '+members.length+
       ' '+(members.length===1?'enemy':'enemies'));
@@ -624,7 +628,21 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
   function finishTrial(){
     const chapter=trial?.chapter||'frost';
     trial=null;
-    if(chapter==='aurora'){
+    if(chapter==='abyss'){
+      const first=progress.abyss.clears===0;
+      progress.abyss.clears++;
+      safeItem(B.ABYSS_CRYSTAL,ABYSS_REWARDS.crystals);
+      safeItem(B.FROST_SHARD,ABYSS_REWARDS.shards);
+      safeItem(B.FROST_BRICK,ABYSS_REWARDS.bricks);
+      if(first)safeItem(B.ABYSS_BLADE,1);
+      const old=progress.level;
+      progress=grantXP(progress,ABYSS_REWARDS.xp);
+      refreshPill();
+      notify(game,first?
+        'Frostbound Abyss conquered! Abyss Blade, crystals, materials and XP earned':
+        'Frostbound Abyss cleared! Abyss Crystals, Froststone and XP earned');
+      levelUp(old);
+    }else if(chapter==='aurora'){
       const first=progress.aurora.clears===0;
       progress.aurora.clears++;
       safeItem(B.AURORA_CRYSTAL,AURORA_REWARDS.crystals);
@@ -670,8 +688,18 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
   function startTrial(chapter='frost'){
     if(game.player.creative){notify(game,'Enter a Survival world for dungeon combat');return;}
     if(trial||siege){notify(game,'Finish your current fight before entering a dungeon');return;}
-    const aurora=chapter==='aurora',storm=chapter==='storm',p=game.player;
-    if(aurora){
+    const abyss=chapter==='abyss',aurora=chapter==='aurora',storm=chapter==='storm',p=game.player;
+    if(abyss){
+      if(!canEnterAbyss()){
+        notify(game,'Reach Level 30 and clear Aurora Citadel once');return;
+      }
+      if(!progress.abyss.built||progress.abyss.version<ABYSS_VERSION){
+        notify(game,'Prepare Frostbound Abyss first');return;
+      }
+      if(!nearAbyssGate(p,progress.abyss.site)){
+        notify(game,'Approach the northern Rift Gate first');return;
+      }
+    }else if(aurora){
       if(!canEnterAurora()){
         notify(game,'Reach Level 20 and clear Stormspire Keep once');return;
       }
@@ -699,7 +727,7 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
     }
     if(game.difficulty<=0){notify(game,'Enable Easy or Normal combat to enter');return;}
     closeDialog();
-    trial={id:++nextRun,chapter:aurora?'aurora':storm?'storm':'frost',wave:0,
+    trial={id:++nextRun,chapter:abyss?'abyss':aurora?'aurora':storm?'storm':'frost',wave:0,
       remaining:new Set(),nextIn:0,waiting:false};
     spawnWave();
   }
@@ -713,7 +741,7 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
     const hero=make('section',undefined,panel);hero.className='fc-level-overview';
     const head=make('div',undefined,hero);head.className='fc-level-top';
     make('strong','Level '+progress.level,head);
-    make('span',progress.level<=10?'CHAPTER 1 · FROST RUINS':progress.level<=20?'CHAPTER 2 · STORMSPIRE':progress.level<=30?'CHAPTER 3 · AURORA CITADEL':'WINTER ADVENTURER',head);
+    make('span',progress.level<=10?'CHAPTER 1 · FROST RUINS':progress.level<=20?'CHAPTER 2 · STORMSPIRE':progress.level<=30?'CHAPTER 3 · AURORA CITADEL':progress.level<=40?'CHAPTER 4 · FROSTBOUND ABYSS':'WINTER ADVENTURER',head);
     const meter=make('div',undefined,hero);meter.className='fc-adventure-meter';
     meter.setAttribute('role','progressbar');meter.setAttribute('aria-label','Experience to next level');
     meter.setAttribute('aria-valuemin','0');
@@ -731,6 +759,7 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
     make('span',progress.clears+' Frost Ruins clears',activity);
     make('span',progress.storm.clears+' Stormspire clears',activity);
     make('span',progress.aurora.clears+' Aurora clears',activity);
+    make('span',progress.abyss.clears+' Abyss clears',activity);
     if(!game.player.creative){
       const recovery=make('section',undefined,panel);recovery.className='fc-adventure-card';
       make('h3','Survival · Recover Health',recovery);
