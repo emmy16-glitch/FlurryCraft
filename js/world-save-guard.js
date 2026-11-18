@@ -83,3 +83,44 @@ export function saveWorldSafely(storage,id,world,now=Date.now()){
   }
   return true;
 }
+
+
+// Portable backup files contain actual world data, not wallet credentials.
+// Import always creates a fresh world ID to avoid overwriting an older save.
+export const WORLD_BACKUP_FORMAT='flurrycraft-world-backup-v1';
+export const WORLD_BACKUP_MAX_CHARS=20_000_000;
+export function exportWorldBackup(storage,id,{name='Snow World',now=Date.now()}={}){
+  const {world}=loadWorldSafely(storage,id);
+  if(!world)throw new Error('No world exists in that save slot.');
+  const backup={
+    format:WORLD_BACKUP_FORMAT,
+    name:String(name||'Snow World').trim().slice(0,60)||'Snow World',
+    createdAt:Number.isFinite(now)?now:Date.now(),
+    world
+  };
+  const raw=JSON.stringify(backup);
+  if(raw.length>WORLD_BACKUP_MAX_CHARS)
+    throw new Error('World exceeds the 20 MB portable-backup limit.');
+  return raw;
+}
+export function parseWorldBackup(raw){
+  if(typeof raw!=='string'||!raw||raw.length>WORLD_BACKUP_MAX_CHARS)
+    throw new Error('World backup must be a JSON file smaller than 20 MB.');
+  const obj=JSON.parse(raw);
+  if(!isObj(obj)||obj.format!==WORLD_BACKUP_FORMAT)
+    throw new Error('Not a recognized FlurryCraft world backup.');
+  const world=validateWorldSave(obj.world);
+  return {name:String(obj.name||'Imported Snow World').trim().slice(0,60)||
+    'Imported Snow World',world};
+}
+export function importWorldBackup(storage,newId,raw){
+  if(!/^[A-Za-z0-9_-]{1,64}$/.test(String(newId)))
+    throw new Error('Invalid new world slot ID.');
+  const key='vc_world_'+newId;
+  if(storage.getItem(key)!==null)
+    throw new Error('World slot already exists. Existing worlds are never overwritten.');
+  const result=parseWorldBackup(raw);
+  const serialized=JSON.stringify(result.world);
+  storage.setItem(key,serialized);
+  return {id:newId,name:result.name,world:result.world};
+}
