@@ -245,3 +245,29 @@ test('an existing survival world may claim exactly one starter sword',()=>{
   assert.equal(h.panel.findButton('Get Starter Sword'),null);
  }finally{h.restore();}
 });
+
+test('Survival healing consumes two Frost Shards, shows real HP and enforces cooldown',()=>{
+ const h=createHarness();try{
+  h.game.player.health=7;
+  h.game.player.hunger=14;
+  h.inventory.set(h.B.FROST_SHARD,4);
+  h.adventure.load(null);h.adventure.resetWorld(false);
+  h.adventure.update(.016);
+  const vitals=h.document.getElementById('fcSurvivalVitals');
+  assert.equal(vitals.style.display,'block');
+  assert.match(vitals.renderedText,/7 \/ 20/);
+  const heal=vitals.findButton('HEAL');
+  assert.ok(heal);
+  heal.listeners.click({preventDefault(){},stopPropagation(){}});
+  assert.equal(h.game.player.health,13);
+  assert.equal(h.game.player.countItem(h.B.FROST_SHARD),2);
+  heal.listeners.click({preventDefault(){},stopPropagation(){}});
+  assert.equal(h.game.player.health,13,'cannot heal again during cooldown');
+  assert.equal(h.game.player.countItem(h.B.FROST_SHARD),2);
+  h.adventure.update(12.1);
+  h.document.getElementById('fcSurvivalVitals').findButton('HEAL')
+   .listeners.click({preventDefault(){},stopPropagation(){}});
+  assert.equal(h.game.player.health,19);
+  assert.equal(h.game.player.countItem(h.B.FROST_SHARD),0);
+ }finally{h.restore();}
+});
