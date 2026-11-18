@@ -2,7 +2,7 @@
 // hardware, a signed Sui wallet, or a successful Walrus upload.
 import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
-import { mkdirSync } from 'node:fs';
+import { mkdirSync,existsSync } from 'node:fs';
 
 const host='http://127.0.0.1:4173/';
 const out='browser-qa-artifacts';
@@ -72,7 +72,10 @@ async function smoke(label,options){
 }
 try{
   await pause(900);
+  const chrome=existsSync('/usr/bin/google-chrome')?'/usr/bin/google-chrome':
+    existsSync('/usr/bin/google-chrome-stable')?'/usr/bin/google-chrome-stable':null;
   browser=await chromium.launch({
+    ...(chrome?{executablePath:chrome}:{}),
     headless:true,
     args:['--no-sandbox','--use-gl=angle','--use-angle=swiftshader',
       '--enable-unsafe-swiftshader','--disable-dev-shm-usage']
