@@ -74,7 +74,13 @@ export class Player {
       if(guard.perfect)this.game.ui?.toast?.('✦ Perfect Parry!');
     }
     this.health -= dmg; this.invuln = 0.5; this.hurtFlash = guard.blocked ? .22 : .5;
-    if (sx !== undefined) { const dx = this.x - sx, dz = this.z - sz, d = Math.hypot(dx, dz) || 1; this.kbx = dx / d * 5.5; this.kbz = dz / d * 5.5; this.vy = Math.max(this.vy, 4.2); this.onGround = false; }
+    if (Number.isFinite(sx)&&Number.isFinite(sz)) {
+      const dx=this.x-sx,dz=this.z-sz,d=Math.hypot(dx,dz)||1;
+      const push=guard.blocked?(guard.perfect?1.2:2.7):5.5;
+      this.kbx=dx/d*push;this.kbz=dz/d*push;
+      this.vy=Math.max(this.vy,guard.blocked?(guard.perfect?1.2:2.4):4.2);
+      this.onGround=false;
+    }
     this.game.sound.play('hurt'); this.exh += 0.1;
     if (this.health <= 0) { this.health = 0; this.die(); }
   }
