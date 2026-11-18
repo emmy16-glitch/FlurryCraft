@@ -98,6 +98,10 @@ async function submit(tx){
   return result.Transaction.digest;
 }
 async function validateParsedNFT(nft){
+  if(!nft||!Array.isArray(nft.geometry)||nft.geometry.length<1||
+     nft.geometry.length>24000||!Array.isArray(nft.digest)||nft.digest.length!==32||
+     !Array.isArray(nft.name)||nft.name.length<1||nft.name.length>48)
+    throw new Error('NFT payload size or digest is invalid.');
   const bytes=Uint8Array.from(nft.geometry),digest=toHex(nft.digest);
   if(digest!==(await hashBytes(bytes)))throw new Error('Onchain blueprint digest is invalid.');
   const title=decodeString(nft.name);
@@ -106,6 +110,7 @@ async function validateParsedNFT(nft){
     size:blueprint.size,blocks:blueprint.blocks.length};
 }
 async function decodeNFT(raw,objectId){
+  if(!raw||raw.length>25000)throw new Error('NFT BCS payload exceeds its maximum size.');
   const parsed=await validateParsedNFT(nftBcs.parse(raw));
   return {objectId,...parsed};
 }
@@ -145,6 +150,7 @@ export async function getListing(pkg,listingId){
   if(!object?.content)throw new Error('Listing not found on Sui Testnet.');
   if(object.type!==listingType(id))throw new Error('Wrong contract package for listing.');
   if(object.owner?.$kind!=='Shared')throw new Error('Listing is not a shared escrow object.');
+  if(object.content.length>26000)throw new Error('Listing payload exceeds its maximum size.');
   const parsed=listingBcs.parse(object.content);
   if(BigInt(parsed.price)<=0n||parsed.digest?.length!==32)
     throw new Error('Listing has invalid price or digest metadata.');
