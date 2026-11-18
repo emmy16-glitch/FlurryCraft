@@ -9,6 +9,17 @@
 - UI: Menu → Sui Testnet or My Builds → More options → NFT Testnet. Three clean tabs for Explore, My NFTs and Create. Verified escrowed voxel geometry is previewable before buying; mint/list/buy/cancel use review screens and explicit wallet approval. Owned buildings are checked again before installation.
 - JS safety: invalid block rejection, max 24KB canonical geometry payload, deterministic hash, integer MIST price conversion, onchain escrow integrity checks, and mandatory wallet approval for transactions. The configured package's Move ABI is checked on Testnet and the client waits for transaction indexing before ownership refresh.
 
+## Stabilization and CLAY Sui Stack upgrade — 18 November 2026
+
+- **Read-only wallet mode before launch:** In **Sui Marketplace**, choose **Check Testnet Wallet (read only)** to query the Sui Testnet and connect a compatible wallet. This can show an address and a Testnet SUI balance; with an empty Package ID, no mint, listing, purchase, cancel or signature action is available. A wallet is never needed for normal gameplay.
+- **Up-to-date Sui v2 payment handling:** NFT purchases now use `Transaction.coin({balance: BigInt(...mist)})` so the SDK can source Testnet SUI from address balances or coin objects; exact price and live escrow status are checked again before signing.
+- **Additional protection:** The configured package's public ABI arity is checked, untrusted BCS NFT/listing payloads are bounded, a changing wallet account invalidates an asynchronous owned-NFT query, and the expected digest and escrow metadata are verified before previewing. ABI checks alone **do not replace** source verification or an audit.
+- **Separate deployment gate:** `npm run check:sui` and `.github/workflows/sui-readiness.yml` can check a published Testnet package without private keys. When no package ID is configured, the tool reports `UNPUBLISHED` without signing or enabling trading.
+- **Walrus Testnet for creator blueprints:** **My Builds → More options → Walrus Testnet Share** can upload only a deliberately selected **public** safe blueprint (24 KB maximum) through the official Walrus Testnet publisher, generating a SHA-256 receipt. **Storage & Backup → Import Walrus Blueprint** can retrieve and verify public geometry. This feature is *not* NFT minting, is not a private backup, and relies on testnet services with limited availability and CORS compatibility. No live cross-browser upload has yet been verified.
+- **Organizer fit:** CLAY Hackathon is hosted by Lofi the Yeti and describes Sui, Walrus and DeepBook as parts of the Sui Stack. The game integrates Sui/NFT source and optional Walrus storage; DeepBook liquidity/exchange trading is intentionally not needed for the mini-game.
+
+See [CLAY Sui Stack readiness](CLAY_SUI_STACK_READINESS.md) for the official checklist and end-to-end acceptance plan.
+
 The regular FlurryCraft browser game remains free and playable without a wallet.
 
 ## Before real Testnet transactions are possible
