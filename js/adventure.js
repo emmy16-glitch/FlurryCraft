@@ -21,7 +21,7 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
   let trial=null,nextRun=0,levelNoticeTime=0,lastTargetStamp='',lastTouchMode='';
   let entryLabel='',lastDungeonStatus='';
   let recoveryCooldown=0,vitalsTick=0,lastVitals='';
-  let siege=null,siegeCounter=0,wardFireAcc=0,siegeRepairsAt=0;
+  let siege=null,siegeCounter=0,wardFireAcc=0,wardCooldowns=new Map();
   let stormPending=false,stormBuildPlan=[],stormBuildIndex=0,entryChapter='frost';
   const make=(tag,text,parent=panel)=>{
     const n=document.createElement(tag);if(text!==undefined)n.textContent=text;
@@ -151,7 +151,8 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
   function refreshPill(){
     pillLevel.textContent='LV '+progress.level;
     barFill.style.width=(needed()?Math.min(100,progress.xp/needed()*100):100)+'%';
-    if(trial)activeLabel.textContent=(trial.chapter==='storm'?'SPIRE ':'WAVE ')+(trial.wave+1)+'/3';
+    if(siege)activeLabel.textContent='DEF '+(siege.wave+1)+'/3';
+    else if(trial)activeLabel.textContent=(trial.chapter==='storm'?'SPIRE ':'WAVE ')+(trial.wave+1)+'/3';
     else activeLabel.textContent='';
     pill.setAttribute('aria-label','Level '+progress.level+', '+progress.xp+
       ' of '+needed()+' XP. Open Winter Adventure');
@@ -245,10 +246,174 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
     notify(game,'Winter Ward upgraded to Tier '+w.tier+' · radius '+wardStats(w).radius);
     return true;
   }
+  function stopSiege(reason,recordLoss=true){
+    if(!siege)return;
+    const old=siege;siege=null;
+    for(const mob of old.remaining)if(!mob.dead&&typeof mob.remove==='function')mob.remove();
+    siegeHUD.style.display='none';refreshPill();
+    if(recordLoss)progress.castle.losses++;
+    if(reason)notify(game,reason);
+  }
+  function siegeWardTarget(mob){
+    if(!siege||mob?.raidId!==siege.id)return null;
+    const ward=currentWard(siege.ward);
+    return ward?{x:ward.x+.5,y:ward.y+.5,z:ward.z+.5}:null;
+  }
+  function siegeWardHit(mob,damage){
+    if(!siege||mob?.raidId!==siege.id)return false;
+    const ward=currentWard(siege.ward);
+    if(!ward)return false;
+    siege.integrity=Math.max(0,siege.integrity-Math.max(1,Number(damage)||1));
+    if(siege.integrity===0)stopSiege('Ward shield collapsed · Defense lost');
+    return true;
+  }
+  function findSiegeSpawn(ward,index){
+    // Fixed ring positions keep raids deterministic and do not modify terrain.
+    const spots=[[15,0],[-15,0],[0,15],[0,-15],[11,11],[-11,11],[11,-11],[-11,-11],
+      [18,2],[-18,-2],[2,18],[-2,-18]];
+    for(let step=0;step<spots.length;step++){
+      const [ox,oz]=spots[(index*3+step)%spots.length];
+      const x=Math.floor(ward.x+ox),z=Math.floor(ward.z+oz);
+      if(!world.loaded(x,z))continue;
+      const ground=world.gen?.column?.(x,z)?.h;
+      if(!Number.isFinite(ground))continue;
+      const y=Math.floor(ground)+1;
+      if(Math.abs(y-ward.y)>9)continue;
+      if(B.SOLID&&(!B.SOLID[world.getBlock(x,y-1,z)]||
+        B.SOLID[world.getBlock(x,y,z)]||B.SOLID[world.getBlock(x,y+1,z)]))continue;
+      return {x:x+.5,y:y+.05,z:z+.5};
+    }
+    return null;
+  }
+  function spawnSiegeWave(){
+    if(!siege)return false;
+    const ward=currentWard(siege.ward);
+    if(!ward){stopSiege('Winter Ward unavailable · Defense stopped');return false;}
+    const wave=siegeWaves(ward.tier,progress.level)[siege.wave]||[];
+    const positions=wave.map((_,i)=>findSiegeSpawn(ward,i));
+    if(positions.some(p=>!p)){
+      stopSiege('Nearby terrain has no safe raid spawn points · Defense stopped',false);
+      return false;
+    }
+    const current=siege;siege.remaining=new Set();siege.nextIn=0;
+    wave.forEach((spec,i)=>{
+      const p=positions[i];
+      const mob=new game.Mob(game,spec.kind,p.x,p.y,p.z,
+        {level:spec.level,raidId:current.id});
+      mob.raidId=current.id;
+      game.mobs.push(mob);current.remaining.add(mob);
+    });
+    refreshPill();
+    notify(game,'Castle Defense · Wave '+(current.wave+1)+'/3 · '+wave.length+' attackers!');
+    return true;
+  }
+  function startSiege(ward){
+    const w=currentWard(ward);
+    const check=canStartSiege({player:game.player,ward:w,world,level:progress.level,
+      clears:progress.clears,trialActive:!!trial,raidActive:!!siege});
+    if(!check.ok){notify(game,check.reason);return false;}
+    closeDialog();
+    const stats=wardStats(w);
+    siege={id:++siegeCounter,ward:{x:w.x,y:w.y,z:w.z},wardKey:wardKey(w),
+      wave:0,remaining:new Set(),nextIn:0,integrity:stats.integrity,
+      maxIntegrity:stats.integrity,repairCd:0};
+    const started=spawnSiegeWave();
+    if(started)notify(game,'Defend your Ward! Your buildings are never destroyed by this trial.');
+    return started;
+  }
+  function repairSiege(){
+    if(!siege)return false;
+    const p=game.player;
+    if(siege.repairCd>0){notify(game,'Repair cooling down');return false;}
+    if(siege.integrity>=siege.maxIntegrity){notify(game,'Ward shield already full');return false;}
+    if(p.countItem(B.FROST_SHARD)<REPAIR_COST.shards||
+       p.countItem(B.FROST_BRICK)<REPAIR_COST.bricks){
+      notify(game,'Repair needs 2 Frost Shards and 4 Froststone');return false;
+    }
+    for(let i=0;i<REPAIR_COST.shards;i++)p.takeItem(B.FROST_SHARD);
+    for(let i=0;i<REPAIR_COST.bricks;i++)p.takeItem(B.FROST_BRICK);
+    siege.integrity=Math.min(siege.maxIntegrity,siege.integrity+REPAIR_INTEGRITY);
+    siege.repairCd=1.5;
+    notify(game,'Ward shield restored');
+    return true;
+  }
+  function finishSiege(){
+    if(!siege)return;
+    const w=currentWard(siege.ward);
+    const tier=wardTier(w||{tier:1}),reward=SIEGE_REWARDS[tier];
+    siege=null;progress.castle.wins++;
+    progress.castle.bestTier=Math.max(progress.castle.bestTier,tier);
+    safeItem(B.FROST_SHARD,reward.shards);
+    safeItem(B.FROST_BRICK,reward.bricks);
+    const old=progress.level;progress=grantXP(progress,reward.xp);
+    refreshPill();levelUp(old);
+    siegeHUD.style.display='none';
+    notify(game,'Castle defended! Tier '+tier+' cleared · XP, shards and Froststone earned');
+  }
+  function tickSiege(dt){
+    if(!siege)return;
+    const ward=currentWard(siege.ward),p=game.player;
+    if(!ward||p.dead||p.creative||
+       Math.abs(p.y-ward.y)>13||
+       Math.hypot(p.x-ward.x-.5,p.z-ward.z-.5)>29){
+      stopSiege('You left your Ward behind · Defense lost');return;
+    }
+    siege.repairCd=Math.max(0,siege.repairCd-dt);
+    const count=Math.max(0,Math.ceil(siege.integrity));
+    siegeText.textContent='⚔ CASTLE DEFENSE · '+(siege.wave+1)+'/3 · Ward '+count+'/'+siege.maxIntegrity+' shield';
+    repairButton.disabled=siege.integrity>=siege.maxIntegrity||siege.repairCd>0||
+      p.countItem(B.FROST_SHARD)<REPAIR_COST.shards||
+      p.countItem(B.FROST_BRICK)<REPAIR_COST.bricks;
+    siegeHUD.style.display='block';
+    if(siege.remaining.size!==0)return;
+    if(siege.nextIn>0){siege.nextIn-=dt;return;}
+    if(siege.wave>=2){finishSiege();return;}
+    siege.wave++;spawnSiegeWave();
+  }
+  function towerTick(dt){
+    // A bounded, low-frequency scan; no extra per-frame geometry or projectiles.
+    wardFireAcc+=dt;
+    if(wardFireAcc<.22)return;
+    const elapsed=wardFireAcc;wardFireAcc=0;
+    for(const ward of progress.beacons){
+      if(!currentWard(ward))continue;
+      const key=wardKey(ward);
+      const cd=Math.max(0,(wardCooldowns.get(key)||0)-elapsed);
+      if(cd>0){wardCooldowns.set(key,cd);continue;}
+      const stats=wardStats(ward);
+      let target=null,distance=stats.range;
+      for(const mob of game.mobs){
+        if(!mob||mob.dead||mob.deadT>0||mob.sp?.passive||
+          typeof mob.hurt!=='function'||!Number.isFinite(mob.hp)||mob.hp<=0)continue;
+        if(mob.raidId&&(!siege||mob.raidId!==siege.id))continue;
+        const d=Math.hypot(mob.x-ward.x-.5,mob.z-ward.z-.5);
+        if(d>=distance||Math.abs(mob.y-ward.y)>9)continue;
+        if(typeof world.raycast==='function'){
+          const sx=ward.x+.5,sy=ward.y+1.6,sz=ward.z+.5;
+          const dx=mob.x-sx,dy=mob.y+mob.h*.5-sy,dz=mob.z-sz;
+          const length=Math.hypot(dx,dy,dz)||1;
+          if(world.raycast(sx,sy,sz,dx/length,dy/length,dz/length,length))continue;
+        }
+        target=mob;distance=d;
+      }
+      if(!target){wardCooldowns.set(key,0);continue;}
+      wardCooldowns.set(key,stats.cooldown);
+      target.hurt(stats.damage,ward.x+.5,ward.z+.5,false);
+      game.particles?.burst?.(target.x,target.y+Math.min(1.5,target.h*.6),target.z,
+        [137,225,250],Math.min(8,3+wardTier(ward)),1.5);
+    }
+  }
   function mobLevel(kind){return winterMobLevel(progress.level,kind,Math.random());}
   function roamingKind(){return chooseWinterMob(progress.level,Math.random());}
   function monsterDefeated(mob,byPlayer){
     if(!mob.sp.iceNative||!world||game.state!=='play')return;
+    if(siege&&mob.raidId===siege.id){
+      siege.remaining.delete(mob);
+      if(siege.remaining.size===0){
+        siege.nextIn=.8;
+        if(siege.wave<2)notify(game,'Wave cleared · Incoming attackers!');
+      }
+    }
     if(byPlayer&&!game.player.creative){
       progress.kills++;
       const result=grantXP(progress,winterKillXP(mob.kind,mob.level));
@@ -378,7 +543,7 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
   }
   function startTrial(chapter='frost'){
     if(game.player.creative){notify(game,'Enter a Survival world for dungeon combat');return;}
-    if(trial)return;
+    if(trial||siege){notify(game,'Finish your current fight before entering a dungeon');return;}
     const storm=chapter==='storm',p=game.player;
     if(storm){
       if(!canEnterStorm()){notify(game,'Level 10 and one Frost Ruins clear required');return;}
@@ -600,11 +765,13 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
     }
     levelNotice.style.display=unobstructed&&!game.player.creative?'block':'none';
     if(!play){
-      entryButton.style.display='none';dungeonStatus.style.display='none';
+      entryButton.style.display='none';dungeonStatus.style.display='none';siegeHUD.style.display='none';
       return;
     }
     if(denPending)buildTick();
     if(stormPending)stormBuildTick();
+    towerTick(dt);
+    if(siege)tickSiege(dt);
     const dungeonReady=!game.player.creative&&progress.denBuilt&&
       progress.dungeonVersion>=DUNGEON_VERSION;
     const atFrost=dungeonReady&&!trial&&withinDungeonEntry(game.player,progress.den);
@@ -639,6 +806,7 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
 
   refreshPill();
   return {serialize,load,resetWorld,open,update,mobLevel,roamingKind,
+    siegeWardTarget,siegeWardHit,isSiegeActive:()=>!!siege,
     monsterDefeated,hitFeedback,trackBlock,isShielded,markStarterSword(){progress.swordClaimed=true;},
     get level(){return progress.level;},
     get den(){return progress.den;}};
