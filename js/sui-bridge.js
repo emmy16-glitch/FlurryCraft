@@ -8,6 +8,7 @@ import { Transaction } from '@mysten/sui/transactions';
 import { bcs } from '@mysten/sui/bcs';
 import { SUI_TESTNET_RPC } from './sui-config.js';
 import { packageId, toMist, fromMist, canonicalBytes, parseOnchainContent, hashBytes, toHex } from './sui-market-core.js';
+import { validatePublishManifest } from './sui-publish-core.js';
 import { successfulSuiDigest,boundedSuiBcs,
   SUI_NFT_BCS_MAX_BYTES,SUI_LISTING_BCS_MAX_BYTES } from './sui-response-guard.js';
 
@@ -116,6 +117,28 @@ async function decodeNFT(raw,objectId){
   const parsed=await validateParsedNFT(nftBcs.parse(raw));
   return {objectId,...parsed};
 }
+// Optional one-time TESTNET package deployment. The user's connected wallet
+// must explicitly sign. FlurryCraft does not hold, import or export a key.
+// Global marketplace trading is NOT activated by publishing: bytecode/source
+// verification and config registration are separate release gates.
+export async function publishTestnetPackage(manifest){
+  const approved=validatePublishManifest(manifest);
+  const owner=requireAccount();
+  const tx=new Transaction();
+  const [upgradeCap]=tx.publish({
+    modules:approved.modules,dependencies:approved.dependencies,
+  });
+  // Retain the UpgradeCap with the user's wallet, never transfer it to us.
+  tx.transferObjects([upgradeCap],tx.pure.address(owner));
+  // Keep the sender fixed if the connected wallet changes account mid-review.
+  if(requireAccount().toLowerCase()!==owner.toLowerCase())
+    throw new Error('Wallet account changed. Restart Testnet publication.');
+  const digest=await submit(tx);
+  return {digest,owner,sourceRevision:approved.sourceRevision,
+    // Source verification is not possible just from an ABI match.
+    verified:false};
+}
+
 export async function mint(pkg,blueprint){
   const id=await checkPackage(pkg),content=canonicalBytes(blueprint);
   const title=new TextEncoder().encode(String(blueprint.name||'My building').slice(0,48));
