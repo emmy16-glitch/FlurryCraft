@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { MAX_HEALTH, FROST_RECOVERY_COST, FROST_RECOVERY_HEAL,
-  FROST_RECOVERY_COOLDOWN, survivalVitals, checkFrostRecovery, recoveredHealth }
+  FROST_RECOVERY_COOLDOWN, survivalVitals, checkFrostRecovery, recoveredHealth, winterMeleeSpacing }
   from '../js/winter-survival-core.js';
 
 test('survival HUD displays real health, hunger and danger levels', () => {
@@ -27,4 +27,13 @@ test('frost recovery costs shards, respects cooldown and never heals above 20 HP
   assert.equal(checkFrostRecovery({ ...player, dead: true }, 2).ok, false);
   assert.equal(recoveredHealth(9), 15);
   assert.equal(recoveredHealth(18), 20);
+});
+
+test('frost monsters stand outside the camera while retaining melee reach', () => {
+  for (const kind of ['frostling', 'snow_prowler', 'glacier_guardian']) {
+    const spacing = winterMeleeSpacing(kind);
+    assert.ok(spacing.stop >= 1.6);
+    assert.ok(spacing.attack > spacing.stop);
+  }
+  assert.deepEqual(winterMeleeSpacing('zombie'), { stop: 1.15, attack: 1.3 });
 });
