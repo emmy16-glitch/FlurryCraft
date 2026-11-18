@@ -33,11 +33,16 @@ export function safeAdventure(raw){
     clears:clamp(stormRaw.clears,0,10000)};
   const beacons=Array.isArray(a.beacons)?a.beacons.slice(0,40).filter(b=>b&&
     [b.x,b.y,b.z].every(Number.isInteger)&&Math.abs(b.x)<1000000&&
-    Math.abs(b.z)<1000000&&b.y>0&&b.y<96).map(b=>({x:b.x,y:b.y,z:b.z})):[];
+    Math.abs(b.z)<1000000&&b.y>0&&b.y<96).map(b=>({x:b.x,y:b.y,z:b.z,
+      tier:Number.isFinite(b.tier)?Math.max(1,Math.min(3,Math.floor(b.tier))):1})):[];
   return {level,xp,kills:clamp(a.kills,0,100000),clears:clamp(a.clears,0,10000),
     den:pos,denBuilt:!!a.denBuilt&&!!pos,
     dungeonVersion:!!pos&&!!a.denBuilt?clamp(a.dungeonVersion,0,2,0):0,
-    swordClaimed:!!a.swordClaimed,storm,beacons};
+    swordClaimed:!!a.swordClaimed,storm,
+    castle:a.castle&&typeof a.castle==='object'?{
+      wins:clamp(a.castle.wins,0,100000),losses:clamp(a.castle.losses,0,100000),
+      bestTier:clamp(a.castle.bestTier,0,3),version:1
+    }:{wins:0,losses:0,bestTier:0,version:1},beacons};
 }
 export function grantXP(state,amount) {
   const next=safeAdventure(state),gain=Math.max(0,Math.min(2000,Math.floor(Number(amount)||0)));
