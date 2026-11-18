@@ -58,10 +58,10 @@ export function createRewardsState(raw,adventure,now=Date.now()){
     history:Array.isArray(r.history)?r.history.filter(h=>h&&typeof h==='object'&&
       typeof h.id==='string'&&typeof h.title==='string'&&Number.isInteger(h.points)&&
       h.points>0&&h.points<=1000).slice(-60).map(h=>({
-      id:h.id.slice(0,80),title:h.title.slice(0,100),points:h.points,at:num(h.at,9e15)})):[],
+      id:h.id.slice(0,80),title:h.title.slice(0,100),points:h.points,at:num(h.at,8.64e15)})):[],
     day,week,
-    dayBase:baseline(oldDay?r.dayBase:null,total),
-    weekBase:baseline(oldWeek?r.weekBase:null,total),
+    dayBase:baseline(oldDay?r.dayBase:total,total),
+    weekBase:baseline(oldWeek?r.weekBase:total,total),
     dailyBlocks:oldDay?num(r.dailyBlocks,500):0,
     weeklyBlocks:oldWeek?num(r.weeklyBlocks,2000):0};
 }
