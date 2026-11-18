@@ -263,7 +263,7 @@ export function initFlurry(game) {
   let creatorStudio,suiMarket,explorer;
   action('⌂ My Builds',()=>creatorStudio.open());
   let brightWorld=read('flurrycraft_bright_world_v1',true)!==false;
-  let winterMode=game.weather.setMode(read('flurrycraft_winter_weather_v1','storm'));
+  let winterMode=game.weather.setMode(read('flurrycraft_winter_weather_v1','snowfall'));
   let questVisible=read('fc_quest_visible_v1',false)===true;
   const menuToggle=action('☰ Menu',()=>setMoreMenu(menu.hidden));
   menuToggle.setAttribute('aria-expanded','false');
@@ -922,6 +922,11 @@ export function initFlurry(game) {
     explorer.reset();
     judgeTour.close();
     game.adventure.resetWorld(isNew);
+    // A fresh guided tour showcases the snowy scenery instead of opening in
+    // a grey whiteout. Existing player weather preferences remain untouched.
+    winterMode=game.weather.setMode(game.isJudgeDemo?'snowfall':
+      read('flurrycraft_winter_weather_v1','snowfall'));
+    weatherButton.textContent='Weather: '+weatherProfile(winterMode).label;
     equipStarterBlocks();
     // New survival players should be able to defeat their first Frostling
     // without crafting for several minutes or using bare-hand melee.
