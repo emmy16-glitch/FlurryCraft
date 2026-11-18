@@ -136,7 +136,7 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
     return {...saved,beacons:progress.beacons.map(b=>({...b})),
       storm:{...progress.storm,site:progress.storm.site?{...progress.storm.site}:null}};
   }
-  function load(raw){stopSiege(null,false);progress=safeAdventure(raw);world=game.world;trial=null;denPending=false;stormPending=false;
+  function load(raw){stopSiege(null,false);wardCooldowns.clear();wardFireAcc=0;progress=safeAdventure(raw);world=game.world;trial=null;denPending=false;stormPending=false;
     buildPlan=[];buildIndex=0;stormBuildPlan=[];stormBuildIndex=0;nextRun++;levelNoticeTime=0;hitTimer=0;levelNotice.hidden=true;
     enemyHUD.hidden=true;entryButton.style.display='none';dungeonStatus.style.display='none';
     lastTargetStamp='';recoveryCooldown=0;vitalsTick=0;lastVitals='';vitals.style.display='none';siegeHUD.style.display='none';refreshPill();}
@@ -202,6 +202,7 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
     if(worldRef!==world||before===after)return;
     const key=(v)=>v.x===x&&v.y===y&&v.z===z;
     if(before===B.WARD_BEACON){
+      wardCooldowns.delete(x+','+y+','+z);
       if(siege?.wardKey===x+','+y+','+z)stopSiege('Winter Ward removed · defense lost');
       progress.beacons=progress.beacons.filter(v=>!key(v));
     }
