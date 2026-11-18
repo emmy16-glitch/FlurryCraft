@@ -13,7 +13,7 @@ import { initTouch } from './touch.js';
 import { initFlurry } from './flurry.js';
 import { saveWorldSafely,loadWorldSafely,exportWorldBackup,importWorldBackup,WORLD_BACKUP_MAX_CHARS } from './world-save-guard.js';
 import { migratePlayerHealth } from './combat-progression.js';
-import { createGraphicsController,normalizeGraphicsMode } from './graphics-quality.js';
+import { createGraphicsController,normalizeGraphicsMode,nextAdaptiveViewRadius } from './graphics-quality.js';
 
 const $ = (id) => document.getElementById(id);
 const SAVE_KEY = 'flurrycraft_save_v1', SET_KEY = 'flurrycraft_settings_v1';
@@ -35,6 +35,16 @@ const weather = new Weather(scene, null);
 const touchMode = (window.matchMedia && matchMedia('(pointer: coarse)').matches) || 'ontouchstart' in window || navigator.maxTouchPoints > 1;
 const settings = Object.assign({ render: touchMode ? 4 : 7, fov: 75, vol: 70, music: 1, sens: 100, mode: 'c', diff: 1, graphics: 'auto' }, (() => { try { return JSON.parse(localStorage.getItem(SET_KEY) || '{}'); } catch (e) { return {}; } })());
 const saveSettings = () => { try { localStorage.setItem(SET_KEY, JSON.stringify(settings)); } catch (e) {} };
+// Treat browser-stored graphics options as untrusted. Extreme values can
+// otherwise request thousands of voxel chunks or invalid camera parameters.
+const within=(v,min,max,fallback)=>Number.isFinite(Number(v))?
+  Math.min(max,Math.max(min,Number(v))):fallback;
+settings.render=Math.round(within(settings.render,3,14,touchMode?4:7));
+settings.fov=within(settings.fov,60,110,75);
+settings.vol=within(settings.vol,0,100,70);
+settings.sens=within(settings.sens,20,250,100);
+settings.diff=Math.round(within(settings.diff,0,2,1));
+settings.mode=settings.mode==='s'?'s':'c';
 settings.graphics=normalizeGraphicsMode(settings.graphics);
 const graphics=createGraphicsController(settings.graphics,touchMode,window.devicePixelRatio||1);
 renderer.setPixelRatio(graphics.ratio);
@@ -263,6 +273,7 @@ for(const id of ['mGraphics','pGraphics']){
     graphics.reset(settings.graphics);
     renderer.setPixelRatio(graphics.ratio);
     weather.graphicsPreset=settings.graphics;
+    if(game.world)game.world.setRadius(settings.render);
     for(const otherId of ['mGraphics','pGraphics']) $(otherId).value=settings.graphics;
     saveSettings();
     if(game.state==='play')ui.toast('Graphics: '+(settings.graphics==='auto'?'Auto (adaptive)':settings.graphics==='crisp'?'Sharp':'Performance'));
@@ -564,6 +575,7 @@ function menuFrame(dt) {
   renderer.info.reset(); renderer.clear(); renderer.render(scene, camera);
 }
 function disposeMenuWorld() { if (menuWorld) { for (const [k, c] of [...menuWorld.chunks]) menuWorld.unload(k, c); menuWorld = null; } }
+let lastAutoViewAdjust=performance.now();
 function frame(now) {
   requestAnimationFrame(frame);
   const elapsed=(now-last)/1000;last=now;
@@ -576,6 +588,13 @@ function frame(now) {
   if (game.state === 'menu') { menuFrame(dt); return; }
   if (game.state !== 'play') { return; }
   const w = game.world;
+  if(settings.graphics==='auto'&&!game.paused&&graphics.measuredFPS>0&&
+    now-lastAutoViewAdjust>=15000){
+    const desired=nextAdaptiveViewRadius(w.radius,settings.render,
+      graphics.measuredFPS,graphics.ratio<=graphics.range.lower+.015);
+    if(desired!==w.radius)w.setRadius(desired);
+    lastAutoViewAdjust=now;
+  }
   // Full-screen in-game panels are non-combat spaces: prevent accidental
   // mining, movement and monster attacks while reading progress or building.
   const flurryDialogOpen=document.getElementById('flurryModal')?.style.display==='flex';
@@ -620,7 +639,7 @@ function frame(now) {
   if (active) weather.update(dt, camera, player, w, sound); game.raining = weather.raining;
   const sunH = Math.sin(game.env.tod * Math.PI * 2), dayF = Math.min(1, Math.max(0, (sunH + 0.14) / 0.36));
   game.env.day = dayF * dayF * (3 - 2 * dayF); game.env.dayLight = (0.17 + 0.83 * game.env.day) * (1 - 0.28 * weather.intensity);
-  const R = settings.render; mats.shared.uFogNear.value = Math.max(20, R * 16 * 0.6); mats.shared.uFogFar.value = (R * 16 - 6) * (1 - 0.35 * weather.intensity); mats.shared.uFogNear.value *= (1 - 0.5 * weather.intensity);
+  const R = w.radius; mats.shared.uFogNear.value = Math.max(20, R * 16 * 0.6); mats.shared.uFogFar.value = (R * 16 - 6) * (1 - 0.35 * weather.intensity); mats.shared.uFogNear.value *= (1 - 0.5 * weather.intensity);
   // camera
   const eyeTarget = player.sneaking ? 1.47 : 1.62; camY += (eyeTarget - camY) * Math.min(1, dt * 14);
   const ampBob = player.onGround ? Math.min(1, Math.hypot(player.vx, player.vz) / 4.5) : 0;
