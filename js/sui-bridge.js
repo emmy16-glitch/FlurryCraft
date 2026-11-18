@@ -8,6 +8,8 @@ import { Transaction } from '@mysten/sui/transactions';
 import { bcs } from '@mysten/sui/bcs';
 import { SUI_TESTNET_RPC } from './sui-config.js';
 import { packageId, toMist, fromMist, canonicalBytes, parseOnchainContent, hashBytes, toHex } from './sui-market-core.js';
+import { successfulSuiDigest,boundedSuiBcs,
+  SUI_NFT_BCS_MAX_BYTES,SUI_LISTING_BCS_MAX_BYTES } from './sui-response-guard.js';
 
 const kit=createDAppKit({
   networks:['testnet'],defaultNetwork:'testnet',
@@ -89,14 +91,13 @@ function requireAccount(){
 async function submit(tx){
   requireAccount();
   const result=await kit.signAndExecuteTransaction({transaction:tx,network:'testnet'});
-  if(result.FailedTransaction||result.$kind==='FailedTransaction')
-    throw new Error(result.FailedTransaction?.status?.error?.message||
-      'Sui Testnet execution failed. No successful NFT transfer was recorded.');
-  if(!result.Transaction?.digest||result.Transaction.status?.success===false)
-    throw new Error('No successful Sui transaction was confirmed.');
-  // Indexes can lag execution; wait before refreshing ownership or listings.
-  await client().waitForTransaction({digest:result.Transaction.digest});
-  return result.Transaction.digest;
+  const digest=successfulSuiDigest(result);
+  // Indexes can lag execution; a wait failure does not mean the signed
+  // transaction was reverted. Do not falsely report an already successful
+  // mint/purchase as failed and prompt a duplicate payment.
+  try{await client().waitForTransaction({digest});}
+  catch(error){console.warn('Sui transaction succeeded; indexing may still be pending:',error);}
+  return digest;
 }
 async function validateParsedNFT(nft){
   if(!nft||!Array.isArray(nft.geometry)||nft.geometry.length<1||
@@ -136,7 +137,7 @@ export async function owned(pkg){
         if(o.content){
           // Some Sui client transports expose BCS as a thenable; await both
           // raw Uint8Array and PromiseLike<Uint8Array> before decoding.
-          const content=await o.content;
+          const content=await boundedSuiBcs(o.content,SUI_NFT_BCS_MAX_BYTES);
           nfts.push(await decodeNFT(content,o.objectId));
         }
       }
@@ -158,8 +159,7 @@ export async function getListing(pkg,listingId){
   if(!object?.content)throw new Error('Listing not found on Sui Testnet.');
   if(object.type!==listingType(id))throw new Error('Wrong contract package for listing.');
   if(object.owner?.$kind!=='Shared')throw new Error('Listing is not a shared escrow object.');
-  const content=await object.content;
-  if(!content||content.length>26000)throw new Error('Listing payload exceeds its maximum size.');
+  const content=await boundedSuiBcs(object.content,SUI_LISTING_BCS_MAX_BYTES);
   const parsed=listingBcs.parse(content);
   if(BigInt(parsed.price)<=0n||parsed.digest?.length!==32)
     throw new Error('Listing has invalid price or digest metadata.');
