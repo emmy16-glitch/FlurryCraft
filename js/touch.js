@@ -4,7 +4,7 @@ export function initTouch(game, player, ui, hooks) {
   if (game.touchEl) return;
   document.body.classList.add('touch');
   const root = $('touch'); game.touchEl = root; root.style.display = 'block';
-  const T = game.touch = { fwd: 0, strafe: 0, jump: false, left: false, attackPressed:false, right: false, rightPressed: false, sneak: false, sprint: false };
+  const T = game.touch = { fwd: 0, strafe: 0, jump: false, left: false, attackPressed:false, right: false, rightPressed: false, sneak: false, sprint: false, guard: false };
   const sens = () => 0.0052 * (hooks.settings.sens / 100);
 
   // A touch event is valid only while the actual game world accepts inputs.
@@ -44,7 +44,7 @@ export function initTouch(game, player, ui, hooks) {
     for (const reset of buttonResets) reset();
     mineButtonHeld = mineLookHeld = placeHeld = false;
     Object.assign(T, { fwd: 0, strafe: 0, jump: false, left: false,
-      attackPressed: false, right: false, rightPressed: false, sneak: false, sprint: false });
+      attackPressed: false, right: false, rightPressed: false, sneak: false, sprint: false, guard: false });
     base.style.display = 'none';
     knob.style.transform = 'translate(0,0)';
     $('tbSneak').classList.remove('on');
@@ -170,6 +170,7 @@ export function initTouch(game, player, ui, hooks) {
   hold('tbBreak', () => {
     mineButtonHeld = true; syncMining(); T.attackPressed = true;
   }, () => { mineButtonHeld = false; syncMining(); });
+  hold('tbGuard', () => { T.guard = true; }, () => { T.guard = false; });
   let lastPlacementTip = -10000;
   hold('tbPlace', () => { placeHeld = true; T.right = true; T.rightPressed = true;
     // Avoid flooding the view with large repeated messages while building.
