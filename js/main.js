@@ -219,7 +219,20 @@ handScene.add(arm); arm.visible = false;
 function updateHeldMesh() {
   const s = player.held(), id = s ? s.id : -1;
   if (id === hand.id) return; hand.id = id; hand.equip = 0.6;
-  if (hand.mesh) { hand.group.remove(hand.mesh); hand.mesh = null; }
+  if (hand.mesh) {
+    // Dispose replaced held-item meshes so repeated sword switches do not
+    // accumulate geometry/materials in Android WebGL memory.
+    const geometry=new Set(),materials=new Set();
+    hand.mesh.traverse(o=>{
+      if(o.geometry)geometry.add(o.geometry);
+      if(Array.isArray(o.material))o.material.forEach(m=>materials.add(m));
+      else if(o.material)materials.add(o.material);
+    });
+    hand.group.remove(hand.mesh);
+    for(const g of geometry)g.dispose();
+    for(const m of materials)m.dispose(); // textures for block cubes are shared
+    hand.mesh=null;
+  }
   if (id < 0) { arm.visible = true; return; }
   arm.visible = false;
   const isBlock = id < 256 && B.BLOCKS[id] && B.SHAPE[id] !== 1 && B.SHAPE[id] !== 2;
