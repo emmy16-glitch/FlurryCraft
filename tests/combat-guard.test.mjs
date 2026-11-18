@@ -59,7 +59,7 @@ test('stamina exhaustion cannot provide free perfect parries',()=>{
 
 function gameForPlayer(){
   const history=[];
-  const game={adventure:{level:1},difficulty:1,
+  const game={adventure:{level:1,isShielded:()=>false},difficulty:1,
     sound:{play:(...args)=>history.push(args)},
     ui:{dirtyInv:false,toast:message=>history.push(message)},
     mobs:[],world:{
