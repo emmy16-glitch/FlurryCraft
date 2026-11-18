@@ -164,7 +164,7 @@ document.addEventListener('pointerlockchange', () => {
   if (locked()) { everLocked = true; lockFail = false; }
   if (!locked() && everLocked && game.state === 'play' && !game.tourActive && !ui.isOpen && !player.dead && performance.now() - (ui.lastToggle || 0) > 500) showPause(true);
 });
-function showPause(v) { game.paused = v; $('pause').style.display = v ? 'flex' : 'none'; if (v) { $('pRender').value = settings.render; $('pRenderV').textContent = settings.render; } }
+function showPause(v) { game.paused = v; if (v) game.resetTouchControls?.(); $('pause').style.display = v ? 'flex' : 'none'; if (v) { $('pRender').value = settings.render; $('pRenderV').textContent = settings.render; } }
 document.addEventListener('mousemove', (e) => {
   mouseX = e.clientX; mouseY = e.clientY; mouseIn = true;
   if (!locked() || game.paused || ui.isOpen || player.dead) return;
@@ -427,6 +427,7 @@ document.addEventListener('visibilitychange', () => {
 // ---------------------------------------------------------------- start
 let currentName = 'World', basePlayed = 0;
 function startGame(cont, id) {
+  game.resetTouchControls?.(); // Never carry captured pointers into another world.
   let save=null,recovered=false;
   if(cont){
     try{
@@ -599,6 +600,9 @@ function frame(now) {
   // mining, movement and monster attacks while reading progress or building.
   const flurryDialogOpen=document.getElementById('flurryModal')?.style.display==='flex';
   const active = !game.paused&&!flurryDialogOpen;
+  // Menus and death must drain gestures, not merely hide the touch controls.
+  // Otherwise a touch released over a dialog can resume mining after close.
+  if (game.touch && (!active || ui.isOpen || player.dead)) game.resetTouchControls?.();
   game.time += dt; $('toasts').style.display = ui.isOpen ? 'none' : 'block';
   if (active) {
     const open = ui.isOpen || player.dead;
