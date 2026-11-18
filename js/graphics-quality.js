@@ -17,6 +17,18 @@ export function graphicsPixelRatios(mode,touch=false,deviceDpr=1){
   return {mode:selected,lower,upper,initial,physical};
 }
 
+// Performance mode does not silently edit the user's chosen view distance.
+// Auto mode temporarily sheds up to two farthest chunk rings after sustained
+// slow foreground rendering at the minimum allowed pixel ratio.
+export function nextAdaptiveViewRadius(current,requested,measuredFPS,atMinimumPixelRatio){
+  const desired=clamp(Math.round(Number.isFinite(requested)?requested:5),3,14);
+  const radius=clamp(Math.round(Number.isFinite(current)?current:desired),3,14);
+  if(measuredFPS>0&&measuredFPS<28&&atMinimumPixelRatio)
+    return Math.max(Math.max(3,desired-2),radius-1);
+  if(measuredFPS>54&&radius<desired)return radius+1;
+  return radius;
+}
+
 export function createGraphicsController(mode='auto',touch=false,deviceDpr=1){
   let ranges=graphicsPixelRatios(mode,touch,deviceDpr);
   let ratio=ranges.initial, seconds=0, frames=0, changes=0, measuredFPS=0;
