@@ -128,6 +128,41 @@ async function smoke(label,options){
     if(!combat.aimed||combat.damage<=0)
       throw new Error('Frostling target/attack pipeline failed: '+JSON.stringify(combat));
     console.log(label+' controlled Frostling combat passed '+JSON.stringify(combat));
+    // Exercise the real sword-guard input and hurt pipeline inside WebGL.
+    // Restore all temporary player attributes: this is a QA encounter,
+    // not an achievement, score, NFT or cryptographic reward.
+    const defense=await page.evaluate(async()=>{
+      const B=await import('/js/blocks.js');
+      const p=window.game.player;
+      const snapshot={health:p.health,invuln:p.invuln,guarding:p.guarding,
+        guardStamina:p.guardStamina,guardCooldown:p.guardCooldown,
+        guardElapsed:p.guardElapsed,creative:p.creative,flying:p.flying,
+        x:p.x,y:p.y,z:p.z,vx:p.vx,vy:p.vy,vz:p.vz,
+        kbx:p.kbx,kbz:p.kbz,yaw:p.yaw,onGround:p.onGround};
+      const slot=p.sel,held=p.inv[slot];
+      try{
+        p.creative=false;p.flying=false;p.inv[slot]={id:B.toolId(3,0),n:1};
+        p.health=p.maxHealth;p.invuln=0;p.guardStamina=100;p.guardCooldown=0;
+        p.guarding=false;p.guardElapsed=0;
+        p.update(.016,{guard:true,fwd:0,strafe:0,jump:false,
+          sneak:false,sprint:false,left:false,right:false});
+        const active=p.guarding;
+        const sx=p.x-Math.sin(p.yaw)*2,sz=p.z-Math.cos(p.yaw)*2;
+        const baseline=p.health;
+        p.hurt(8,sx,sz,'melee');
+        const guarded=Math.round((baseline-p.health)*100)/100;
+        p.invuln=0;p.guarding=false;p.health=baseline;
+        p.hurt(8,sx,sz,'melee');
+        const unguarded=Math.round((baseline-p.health)*100)/100;
+        return {active,guarded,unguarded};
+      }finally{
+        Object.assign(p,snapshot);p.inv[slot]=held;
+      }
+    });
+    if(!defense.active||defense.guarded<=0||
+        defense.guarded>=defense.unguarded*.5)
+      throw new Error('Real sword guard failed: '+JSON.stringify(defense));
+    console.log(label+' real sword guard passed '+JSON.stringify(defense));
 
     await page.screenshot({path:out+'/'+label+'-moving.png'});
     // Lighting showcase only: time-of-day and camera angle for a REAL game
