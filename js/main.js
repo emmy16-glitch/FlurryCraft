@@ -595,7 +595,8 @@ function frame(now) {
   }
   w.maxGen = 1; w.maxMesh = 2;
   if (game.touchEl) game.touchEl.style.display = (!ui.isOpen && !game.paused && !player.dead) ? 'block' : 'none';
-  w.update(player.x, player.z, active ? 5 : 2); w.flushUrgent();
+  w.update(player.x, player.z, active ? (touchMode ? 3.5 : 5) : 2);
+  w.flushUrgent(touchMode ? 2 : 3, touchMode ? 2 : 3);
   if (active) {
     // entities
     for (const m of game.mobs) { if (Math.hypot(m.x - player.x, m.z - player.z) > 110) m.remove(); else m.update(dt); }
