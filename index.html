@@ -16,7 +16,10 @@ canvas#gl{position:fixed;inset:0;width:100%;height:100%;display:block;outline:no
 #cross:before{left:10px;top:2px;width:2px;height:18px}
 #cross:after{top:10px;left:2px;height:2px;width:18px}
 #bars{position:absolute;left:50%;bottom:78px;transform:translateX(-50%);width:364px;display:flex;justify-content:space-between;align-items:flex-end}
-#hearts,#food{display:flex;gap:1px;height:20px}
+#hearts,#food{gap:1px}
+ #hearts{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));grid-auto-rows:minmax(0,18px);width:48%;height:auto;max-height:56px;align-content:end}
+ #hearts img{display:block;width:100%!important;height:auto!important;max-height:18px;object-fit:contain}
+ #food{display:flex;height:20px}
 #food{flex-direction:row-reverse}
 #air{position:absolute;left:50%;bottom:104px;transform:translateX(-50%);width:364px;display:flex;justify-content:flex-end;gap:1px;height:20px}
 #hearts img,#food img,#air img{width:18px;height:18px}
