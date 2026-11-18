@@ -2,11 +2,14 @@
 // winter-specific enemy rewards and real protective Winter Ward blocks.
 // Future chapters can reuse the 1–100 rules without cluttering gameplay.
 import { xpToNext,safeAdventure,grantXP,trialLocation,ruinBlocks,
-  FROST_CREATURES,winterMobLevel,winterKillXP,trialWaves,stormspireWaves,withinWard,chooseWinterMob }
+  FROST_CREATURES,winterMobLevel,winterKillXP,trialWaves,stormspireWaves,auroraWaves,withinWard,chooseWinterMob }
 from './adventure-core.js';
 import { DUNGEON_VERSION,ROOM_NAMES,ROOM_OFFSETS,chamberPosition,dungeonEntrance,
  withinDungeonEntry,enteredChamber,generateFrostDungeon } from './frost-dungeon.js';
 import { aimedCreature,actionForTarget } from './combat-hud-core.js';
+import { AURORA_VERSION,AURORA_UNLOCK_LEVEL,AURORA_ROOM_NAMES,AURORA_ROOM_OFFSETS,
+  AURORA_FOOTPRINT,AURORA_REWARDS,auroraRoom,nearAuroraGate,inAuroraRoom,
+  findAuroraSite,generateAuroraCitadel } from './aurora-citadel.js';
 import { STORM_VERSION,STORM_UNLOCK_LEVEL,STORM_ROOM_NAMES,STORM_ROOM_OFFSETS,
   STORM_FOOTPRINT,stormRoom,nearStormGate,inStormRoom,stormSite,generateStormspire }
   from './stormspire-dungeon.js';
@@ -23,6 +26,7 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
   let recoveryCooldown=0,vitalsTick=0,lastVitals='';
   let siege=null,siegeCounter=0,wardFireAcc=0,wardCooldowns=new Map();
   let stormPending=false,stormBuildPlan=[],stormBuildIndex=0,entryChapter='frost';
+  let auroraPending=false,auroraBuildPlan=[],auroraBuildIndex=0;
   const make=(tag,text,parent=panel)=>{
     const n=document.createElement(tag);if(text!==undefined)n.textContent=text;
     parent.appendChild(n);return n;
@@ -134,10 +138,12 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
   function serialize(){
     const {levelsGained,...saved}=progress;
     return {...saved,beacons:progress.beacons.map(b=>({...b})),
-      storm:{...progress.storm,site:progress.storm.site?{...progress.storm.site}:null}};
+      storm:{...progress.storm,site:progress.storm.site?{...progress.storm.site}:null},
+      aurora:{...progress.aurora,site:progress.aurora.site?{...progress.aurora.site}:null}};
   }
-  function load(raw){stopSiege(null,false);wardCooldowns.clear();wardFireAcc=0;progress=safeAdventure(raw);world=game.world;trial=null;denPending=false;stormPending=false;
-    buildPlan=[];buildIndex=0;stormBuildPlan=[];stormBuildIndex=0;nextRun++;levelNoticeTime=0;hitTimer=0;levelNotice.hidden=true;
+  function load(raw){stopSiege(null,false);wardCooldowns.clear();wardFireAcc=0;progress=safeAdventure(raw);world=game.world;trial=null;denPending=false;stormPending=false;auroraPending=false;
+    buildPlan=[];buildIndex=0;stormBuildPlan=[];stormBuildIndex=0;
+    auroraBuildPlan=[];auroraBuildIndex=0;nextRun++;levelNoticeTime=0;hitTimer=0;levelNotice.hidden=true;
     enemyHUD.hidden=true;entryButton.style.display='none';dungeonStatus.style.display='none';
     lastTargetStamp='';recoveryCooldown=0;vitalsTick=0;lastVitals='';vitals.style.display='none';siegeHUD.style.display='none';refreshPill();}
   function resetWorld(isNew){
@@ -152,7 +158,9 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
     pillLevel.textContent='LV '+progress.level;
     barFill.style.width=(needed()?Math.min(100,progress.xp/needed()*100):100)+'%';
     if(siege)activeLabel.textContent='DEF '+(siege.wave+1)+'/3';
-    else if(trial)activeLabel.textContent=(trial.chapter==='storm'?'SPIRE ':'WAVE ')+(trial.wave+1)+'/3';
+    else if(trial)activeLabel.textContent=
+      (trial.chapter==='aurora'?'AURORA ':trial.chapter==='storm'?'SPIRE ':'WAVE ')+
+      (trial.wave+1)+'/'+(trial.chapter==='aurora'?4:3);
     else activeLabel.textContent='';
     pill.setAttribute('aria-label','Level '+progress.level+', '+progress.xp+
       ' of '+needed()+' XP. Open Winter Adventure');
@@ -197,6 +205,10 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
     game.sound?.play?.('levelup',{vol:.6});
     if(previous<STORM_UNLOCK_LEVEL&&progress.level>=STORM_UNLOCK_LEVEL)
       notify(game,progress.clears>0?'Stormspire Keep unlocked · Open Winter Adventure':'Level 10! Clear Frost Ruins to unlock Stormspire Keep.');
+    if(previous<AURORA_UNLOCK_LEVEL&&progress.level>=AURORA_UNLOCK_LEVEL)
+      notify(game,progress.storm.clears>0?
+        'Aurora Citadel unlocked · Open Winter Adventure':
+        'Level 20 reached! Clear Stormspire to unlock Aurora Citadel.');
   }
   function trackBlock(worldRef,x,y,z,before,after){
     if(worldRef!==world||before===after)return;
