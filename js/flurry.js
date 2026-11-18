@@ -11,6 +11,7 @@ import { EditHistory } from './edit-history.js';
 import { weatherProfile,cycleWeatherMode } from './winter-weather.js';
 import { initExplorerMap } from './explorer-map.js';
 import { initAdventure } from './adventure.js';
+import { initRewardsHub } from './rewards-ui.js';
 import { makeSwordMesh,setItemLight } from './render.js';
 
 const PREFERENCES = 'flurrycraft_yeti_v1';
@@ -309,6 +310,7 @@ export function initFlurry(game) {
   }
   menuSection('ADVENTURE');
   menuItem('Winter Adventure',()=>game.adventure.open());
+  menuItem('✦ Rewards Hub',()=>game.rewards.open());
   menuSection('BUILD');
   menuItem('Walls & Floors',()=>showSmartBuilder());
   menuItem('Save Building',()=>showBlueprint());
@@ -422,6 +424,8 @@ export function initFlurry(game) {
     isBlocked:()=>!!previewState||!menu.hidden});
   game.adventure=initAdventure({game,B,openDialog:open,closeDialog:close,panel,notify,explorer,
     isInterfaceBusy:()=>overlay.style.display==='flex'||!menu.hidden||!!previewState});
+  game.rewards=initRewardsHub({game,panel,openDialog:open,notify,
+    onOpenMarketplace:()=>suiMarket.open()});
   // Beginners should be able to build immediately, without finding a recipe book.
   // Derive the library from the engine registry instead of maintaining a
   // hard-coded 12-block selection. All supported placeable inventory blocks
