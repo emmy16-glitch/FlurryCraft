@@ -1025,7 +1025,11 @@ export function initFlurry(game) {
       game.camera.position.copy(target);
     }
     if(npcPosition&&lofi.group.visible){
-      lofi.group.rotation.y+=dt*.28;
+      // The guide should look at the player during the official demo,
+      // rather than presenting its back to the judge.
+      lofi.group.rotation.y=game.isJudgeDemo
+        ?Math.atan2(-(p.x-npcPosition.x),-(p.z-npcPosition.z))
+        :lofi.group.rotation.y+dt*.28;
       const d=Math.hypot(p.x-npcPosition.x,p.z-npcPosition.z);
       if(d<4.4&&quest===0){complete();notify(game,'Lofi: Help me build a warm winter village!');}
     }
