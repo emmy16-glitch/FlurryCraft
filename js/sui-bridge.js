@@ -90,7 +90,8 @@ async function submit(tx){
   requireAccount();
   const result=await kit.signAndExecuteTransaction({transaction:tx,network:'testnet'});
   if(result.FailedTransaction||result.$kind==='FailedTransaction')
-    throw new Error(result.FailedTransaction.status?.error?.message||'Sui Testnet execution failed.');
+    throw new Error(result.FailedTransaction?.status?.error?.message||
+      'Sui Testnet execution failed. No successful NFT transfer was recorded.');
   if(!result.Transaction?.digest||result.Transaction.status?.success===false)
     throw new Error('No successful Sui transaction was confirmed.');
   // Indexes can lag execution; wait before refreshing ownership or listings.
@@ -131,7 +132,14 @@ export async function owned(pkg){
   let n=0;
   for(;;){
     for(const o of page.objects||[]){
-      try{if(o.content)nfts.push(await decodeNFT(o.content,o.objectId));}
+      try{
+        if(o.content){
+          // Some Sui client transports expose BCS as a thenable; await both
+          // raw Uint8Array and PromiseLike<Uint8Array> before decoding.
+          const content=await o.content;
+          nfts.push(await decodeNFT(content,o.objectId));
+        }
+      }
       catch(err){invalid.push({objectId:o.objectId,error:err.message});}
     }
     if(!page.hasNextPage||++n>=10)break;
@@ -150,8 +158,9 @@ export async function getListing(pkg,listingId){
   if(!object?.content)throw new Error('Listing not found on Sui Testnet.');
   if(object.type!==listingType(id))throw new Error('Wrong contract package for listing.');
   if(object.owner?.$kind!=='Shared')throw new Error('Listing is not a shared escrow object.');
-  if(object.content.length>26000)throw new Error('Listing payload exceeds its maximum size.');
-  const parsed=listingBcs.parse(object.content);
+  const content=await object.content;
+  if(!content||content.length>26000)throw new Error('Listing payload exceeds its maximum size.');
+  const parsed=listingBcs.parse(content);
   if(BigInt(parsed.price)<=0n||parsed.digest?.length!==32)
     throw new Error('Listing has invalid price or digest metadata.');
   // Never offer a sale in the UI without verifying the escrowed voxel bytes,
