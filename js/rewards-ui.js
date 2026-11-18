@@ -4,12 +4,14 @@ import {createRewardsState,rewardCards,collectLocalPoints,recordRewardPlacement,
   requestCryptoPayout,CRYPTO_REWARDS_ENABLED,acceptExpeditionMission,
   collectExpeditionMission,recordRewardParry,recordRewardTravel} from './rewards-core.js';
 import {isValidTravelStep,trialProgressText} from './winter-trials.js';
+import * as B from './blocks.js';
 import {expeditionGuideTarget} from './expedition-guide.js';
 
 export function initRewardsHub({game,panel,openDialog,notify,onOpenMarketplace,
   onNavigate=()=>{},onExpeditionEvent=()=>{}}){
   let state=createRewardsState(null,null);
   let pendingTravel=0; // Sub-two-block movement batches reduce frame work on phones.
+  let trailDistance=0; // Optional snow-step effect, never more than once per 8 blocks.
   const el=(tag,text,parent=panel)=>{
     const node=document.createElement(tag);if(text!==undefined)node.textContent=String(text);
     parent.appendChild(node);return node;
@@ -60,7 +62,7 @@ export function initRewardsHub({game,panel,openDialog,notify,onOpenMarketplace,
     tracker.style.display='block';
   }
   function load(raw){
-    pendingTravel=0; // Prevent movement leaking from a previously selected world.
+    pendingTravel=0; trailDistance=0; // Do not leak counters between worlds.
     state=createRewardsState(raw,adventure());
     hudTick=0;update();
   }
@@ -123,7 +125,8 @@ export function initRewardsHub({game,panel,openDialog,notify,onOpenMarketplace,
       const is=[...next.daily,...next.weekly].find(x=>x.id===entry.id);
       if(was&&!was.ready&&is?.ready){
         notify(game,'❄ '+entry.name+' complete · Open Rewards Hub to collect points');
-        game.saveRewards?.(); // Persist milestone completion, never auto-pay.
+        // Do not synchronously serialize the world from a gameplay frame.
+        // Normal autosave and the eventual claim persist the trial ledger.
       }
     }
   }
@@ -143,6 +146,19 @@ export function initRewardsHub({game,panel,openDialog,notify,onOpenMarketplace,
   function recordTravel(distance,dt){
     if(!allowed()||game.player?.flying||!isValidTravelStep(distance,dt))return;
     pendingTravel=Math.min(4,pendingTravel+distance);
+    trailDistance+=distance;
+    if(trailDistance>=8){
+      trailDistance%=8;
+      const p=game.player,w=game.world;
+      if(p?.onGround&&w?.getBlock&&game.particles?.burst){
+        const ground=w.getBlock(Math.floor(p.x),Math.floor(p.y)-1,Math.floor(p.z));
+        if(ground===B.SNOW||ground===B.ICE||ground===B.PACKED_ICE){
+          // Modest snow-footstep dust. No new scene meshes or per-frame draws.
+          game.particles.burst(p.x,p.y+.08,p.z,[226,237,246],
+            game.touchMode?2:4,.45);
+        }
+      }
+    }
     if(pendingTravel>=2)flushTravel();
   }
   function winterTrials(){
