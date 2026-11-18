@@ -399,7 +399,8 @@ export function initFlurry(game) {
   const button = (title, fn, muted=false) => {const el=make('button',title); if(muted)el.className='muted'; el.addEventListener('click',fn); return el;};
   const open = title => {
     setMoreMenu(false);
-    // Cancel held touch input so no attack or mine resumes after a dialog.
+    // Cancel captured gestures and their timers, not only boolean input flags.
+    game.resetTouchControls?.();
     if(game.touch){
       game.touch.left=false;game.touch.attackPressed=false;game.touch.right=false;game.touch.rightPressed=false;
       game.touch.jump=false;game.touch.fwd=0;game.touch.strafe=0;
