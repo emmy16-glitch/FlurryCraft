@@ -10,6 +10,13 @@ export const AURORA_ROOM_NAMES=Object.freeze([
 export const AURORA_FOOTPRINT='17 × 67 blocks';
 export const AURORA_REWARDS=Object.freeze({crystals:5,shards:12,bricks:28,xp:370});
 
+// One source of truth for the boss's visible two-phase area attack.
+export function borealPulse(hp,maxHp){
+  const enraged=Number.isFinite(hp)&&Number.isFinite(maxHp)&&maxHp>0&&
+    hp>0&&hp<=maxHp*.5;
+  return {enraged,radius:enraged?5.3:4.6,
+    interval:enraged?5.5:7,chargeSeconds:enraged?1:1.5,damage:3.25};
+}
 export function auroraRoom(site,index){
   const i=Math.max(0,Math.min(3,Number.isFinite(index)?Math.floor(index):0));
   return {x:site.x,y:site.y,z:site.z+AURORA_ROOM_OFFSETS[i]};
