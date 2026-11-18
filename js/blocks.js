@@ -11,7 +11,7 @@ export const AIR = 0, STONE = 1, GRASS = 2, DIRT = 3, COBBLE = 4, SAND = 5, GRAV
 // Non-block items
 export const STICK = 256, COAL = 257, IRON_INGOT = 258, GOLD_INGOT = 259, DIAMOND = 260, APPLE = 261,
   PORK_RAW = 262, PORK_COOKED = 263, BEEF_RAW = 264, BEEF_COOKED = 265, MUTTON_RAW = 266, MUTTON_COOKED = 267,
-  ROTTEN_FLESH = 268, GUNPOWDER = 269, BONE = 270, ARROW = 271, STRING = 272, BOW = 273, SEEDS = 274, WHEAT = 275, BREAD = 276, FLINT_STEEL = 277, FROST_SHARD = 278, HOE_BASE = 320;
+  ROTTEN_FLESH = 268, GUNPOWDER = 269, BONE = 270, ARROW = 271, STRING = 272, BOW = 273, SEEDS = 274, WHEAT = 275, BREAD = 276, FLINT_STEEL = 277, FROST_SHARD = 278, AURORA_CRYSTAL = 279, HOE_BASE = 320, AURORA_BLADE = 324;
 export const ARMOR_BASE = 300; // kind*2 + tier: helmet, chest, legs, boots; iron, diamond
 export const ARMOR_KINDS = ['helmet', 'chestplate', 'leggings', 'boots'];
 export const ARMOR_TIERS = [{ name: 'Iron', col: '#dcdcdc', dark: '#9a9a9a', pts: [2, 6, 5, 2], dur: [165, 240, 225, 195] }, { name: 'Diamond', col: '#4ee8e0', dark: '#1fa9b0', pts: [3, 8, 6, 3], dur: [363, 528, 495, 429] }];
@@ -428,6 +428,9 @@ item(STICK, 'Stick', { fuel: 5 });
 item(COAL, 'Coal', { fuel: 80 });
 item(IRON_INGOT, 'Iron Ingot'); item(GOLD_INGOT, 'Gold Ingot'); item(DIAMOND, 'Diamond');
 item(FROST_SHARD, 'Frost Shard');
+item(AURORA_CRYSTAL,'Aurora Crystal');
+item(AURORA_BLADE,'Aurora Blade',{stack:1,kind:3,tierIdx:3,
+  tool:{type:'sword',tier:5,speed:9,dur:480,dmg:9}});
 item(APPLE, 'Apple', { food: 4 });
 item(PORK_RAW, 'Raw Porkchop', { food: 3 }); item(PORK_COOKED, 'Cooked Porkchop', { food: 8 });
 item(BEEF_RAW, 'Raw Beef', { food: 3 }); item(BEEF_COOKED, 'Steak', { food: 8 });
@@ -487,6 +490,9 @@ RECIPES.pop();
 shaped(['GSG', 'SGS', 'GSG'], { G: GUNPOWDER, S: SAND }, TNT, 1);
 shaped(['##', '##'], { '#': COBBLE }, BRICKS, 4);
 shaped(['###', '###'], { '#': PLANKS }, GLASS, 0); RECIPES.pop();
+// A four-material 2x2 infusion recipe — crystal rewards upgrade a real weapon.
+shapeless([toolId(3,3),AURORA_CRYSTAL,AURORA_CRYSTAL,FROST_SHARD],
+  AURORA_BLADE,1);
 const mats = [PLANKS, COBBLE, IRON_INGOT, DIAMOND];
 for (let t = 0; t < 4; t++) {
   const m = mats[t];
@@ -651,6 +657,14 @@ function drawItemBuf(id) {
         bput(buf,x,y,hex(y<6?'#e6ffff':x<8?'#6ce6f5':'#2ba6d4'));
     }
     bline(buf,8,2,7,11,hex('#f4ffff'));
+  } else if (id === AURORA_CRYSTAL) {
+    for(let y=1;y<=14;y++){
+      const half=y<6?(y-1)*.8:(14-y)*.52;
+      for(let x=Math.ceil(8-half);x<=Math.floor(8+half);x++)
+        bput(buf,x,y,hex(y<5?'#f5edff':x<8?'#ab83f8':'#49e3e5'));
+    }
+    bline(buf,8,2,7,12,hex('#fffaff'));
+    bline(buf,10,5,11,11,hex('#5ff6ee'));
   } else if (id === DIAMOND) {
     const g = [['#b8fff8', 8, 3, 9], ['#6ff0e6', 6, 5, 11], ['#2fc4c0', 4, 8, 13]];
     for (let y = 3; y <= 13; y++) { const half = y < 6 ? 2 + (y - 3) * 1.2 : 5.6 - (y - 6) * 0.65; for (let x = 8 - half; x <= 8 + half; x++) bput(buf, x, y, hex(y < 6 ? '#a8fff6' : (x < 8 ? '#5fe6dc' : '#2db8b4'))); }
@@ -666,6 +680,17 @@ function drawItemBuf(id) {
   else if (id === ARROW) { bline(buf, 3, 13, 12, 4, hex('#8b6a35')); bline(buf, 11, 3, 13, 5, hex('#bdbdbd')); P(3, 12, '#eee'); P(4, 13, '#eee'); }
   return outlineBuf(buf);
 }
+function drawAuroraBladeBuf(){
+  const buf=newBuf(),purple=hex('#b99cff'),teal=hex('#59f5e2'),
+    pale=hex('#f5fcff'),dark=hex('#163e68');
+  bline(buf,4,13,12,5,purple,2);
+  bline(buf,5,12,12,4,teal,2);
+  bline(buf,6,10,12,4,pale);
+  bline(buf,3,12,6,9,dark,2);
+  bline(buf,5,14,2,11,hex('#f1d984'),2);
+  bput(buf,12,3,pale);bput(buf,13,4,teal);
+  return outlineBuf(buf);
+}
 export function itemIcon(id) {
   if (iconCache.has(id)) return iconCache.get(id);
   let canvas;
@@ -674,7 +699,9 @@ export function itemIcon(id) {
   else {
     const c = document.createElement('canvas'); c.width = c.height = 16;
     const ctx = c.getContext('2d'); const im = ctx.createImageData(16, 16);
-    const buf = it && it.tool ? drawToolBuf(it.kind, it.tierIdx) : it && it.armor ? drawArmorBuf(it.armor.slot, it.armor.tier) : drawItemBuf(id);
+    const buf = id===AURORA_BLADE?drawAuroraBladeBuf():
+      it && it.tool ? drawToolBuf(it.kind, it.tierIdx) :
+      it && it.armor ? drawArmorBuf(it.armor.slot, it.armor.tier) : drawItemBuf(id);
     im.data.set(buf); ctx.putImageData(im, 0, 0);
     canvas = document.createElement('canvas'); canvas.width = canvas.height = 32;
     const c2 = canvas.getContext('2d'); c2.imageSmoothingEnabled = false; c2.drawImage(c, 0, 0, 32, 32);
