@@ -13,6 +13,7 @@ import { initTouch } from './touch.js';
 import { initFlurry } from './flurry.js';
 import { saveWorldSafely,loadWorldSafely,exportWorldBackup,importWorldBackup,WORLD_BACKUP_MAX_CHARS } from './world-save-guard.js';
 import { migratePlayerHealth } from './combat-progression.js';
+import { createGraphicsController,normalizeGraphicsMode } from './graphics-quality.js';
 
 const $ = (id) => document.getElementById(id);
 const SAVE_KEY = 'flurrycraft_save_v1', SET_KEY = 'flurrycraft_settings_v1';
@@ -32,8 +33,11 @@ const sound = new Sound();
 const weather = new Weather(scene, null);
 
 const touchMode = (window.matchMedia && matchMedia('(pointer: coarse)').matches) || 'ontouchstart' in window || navigator.maxTouchPoints > 1;
-const settings = Object.assign({ render: touchMode ? 4 : 7, fov: 75, vol: 70, music: 1, sens: 100, mode: 'c', diff: 1 }, (() => { try { return JSON.parse(localStorage.getItem(SET_KEY) || '{}'); } catch (e) { return {}; } })());
+const settings = Object.assign({ render: touchMode ? 4 : 7, fov: 75, vol: 70, music: 1, sens: 100, mode: 'c', diff: 1, graphics: 'auto' }, (() => { try { return JSON.parse(localStorage.getItem(SET_KEY) || '{}'); } catch (e) { return {}; } })());
 const saveSettings = () => { try { localStorage.setItem(SET_KEY, JSON.stringify(settings)); } catch (e) {} };
+settings.graphics=normalizeGraphicsMode(settings.graphics);
+const graphics=createGraphicsController(settings.graphics,touchMode,window.devicePixelRatio||1);
+renderer.setPixelRatio(graphics.ratio);
 // Introduce free-build as the default for new worlds. Previously saved worlds
 // retain their mode; players can opt into unlimited building with BUILD.
 try { if (!localStorage.getItem('flurrycraft_easybuild_default_v2')) { settings.mode = 'c'; localStorage.setItem('flurrycraft_easybuild_default_v2','yes'); saveSettings(); } } catch {}
@@ -41,7 +45,7 @@ try { if (!localStorage.getItem('flurrycraft_easybuild_default_v2')) { settings.
 // ---------------------------------------------------------------- game object
 const game = window.game = {
   tp(x, y, z, yaw, pitch) { player.x = x; player.y = y; player.z = z; if (yaw !== undefined) player.yaw = yaw; if (pitch !== undefined) player.pitch = pitch; player.vy = 0; },
-  scene, camera, sound, particles, mobs: [], items: [], projectiles: [], falling: [], world: null, player: null, ui: null,
+  scene, camera, sound, particles, graphics, mobs: [], items: [], projectiles: [], falling: [], world: null, player: null, ui: null,
   env: { day: 1, tod: 0.08, dayLight: 1 }, difficulty: 1, raining: false, paused: false, state: 'menu', time: 0, settings,
   lightAt(x, y, z) {
     const v = this.world.getLight(Math.floor(x), Math.floor(y), Math.floor(z));
@@ -250,6 +254,18 @@ function bindSeg(el, key, cb) {
 }
 function initSeg(el, val) { for (const c of el.children) c.classList.toggle('on', c.dataset.v === String(val)); }
 bindSeg($('mMode'), 'mode'); bindSeg($('mDiff'), 'diff', () => { game.difficulty = [0, 1, 1.5][settings.diff]; });
+for(const id of ['mGraphics','pGraphics']){
+  const control=$(id);
+  control.value=settings.graphics;
+  control.addEventListener('change',()=>{
+    settings.graphics=normalizeGraphicsMode(control.value);
+    graphics.reset(settings.graphics);
+    renderer.setPixelRatio(graphics.ratio);
+    for(const otherId of ['mGraphics','pGraphics']) $(otherId).value=settings.graphics;
+    saveSettings();
+    if(game.state==='play')ui.toast('Graphics: '+(settings.graphics==='auto'?'Auto (adaptive)':settings.graphics==='crisp'?'Sharp':'Performance'));
+  });
+}
 initSeg($('mMode'), settings.mode); initSeg($('mDiff'), settings.diff); initSeg($('pMusic'), settings.music);
 bindSeg($('pMusic'), 'music', () => { sound.musicOn = !!settings.music; });
 $('mRender').value = settings.render; $('mRenderV').textContent = settings.render;
@@ -548,8 +564,13 @@ function menuFrame(dt) {
 function disposeMenuWorld() { if (menuWorld) { for (const [k, c] of [...menuWorld.chunks]) menuWorld.unload(k, c); menuWorld = null; } }
 function frame(now) {
   requestAnimationFrame(frame);
-  let dt = Math.min(0.05, (now - last) / 1000); last = now;
-  fpsAcc += dt; fpsN++; if (fpsAcc > 0.5) { fps = fpsN / fpsAcc; fpsAcc = 0; fpsN = 0; }
+  const elapsed=(now-last)/1000;last=now;
+  const dt=Math.min(.05,Math.max(0,Number.isFinite(elapsed)?elapsed:0));
+  // Do not render, adapt graphics or advance time for hidden tabs.
+  if(document.visibilityState==='hidden'){fpsAcc=0;fpsN=0;return;}
+  if(Number.isFinite(elapsed)&&elapsed>0&&elapsed<.5){fpsAcc+=elapsed;fpsN++;}
+  if(fpsAcc>.7){fps=fpsN/fpsAcc;fpsAcc=0;fpsN=0;}
+  if(graphics.sample(elapsed,game.state==='play'&&!game.paused))renderer.setPixelRatio(graphics.ratio);
   if (game.state === 'menu') { menuFrame(dt); return; }
   if (game.state !== 'play') { return; }
   const w = game.world;
@@ -648,7 +669,7 @@ function frame(now) {
   $('clock').textContent = `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}  ${bn}`;
   if ($('debug').style.display === 'block') {
     const li = w.getLight(Math.floor(player.x), Math.floor(player.y), Math.floor(player.z));
-    $('debug').textContent = `FlurryCraft  ${fps.toFixed(0)} fps  seed ${w.seed}\nXYZ ${player.x.toFixed(2)} ${player.y.toFixed(2)} ${player.z.toFixed(2)}\nChunk ${Math.floor(player.x / 16)},${Math.floor(player.z / 16)}  loaded ${w.chunks.size}\nBiome ${bn}  light sky ${li >> 4} blk ${li & 15}\nMobs ${game.mobs.length}  items ${game.items.length}\nDraw calls ${renderer.info.render.calls}  tris ${(renderer.info.render.triangles / 1000).toFixed(0)}k\nTarget ${t ? (B.BLOCKS[t.block].name + ' ' + t.x + ',' + t.y + ',' + t.z) : (player.mobTarget ? player.mobTarget.kind : '-')}`;
+    $('debug').textContent = `FlurryCraft  ${fps.toFixed(0)} fps  seed ${w.seed}\nXYZ ${player.x.toFixed(2)} ${player.y.toFixed(2)} ${player.z.toFixed(2)}\nChunk ${Math.floor(player.x / 16)},${Math.floor(player.z / 16)}  loaded ${w.chunks.size}\nBiome ${bn}  light sky ${li >> 4} blk ${li & 15}\nMobs ${game.mobs.length}  items ${game.items.length}\nDraw calls ${renderer.info.render.calls}  tris ${(renderer.info.render.triangles / 1000).toFixed(0)}k  GPU ${graphics.ratio.toFixed(2)}x (${graphics.mode})\nTarget ${t ? (B.BLOCKS[t.block].name + ' ' + t.x + ',' + t.y + ',' + t.z) : (player.mobTarget ? player.mobTarget.kind : '-')}`;
   }
 }
 requestAnimationFrame(frame);
