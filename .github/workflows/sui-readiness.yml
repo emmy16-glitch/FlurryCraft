@@ -1,0 +1,37 @@
+name: Sui Testnet Readiness (read-only)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "js/sui-*.js"
+      - "scripts/check-sui-readiness.mjs"
+      - "tests/sui-*.test.mjs"
+      - "move/flurrycraft/**"
+      - "package.json"
+      - ".github/workflows/sui-readiness.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  read-only-preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install pinned SDK dependencies
+        run: npm install --no-audit --no-fund
+      - name: Check configured Testnet package ABI (or report unpublished)
+        run: npm run check:sui
+      - name: Validate NFT BCS compatibility
+        run: npm run test:chain
+      - name: Compile wallet module with esbuild
+        run: npm run build:chain
+
+# No secrets, private keys, wallet signatures or onchain transactions occur here.
+# Live contract trading stays disabled until a verified package ID is configured.
