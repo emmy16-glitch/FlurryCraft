@@ -58,6 +58,7 @@ jobs:
             https://github.com/MystenLabs/suiup/releases/download/v0.1.1/suiup-Linux-musl-x86_64.tar.gz.sha256
           cd /tmp
           sha256sum -c suiup-Linux-musl-x86_64.tar.gz.sha256
+          mkdir -p "$HOME/.local/bin"
           tar -xzf suiup-Linux-musl-x86_64.tar.gz -C "$HOME/.local/bin"
           "$HOME/.local/bin/suiup" install sui@testnet-1.84.0
           cd "$GITHUB_WORKSPACE"
