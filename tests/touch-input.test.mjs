@@ -145,3 +145,24 @@ test('hidden tab, dialog, inventory and pause block new gameplay input',()=>{
   fire(el('tbBreak'),'pointerdown',6);
   assert.equal(game.touch.left,false);
 });
+
+test('guard hold is independent of mining, and blur releases it safely',()=>{
+  const {game,window,el}=setup();
+  fire(el('tbGuard'),'pointerdown',12);
+  assert.equal(game.touch.guard,true);
+  fire(el('tbBreak'),'pointerdown',13);
+  assert.equal(game.touch.left,true);
+  fire(el('tbGuard'),'pointerup',12);
+  assert.equal(game.touch.guard,false);
+  assert.equal(game.touch.left,true);
+  fire(el('tbBreak'),'pointerup',13);
+  assert.equal(game.touch.left,false);
+  fire(el('tbGuard'),'pointerdown',14);
+  assert.equal(game.touch.guard,true);
+  window.dispatchEvent(new Event('blur'));
+  assert.equal(game.touch.guard,false);
+  assert.equal(el('tbGuard').classList.contains('down'),false);
+  fire(el('tbGuard'),'pointerdown',15);
+  fire(el('tbGuard'),'pointercancel',15);
+  assert.equal(game.touch.guard,false);
+});
