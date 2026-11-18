@@ -4,6 +4,26 @@ Browser-first, free-to-play voxel sandbox for Android, iPhone and desktop. Flurr
 
 Built on the MIT-licensed [Yet Another VoxelCraft](https://github.com/GoldwinXS/YetAnotherVoxelCraft) engine by GoldwinXS, with a local bundled Three.js r160. Original attribution is preserved in UPSTREAM_LICENSE.txt.
 
+## 🎮 Playability and graphics polish
+
+FlurryCraft now offers **Auto · Adaptive**, **Sharp · Quality**, and
+**Smooth · Performance** graphics settings in both the start menu and
+Pause → Settings. Auto gradually adjusts the real WebGL internal render
+resolution and, after sustained severe slowdown, can temporarily reduce
+the furthest view-distance rings without changing world saves. The game
+also budgets large building placement and urgent chunk remeshing by
+milliseconds, uses fewer snowflakes in Smooth mode, pauses rendering when
+the browser tab is hidden, and preserves a bright snowy welcome scene.
+
+Desktop **WASD** and emulated mobile **touch joystick** movement, a
+controlled Frostling targeting/melee test, graphics selectors, and
+Rewards Hub navigation are exercised by the separate GitHub Actions
+Chromium gameplay suite. Screenshots and webm proof are uploaded as
+test artifacts. Headless software GPU testing is not a physical
+Android or gaming-PC FPS benchmark.
+
+[Graphics modes, controls, performance limits and QA evidence](docs/GAMEPLAY_PERFORMANCE.md).
+
 ## ❄️ CLAY Hackathon III — judge-first guided adventure
 
 The welcome screen now includes **▶ Try Guided Adventure Demo**.
