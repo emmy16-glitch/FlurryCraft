@@ -22,6 +22,14 @@ See [CLAY Sui Stack readiness](CLAY_SUI_STACK_READINESS.md) for the official che
 
 The regular FlurryCraft browser game remains free and playable without a wallet.
 
+### Reliability upgrade (18 November 2026)
+
+- All Sui marketplace actions use a shared offline-tested success guard: a returned transaction must have an explicit successful execution status and usable digest. Failed Move transactions do not count as a sale or mint.
+- Owned NFT and shared escrow contents are read as bounded BCS bytes (both immediate and asynchronous client-returned content). Invalid or oversized bytes are rejected before decoding.
+- If transaction execution succeeded but the subsequent RPC index catches up slowly, the client does not incorrectly claim that the signed transaction was reverted or encourage a duplicate payment. Refresh holdings when indexing completes.
+- These safeguards are covered by `tests/sui-response-guard.test.mjs`. They are source-level tests, **not** a real two-wallet Testnet demonstration.
+
+
 ## Before real Testnet transactions are possible
 
 The Move contract has **NOT** been compiled with a Sui CLI, audited or published. SUI_PACKAGE_ID is intentionally empty. No NFT has been minted or sold by this implementation. Do NOT claim the Testnet feature is operational until verified.
