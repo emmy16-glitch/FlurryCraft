@@ -133,9 +133,14 @@ export function initTouch(game, player, ui, hooks) {
     const el = $(id); let heldId = null;
     const end = (e) => {
       if (e.pointerId !== heldId) return;
-      const id = heldId; heldId = null;
+      const pointerId = heldId; heldId = null;
       el.classList.remove('down'); if (off) off();
-      releaseCaptured(el, id);
+      // A cancelled button press must not leave a queued one-shot action.
+      if (e.type !== 'pointerup') {
+        if (id === 'tbBreak') T.attackPressed = false;
+        if (id === 'tbPlace') T.rightPressed = false;
+      }
+      releaseCaptured(el, pointerId);
     };
     el.addEventListener('pointerdown', (e) => {
       if (!canAct() || heldId !== null) return;
