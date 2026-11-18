@@ -32,6 +32,8 @@ Performance goals (not benchmarks): smooth 30 FPS on modest Android phones and 6
 
 - Castle Defense (source-implemented November 18): upgradeable Winter Wards Tier I–III, automatic hostile targeting with line-of-sight checks, opt-in three-wave monster raids focused on Ward shield integrity, in-raid repair, victory/defeat records, repeatable rewards, and save migration. Raids do not mine or destroy player-built structures, and active battles are intentionally transient. See docs/CASTLE_DEFENSE.md. Real-world Android performance and deployment checks remain pending.
 
+- Sword rendering and combat growth (November 18): real low-poly 3D swords in first-person and third-person, distinct Aurora Blade mesh, hotbar equipment, swing animation and capped +0.75 melee power every five levels (max +4.5). Model meshes are disposed on equipment changes for Android GPU memory. Tests guard damage tiers and scene wiring; real browser rendering and late-game balance need playtesting.
+
 ## Phase 3: Sui Testnet creator market
 
 **Implemented in source:** Move package for BuildNFT with stored voxel geometry, SHA2-256, shared escrow and exact-price Testnet sale; new Sui dApp Kit core wallet integration and Testnet UI; code for mint/list/cancel/buy, marketplace event discovery, integrity checks and fresh ownership verification before installation. Source tests and frontend SDK bundle run in GitHub Actions.
