@@ -482,9 +482,13 @@ function startGame(cont, id) {
     let guard = 0; while (world.collides(player.x, player.y, player.z, player.hw, player.h) && guard++ < 100) player.y += 1;
     if (!save) { player.spawn = { x: player.x, y: player.y, z: player.z }; }
     world.maxGen = 1; world.maxMesh = 2;
+    game.isJudgeDemo=judgeDemoRequested;
     if (game.flurry) game.flurry.onWorldReady(!save);
     $('loading').style.display = 'none'; $('hud').style.display = 'block'; game.state = 'play'; if (touchMode) initTouch(game, player, ui, { pause: () => showPause(true), settings }); last = performance.now();
-    ui.dirtyInv = true; game.requestPointer();
+    ui.dirtyInv = true;
+    // The judge's guided tour starts with a visible cursor, not a captured
+    // mouse that makes its on-screen Next buttons unclickable.
+    if(!judgeDemoRequested)game.requestPointer();
     if (!save) ui.toast(player.creative ? 'Welcome to FlurryCraft (Creative)' : 'Welcome to FlurryCraft! Meet Lofi, then build your dream.');
     if (!save && !player.creative) ui.toast('Press E for inventory & crafting');
     if(judgeDemoRequested){
