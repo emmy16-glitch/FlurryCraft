@@ -223,8 +223,72 @@ function voxelData(id) {
   }
   voxelCache.set(id, px); return px;
 }
+// Distinctive 3D wielded swords: steel/wood blade, tapered point,
+// crossguard, leather grip and optional Aurora crystal detailing.
+// Small low-poly primitives keep draw cost bounded on mobile devices.
+export function makeSwordMesh(id,size=1){
+  const g=new THREE.Group(),item=B.ITEMS[id]||{};
+  const aurora=id===B.AURORA_BLADE;
+  const tier=Math.max(0,Math.min(3,item.tierIdx??0));
+  const palette=aurora?
+    {blade:'#70f9ff',edge:'#e0ffff',core:'#db70f5',guard:'#cfaae6',grip:'#35305c',gem:'#f7a5ff'}:
+    [
+      {blade:'#b68b54',edge:'#e7c28c',core:'#81603e',guard:'#9c7a4f',grip:'#543824',gem:'#d6aa72'},
+      {blade:'#8f9da5',edge:'#ced5da',core:'#646d78',guard:'#8c8f96',grip:'#5b3d30',gem:'#d4c4ae'},
+      {blade:'#c1d0dc',edge:'#f5fcff',core:'#849aaf',guard:'#a2b2bd',grip:'#574338',gem:'#c8f0ff'},
+      {blade:'#58d9d1',edge:'#d5fffc',core:'#259a9d',guard:'#8eebde',grip:'#365273',gem:'#d8ffff'}
+    ][tier];
+  const materials=[];
+  const mat=(hex)=>{
+    const m=new THREE.MeshBasicMaterial({color:hex});
+    m.userData.originalRGB=[m.color.r,m.color.g,m.color.b];
+    materials.push(m);return m;
+  };
+  const metal=mat(palette.blade),edge=mat(palette.edge),ridge=mat(palette.core);
+  const guard=mat(palette.guard),leather=mat(palette.grip),jewel=mat(palette.gem);
+  const cuboid=(name,w,h,d,x,y,z,material)=>{
+    const mesh=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),material);
+    mesh.name=name;mesh.position.set(x,y,z);g.add(mesh);return mesh;
+  };
+  // Start the hilt near the player's fingers, with the visible blade rising.
+  cuboid('hilt',.11,.37,.105,0,-.42,0,leather);
+  for(const y of [-.54,-.44,-.34]){
+    const wrap=cuboid('grip-wrap',.118,.028,.12,0,y,0,guard);
+    wrap.rotation.y=.32;
+  }
+  cuboid('pommel',.18,.105,.15,0,-.64,0,guard);
+  cuboid('pommel-gem',.09,.07,.164,0,-.65,0,jewel);
+  cuboid('crossguard',aurora?.54:.45,.085,.16,0,-.20,0,guard);
+  for(const x of [-.22,.22]){
+    const claw=cuboid('guard-wing',.10,.14,.13,x,-.15,0,edge);
+    claw.rotation.z=x>0?.35:-.35;
+  }
+  cuboid('ricasso',.18,.12,.09,0,-.105,0,metal);
+  // Rectangular polygonal blade plus reinforced edge rails and ridge.
+  cuboid('blade',aurora?.18:.16,.65,.077,0,.275,0,metal);
+  for(const x of [-1,1])cuboid('cutting-edge',.026,.60,.06,x*(aurora?.085:.074),.28,0,edge);
+  cuboid('blade-fuller',.036,.58,.085,0,.29,0,ridge);
+  // A four-sided sharpened tip instead of a blunt block at the top.
+  const tip=new THREE.Mesh(new THREE.ConeGeometry(aurora?.117:.106,.23,4,1),
+    metal);
+  tip.name='sword-point';tip.position.set(0,.705,0);tip.rotation.y=Math.PI/4;
+  g.add(tip);
+  if(aurora){
+    cuboid('aurora-crystal-core',.075,.20,.105,0,.10,0,jewel);
+    for(const x of [-1,1]){
+      const fin=cuboid('aurora-wing',.075,.22,.09,x*.15,.49,0,ridge);
+      fin.rotation.z=x*.2;
+    }
+  }
+  g.scale.setScalar(size);
+  g.userData.mats=materials;
+  g.userData.sword3D=true;
+  return g;
+}
+
 // returns a Group at ~1 block scale centred on origin; kind = block cube or extruded item sprite
 export function makeItemMesh(id, size = 1) {
+  if(B.ITEMS[id]?.tool?.type==='sword')return makeSwordMesh(id,size);
   const g = new THREE.Group();
   if (id < 256 && B.BLOCKS[id]) {
     const d = B.BLOCKS[id];
@@ -249,6 +313,14 @@ function makeVoxelSprite(id, size) {
 export function setItemLight(g, l) {
   const mats = g.userData.mats; if (!mats) return;
   if (g.userData.sprite) { mats[0].color.setRGB(l, l, l); return; }
+  if(g.userData.sword3D){
+    const brightness=Math.max(.35,Number.isFinite(l)?l:1);
+    for(const m of mats){
+      const [r,g,b]=m.userData.originalRGB;
+      m.color.setRGB(r*brightness,g*brightness,b*brightness);
+    }
+    return;
+  }
   const f = [0.82, 0.82, 1, 0.5, 0.68, 0.68];
   for (let i = 0; i < 6; i++) mats[i].color.setRGB(f[i] * l, f[i] * l, f[i] * l);
 }
