@@ -224,7 +224,7 @@ export class Mob {
     this.game = game; this.kind = kind; this.sp = sp;
     this.level=sp.iceNative?Math.max(1,Math.min(sp.chapter2?20:10,Math.floor(options.level||game.adventure?.mobLevel(kind)||1))):1;
     this.trialId=options.trialId||null;
-    this.attackScale=1+(this.level-1)*(sp.chapter2?.035:.055);
+    this.attackScale=1+(this.level-1)*(sp.chapter2 ? .035 : .055);
     this.x = x; this.y = y; this.z = z; this.vx = this.vy = this.vz = 0; this.hw = sp.hw; this.h = sp.h;
     this.hp = Math.round(sp.hp*(1+(this.level-1)*.09));this.maxHp=this.hp; this.yaw = Math.random() * 6.28; this.dead = false; this.deadT = 0; this.hurtT = 0; this.fleeT = 0;
     this.walk = 0; this.amp = 0; this.wanderT = 1 + Math.random() * 3; this.wanderDir = this.yaw; this.moving = false;
