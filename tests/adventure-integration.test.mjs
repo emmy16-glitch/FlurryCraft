@@ -593,3 +593,23 @@ test('Aurora first-clear sword is unique; subsequent clears still award crystals
     'repeat clears do not duplicate first-clear swords');
  }finally{h.restore();}
 });
+
+test('Reloading while an Aurora battle is active safely removes monsters without altering clears',()=>{
+ const h=createHarness();try{
+  const site={x:190,y:44,z:21};
+  h.adventure.load({level:23,clears:2,storm:{clears:1},
+   aurora:{site,built:true,version:1,clears:0}});
+  h.adventure.resetWorld(false);
+  h.game.player.x=site.x+.5;h.game.player.y=site.y;h.game.player.z=site.z-8.5;
+  h.adventure.open();
+  h.panel.findButton('Enter Aurora Citadel').listeners.click();
+  assert.equal(h.adventure.isDungeonActive(),true);
+  const enemies=h.game.mobs.filter(m=>!m.dead&&m.trialId);
+  assert.equal(enemies.length,2);
+  const save=h.adventure.serialize();
+  h.adventure.load(save);h.adventure.resetWorld(false);
+  assert.equal(h.adventure.isDungeonActive(),false);
+  assert.ok(enemies.every(m=>m.dead),'abandoned dungeon monsters cleaned on load');
+  assert.equal(h.adventure.serialize().aurora.clears,0);
+ }finally{h.restore();}
+});
