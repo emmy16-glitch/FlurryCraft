@@ -960,6 +960,12 @@ export function initFlurry(game) {
     const lx=baseX-4,lz=baseZ-3;
     npcPosition={x:lx+.5,y:w.gen.column(lx,lz).h+1,z:lz+.5};
     lofi.group.position.set(npcPosition.x,npcPosition.y,npcPosition.z);lofi.group.visible=true;
+    if(isNew&&game.isJudgeDemo){
+      // Point towards the real Lofi guide before enabling navigation.
+      const dx=npcPosition.x-p.x,dz=npcPosition.z-p.z;
+      p.yaw=Math.atan2(-dx,-dz);
+      p.pitch=0;
+    }
     if(isNew)notify(game,'❄️ Welcome! Meet Lofi by the starter shack.');
   }
   function updatePlacementGhost(isPlaying){
