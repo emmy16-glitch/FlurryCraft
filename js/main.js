@@ -38,6 +38,7 @@ const saveSettings = () => { try { localStorage.setItem(SET_KEY, JSON.stringify(
 settings.graphics=normalizeGraphicsMode(settings.graphics);
 const graphics=createGraphicsController(settings.graphics,touchMode,window.devicePixelRatio||1);
 renderer.setPixelRatio(graphics.ratio);
+weather.graphicsPreset=settings.graphics;
 // Introduce free-build as the default for new worlds. Previously saved worlds
 // retain their mode; players can opt into unlimited building with BUILD.
 try { if (!localStorage.getItem('flurrycraft_easybuild_default_v2')) { settings.mode = 'c'; localStorage.setItem('flurrycraft_easybuild_default_v2','yes'); saveSettings(); } } catch {}
@@ -261,6 +262,7 @@ for(const id of ['mGraphics','pGraphics']){
     settings.graphics=normalizeGraphicsMode(control.value);
     graphics.reset(settings.graphics);
     renderer.setPixelRatio(graphics.ratio);
+    weather.graphicsPreset=settings.graphics;
     for(const otherId of ['mGraphics','pGraphics']) $(otherId).value=settings.graphics;
     saveSettings();
     if(game.state==='play')ui.toast('Graphics: '+(settings.graphics==='auto'?'Auto (adaptive)':settings.graphics==='crisp'?'Sharp':'Performance'));
