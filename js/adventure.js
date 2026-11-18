@@ -215,7 +215,7 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
       trial.remaining.delete(mob);
       if(trial.remaining.size===0){
         trial.nextIn=.75;
-        if(trial.wave<2)notify(game,'Chamber cleared · Walk deeper into the ruins');
+        if(trial.wave<2)notify(game,trial.chapter==='storm'?'Hall cleared · Continue toward the blizzard':'Chamber cleared · Walk deeper into the ruins');
       }
     }
   }
@@ -296,7 +296,7 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
     trial.remaining=new Set();trial.waiting=false;trial.nextIn=0;
     members.forEach((spec,index)=>trialSpawn(spec.kind,spec.level,index));
     refreshPill();
-    notify(game,(trial.chapter==='storm'?STORM_ROOM_NAMES:ROOM_NAMES)[trial.wave]+' · Defeat '+members.length+' enemies');
+    notify(game,(trial.chapter==='storm'?STORM_ROOM_NAMES:ROOM_NAMES)[trial.wave]+' · Defeat '+members.length+' '+(members.length===1?'enemy':'enemies'));
   }
   function finishTrial(){
     const chapter=trial?.chapter||'frost';
