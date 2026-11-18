@@ -658,7 +658,7 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
     const hero=make('section',undefined,panel);hero.className='fc-level-overview';
     const head=make('div',undefined,hero);head.className='fc-level-top';
     make('strong','Level '+progress.level,head);
-    make('span',progress.level<=10?'CHAPTER 1 · FROST RUINS':progress.level<=20?'CHAPTER 2 · STORMSPIRE':'WINTER ADVENTURER',head);
+    make('span',progress.level<=10?'CHAPTER 1 · FROST RUINS':progress.level<=20?'CHAPTER 2 · STORMSPIRE':progress.level<=30?'CHAPTER 3 · AURORA CITADEL':'WINTER ADVENTURER',head);
     const meter=make('div',undefined,hero);meter.className='fc-adventure-meter';
     meter.setAttribute('role','progressbar');meter.setAttribute('aria-label','Experience to next level');
     meter.setAttribute('aria-valuemin','0');
@@ -673,6 +673,7 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
     make('span',progress.kills+' creatures defeated',activity);
     make('span',progress.clears+' Frost Ruins clears',activity);
     make('span',progress.storm.clears+' Stormspire clears',activity);
+    make('span',progress.aurora.clears+' Aurora clears',activity);
     if(!game.player.creative){
       const recovery=make('section',undefined,panel);recovery.className='fc-adventure-card';
       make('h3','Survival · Recover Health',recovery);
@@ -767,6 +768,45 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
         button('Enter Stormspire',()=>startTrial('storm'),stormCard);
       }
     }
+    const auroraCard=make('section',undefined,panel);auroraCard.className='fc-adventure-card';
+    make('h3','Chapter 3 · Aurora Citadel',auroraCard);
+    make('p','Levels 21–30 · Four crystalline halls, Aurora Wisps, Prism Stalkers, and the Boreal Sovereign boss.',auroraCard);
+    make('p','First-clear reward: Aurora Blade, Aurora Crystals, Frost Shards, Froststone and XP. Craft more Aurora Blades from a Diamond Sword, 2 Crystals and a Frost Shard.',auroraCard);
+    if(!canEnterAurora()){
+      make('p','LOCKED · Reach Level 20 and clear Stormspire Keep once. Both are required.',auroraCard);
+    }else if(!progress.aurora.site){
+      button('Scout Aurora Citadel Site',()=>{
+        const s=findAuroraSite(game.player.spawn,world.gen,
+          [progress.den,progress.storm.site]);
+        if(!s){notify(game,'No suitable dry Aurora Citadel site found near this seed');return;}
+        progress.aurora.site=s;
+        guideAurora();
+        notify(game,'Aurora Citadel located · Check the map before building');
+        open();
+      },auroraCard);
+    }else{
+      const s=progress.aurora.site;
+      make('p','X '+s.x+' · Z '+(s.z-8)+' · '+progress.aurora.clears+' clears',auroraCard);
+      button('Guide to Aurora Citadel',guideAurora,auroraCard);
+      if(!progress.aurora.built||progress.aurora.version<AURORA_VERSION){
+        make('p',auroraPending?
+          'Construction in progress · Approach the marked area to load its terrain':
+          'Building occupies '+AURORA_FOOTPRINT+' and is never automatic.',auroraCard);
+        if(!auroraPending)button('Build Aurora Citadel · '+AURORA_FOOTPRINT,()=>{
+          if(typeof confirm==='function'&&!confirm(
+            'Build Aurora Citadel? This replaces terrain AND EXISTING BUILDS across '+
+            AURORA_FOOTPRINT+' at X '+s.x+', Z '+s.z+
+            '. Back up your world and inspect the location first.'))return;
+          if(buildAurora(true)){guideAurora();closeDialog();}
+        },auroraCard);
+      }else if(trial?.chapter==='aurora'){
+        make('p',AURORA_ROOM_NAMES[trial.wave]+' · Chamber '+(trial.wave+1)+' / 4',auroraCard);
+        button('Return to Aurora Citadel',closeDialog,auroraCard);
+      }else{
+        make('p','Enter through the northern arch and fight through four rooms.',auroraCard);
+        button('Enter Aurora Citadel',()=>startTrial('aurora'),auroraCard);
+      }
+    }
     const defense=make('section',undefined,panel);defense.className='fc-adventure-card';
     make('h3','Protect Your Castle',defense);
     make('p','Place a Winter Ward to protect buildings within 10 blocks. Its shield reduces damage and keeps hostile creatures from chasing you inside.',defense);
@@ -834,8 +874,8 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
       make('p','During raids, tap Repair Ward to spend 2 Shards + 4 Froststone and restore 22 shield. Retreating or leaving the area counts as a loss; upgrades remain.',fort);
     }
     const details=make('details',undefined,panel);
-    make('summary','Future chapters · Levels 21–100',details);
-    make('p','Frost Ruins and Stormspire Keep are playable in this release. Content for Levels 21–100 and advanced castle defense remains planned.',details);
+    make('summary','Future chapters · Levels 31–100',details);
+    make('p','Frost Ruins, Stormspire Keep and Aurora Citadel form the first three adventure chapters. Further regions for Levels 31–100 and more castle tiers remain planned.',details);
   }
   function hitFeedback(mob,damage){
     if(!mob||!game.player||game.player.mobTarget!==mob)return;
