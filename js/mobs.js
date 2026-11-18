@@ -517,7 +517,7 @@ export class Mob {
           const inReach = dist < (sp.spider ? 1.45 : spacing.attack) && Math.abs(dyp) < (sp.boss ? 2.9 : 1.7);
           if (inReach && this.cool <= 0) { this.windup = (this.windup || 0) + dt; speed *= 0.3; this.armSwing = Math.max(this.armSwing || 0, 0.15); if (this.windup > 0.5) { this.windup = 0; this.cool = 1.1; if(raidTarget){
               g.adventure?.siegeWardHit?.(this,sp.dmg*this.attackScale*g.difficulty);
-            }else p.hurt(sp.dmg * this.attackScale * g.difficulty, this.x, this.z);
+            }else p.hurt(sp.dmg * this.attackScale * g.difficulty, this.x, this.z, 'melee');
             this.armSwing = 0.3; } }
           else if (!inReach) this.windup = 0;
         }
