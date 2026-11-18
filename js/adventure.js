@@ -893,6 +893,45 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
         button('Enter Aurora Citadel',()=>startTrial('aurora'),auroraCard);
       }
     }
+    const abyssCard=make('section',undefined,panel);abyssCard.className='fc-adventure-card';
+    make('h3','Chapter 4 · Frostbound Abyss',abyssCard);
+    make('p','Levels 31–40 · Four dark ice halls: Rift Stalkers, Umbral Sentinels and the Abyss Keeper boss.',abyssCard);
+    make('p','First clear: an Abyss Blade (11 base damage), Abyss Crystals, Frost Shards, Froststone and XP. Craft more Abyss Blades with an Aurora Blade, 2 Abyss Crystals and 1 Frost Shard.',abyssCard);
+    if(!canEnterAbyss()){
+      make('p','LOCKED · Reach Level 30 and clear Aurora Citadel at least once.',abyssCard);
+    }else if(!progress.abyss.site){
+      button('Scout Frostbound Abyss Site',()=>{
+        const s=findAbyssSite(game.player.spawn,world.gen,
+          [progress.den,progress.storm.site,progress.aurora.site]);
+        if(!s){notify(game,'No safe Frostbound Abyss site found on this seed');return;}
+        progress.abyss.site=s;
+        guideAbyss();
+        notify(game,'Frostbound Abyss located · Check map marker before building');
+        open();
+      },abyssCard);
+    }else{
+      const site=progress.abyss.site;
+      make('p','X '+site.x+' · Z '+(site.z-8)+' · '+progress.abyss.clears+' clears',abyssCard);
+      button('Guide to Frostbound Abyss',guideAbyss,abyssCard);
+      if(!progress.abyss.built||progress.abyss.version<ABYSS_VERSION){
+        make('p',abyssPending?
+          'Construction queued · Travel toward the marked area to load terrain':
+          'Not built yet. Fortress occupies '+ABYSS_FOOTPRINT+'.',abyssCard);
+        if(!abyssPending)button('Build Frostbound Abyss · '+ABYSS_FOOTPRINT,()=>{
+          if(typeof confirm==='function'&&!confirm(
+            'Build Frostbound Abyss? This permanently REPLACES ALL TERRAIN AND EXISTING BUILDS in a '+
+            ABYSS_FOOTPRINT+' area at X '+site.x+', Z '+site.z+
+            '. Back up your world and inspect the location first.'))return;
+          if(buildAbyss(true)){guideAbyss();closeDialog();}
+        },abyssCard);
+      }else if(trial?.chapter==='abyss'){
+        make('p',ABYSS_ROOM_NAMES[trial.wave]+' · Room '+(trial.wave+1)+' / 4',abyssCard);
+        button('Return to Frostbound Abyss',closeDialog,abyssCard);
+      }else{
+        make('p','Approach the Rift Gate and clear all four chambers to defeat the Abyss Keeper.',abyssCard);
+        button('Enter Frostbound Abyss',()=>startTrial('abyss'),abyssCard);
+      }
+    }
     const defense=make('section',undefined,panel);defense.className='fc-adventure-card';
     make('h3','Protect Your Castle',defense);
     make('p','Place a Winter Ward to protect buildings within 10 blocks. Its shield reduces damage and keeps hostile creatures from chasing you inside.',defense);
@@ -1029,6 +1068,7 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
     if(denPending)buildTick();
     if(stormPending)stormBuildTick();
     if(auroraPending)auroraBuildTick();
+    if(abyssPending)abyssBuildTick();
     towerTick(dt);
     if(siege)tickSiege(dt);
     const dungeonReady=!game.player.creative&&progress.denBuilt&&
@@ -1038,24 +1078,26 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
       progress.storm.version>=STORM_VERSION&&nearStormGate(game.player,progress.storm.site);
     const atAurora=canEnterAurora()&&!trial&&progress.aurora.built&&
       progress.aurora.version>=AURORA_VERSION&&nearAuroraGate(game.player,progress.aurora.site);
-    entryChapter=atAurora?'aurora':atStorm?'storm':'frost';
-    const dungeonName=atAurora?'Aurora Citadel':atStorm?'Stormspire':'Frost Ruins';
+    const atAbyss=canEnterAbyss()&&!trial&&progress.abyss.built&&
+      progress.abyss.version>=ABYSS_VERSION&&nearAbyssGate(game.player,progress.abyss.site);
+    entryChapter=atAbyss?'abyss':atAurora?'aurora':atStorm?'storm':'frost';
+    const dungeonName=atAbyss?'Frostbound Abyss':atAurora?'Aurora Citadel':atStorm?'Stormspire':'Frost Ruins';
     entryButton.textContent='Enter '+dungeonName;
     entryButton.setAttribute('aria-label','Enter '+dungeonName+' dungeon');
-    entryButton.style.display=unobstructed&&(atAurora||atStorm||atFrost)?'block':'none';
+    entryButton.style.display=unobstructed&&(atAbyss||atAurora||atStorm||atFrost)?'block':'none';
     if(!trial){
       dungeonStatus.style.display='none';
       return;
     }
-    const p=game.player,auroraRun=trial.chapter==='aurora',stormRun=trial.chapter==='storm';
-    const d=auroraRun?progress.aurora.site:stormRun?progress.storm.site:progress.den;
+    const p=game.player,abyssRun=trial.chapter==='abyss',auroraRun=trial.chapter==='aurora',stormRun=trial.chapter==='storm';
+    const d=abyssRun?progress.abyss.site:auroraRun?progress.aurora.site:stormRun?progress.storm.site:progress.den;
     if(!d||p.dead||p.creative||
-      Math.hypot(p.x-d.x,p.z-d.z)>(auroraRun?73:stormRun?54:38)){
-      stopTrial((auroraRun?'Aurora Citadel':stormRun?'Stormspire':'Frost Ruins')+
+      Math.hypot(p.x-d.x,p.z-d.z)>(abyssRun?85:auroraRun?73:stormRun?54:38)){
+      stopTrial((abyssRun?'Frostbound Abyss':auroraRun?'Aurora Citadel':stormRun?'Stormspire':'Frost Ruins')+
         ' run ended');return;
     }
-    const names=auroraRun?AURORA_ROOM_NAMES:stormRun?STORM_ROOM_NAMES:ROOM_NAMES;
-    const lastWave=auroraRun?3:2;
+    const names=abyssRun?ABYSS_ROOM_NAMES:auroraRun?AURORA_ROOM_NAMES:stormRun?STORM_ROOM_NAMES:ROOM_NAMES;
+    const lastWave=abyssRun||auroraRun?3:2;
     let stage=names[trial.wave]+' · '+(trial.wave+1)+'/'+(lastWave+1);
     if(trial.remaining.size===0&&trial.wave<lastWave)
       stage='Room clear · Continue deeper';
@@ -1064,7 +1106,8 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
     if(trial.nextIn>0)trial.nextIn-=dt;
     if(trial.remaining.size===0&&trial.nextIn<=0){
       if(trial.wave>=lastWave){finishTrial();return;}
-      if((auroraRun?inAuroraRoom(p,d,trial.wave+1):
+      if((abyssRun?inAbyssRoom(p,d,trial.wave+1):
+        auroraRun?inAuroraRoom(p,d,trial.wave+1):
         stormRun?inStormRoom(p,d,trial.wave+1):enteredChamber(p,d,trial.wave+1))){
         trial.wave++;spawnWave();
       }
