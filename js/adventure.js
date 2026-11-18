@@ -447,6 +447,41 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
     const remaining=game.player.addItem(id,n);
     if(remaining>0)game.spawnItem(id,remaining,game.player.x,game.player.y+.8,game.player.z);
   }
+  function canEnterAurora(){
+    return progress.level>=AURORA_UNLOCK_LEVEL&&progress.storm.clears>=1;
+  }
+  function guideAurora(){
+    const s=progress.aurora.site;
+    if(s)explorer.guideTo({id:'aurora-citadel',name:'Aurora Citadel',
+      x:s.x,z:s.z-8});
+  }
+  function buildAurora(fromMenu=false){
+    const state=progress.aurora;
+    if(!world||!state.site||auroraPending||
+      (state.built&&state.version>=AURORA_VERSION))return false;
+    auroraBuildPlan=generateAuroraCitadel(state.site,B,world.gen);
+    auroraBuildIndex=0;auroraPending=true;
+    if(fromMenu)notify(game,'Aurora Citadel construction queued · Follow the map marker');
+    return true;
+  }
+  function auroraBuildTick(){
+    if(!auroraPending||!world||world!==game.world)return;
+    // Small, bounded batches protect mobile frame rate and save edits.
+    const end=Math.min(auroraBuildPlan.length,auroraBuildIndex+28);
+    for(let i=auroraBuildIndex;i<end;i++){
+      const [x,,z]=auroraBuildPlan[i];
+      if(!world.loaded(x,z))return;
+    }
+    for(;auroraBuildIndex<end;auroraBuildIndex++){
+      const [x,y,z,id]=auroraBuildPlan[auroraBuildIndex];
+      if(world.getBlock(x,y,z)!==id)world.setBlock(x,y,z,id);
+    }
+    if(auroraBuildIndex>=auroraBuildPlan.length){
+      auroraPending=false;auroraBuildPlan=[];auroraBuildIndex=0;
+      progress.aurora.built=true;progress.aurora.version=AURORA_VERSION;
+      notify(game,'Aurora Citadel ready! Enter through its glowing northern arch.');
+    }
+  }
   function canEnterStorm(){return progress.level>=STORM_UNLOCK_LEVEL&&progress.clears>=1;}
   function guideStorm(){
     const s=progress.storm.site;
