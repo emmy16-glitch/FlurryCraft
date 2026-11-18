@@ -11,6 +11,7 @@ import { EditHistory } from './edit-history.js';
 import { weatherProfile,cycleWeatherMode } from './winter-weather.js';
 import { initExplorerMap } from './explorer-map.js';
 import { initAdventure } from './adventure.js';
+import { makeSwordMesh,setItemLight } from './render.js';
 
 const PREFERENCES = 'flurrycraft_yeti_v1';
 const BLUEPRINTS = 'flurrycraft_blueprints_v1';
@@ -110,6 +111,37 @@ export function initFlurry(game) {
   let lofi = createYeti(colors, true);
   avatar.group.visible = false; lofi.group.visible = false;
   game.scene.add(avatar.group, lofi.group);
+  let avatarSword=null,avatarSwordId=-1;
+  function discardAvatarSword(){
+    if(!avatarSword)return;
+    avatar.group.remove(avatarSword);
+    const geometries=new Set(),materials=new Set();
+    avatarSword.traverse(o=>{
+      if(o.geometry)geometries.add(o.geometry);
+      if(Array.isArray(o.material))o.material.forEach(m=>materials.add(m));
+      else if(o.material)materials.add(o.material);
+    });
+    for(const g of geometries)g.dispose();
+    for(const m of materials)m.dispose();
+    avatarSword=null;avatarSwordId=-1;
+  }
+  function syncAvatarSword(){
+    const id=game.player.held()?.id??-1;
+    if(!third||B.ITEMS[id]?.tool?.type!=='sword'){
+      discardAvatarSword();return;
+    }
+    if(avatarSwordId!==id){
+      discardAvatarSword();
+      avatarSword=makeSwordMesh(id,.62);
+      avatarSwordId=id;
+      avatar.group.add(avatarSword);
+    }
+    const swing=Math.sin(game.player.swing*Math.PI);
+    avatarSword.position.set(.83,.77,-.30);
+    avatarSword.rotation.set(-.28-swing*.65,0,-.35+swing*.75);
+    if(typeof game.lightAt==='function')
+      setItemLight(avatarSword,game.lightAt(game.player.x,game.player.y+1.2,game.player.z));
+  }
   // One lightweight, reusable outline shows exactly where the next block
   // would go, without spawning a new mesh for every tap or covering the HUD.
   const placementGeo=new THREE.BoxGeometry(1.008,1.008,1.008);
@@ -955,10 +987,11 @@ export function initFlurry(game) {
         (id&&B.ITEMS[id] ? B.itemName(id)+' · PLACE □' : 'Tap + ALL on the bottom bar to choose a block');
       if(helpView.textContent!==text)helpView.textContent=text;
     }
-    if(!isPlaying){avatar.group.visible=false;placementGhost.visible=false;return;}
+    if(!isPlaying){avatar.group.visible=false;discardAvatarSword();placementGhost.visible=false;return;}
     updatePlacementGhost(isPlaying);
     const p=game.player;
     avatar.group.visible=third&&!p.dead;
+    syncAvatarSword();
     avatar.group.position.set(p.x,p.y,p.z);
     avatar.group.rotation.y=p.yaw;
     if(third&&!p.dead){
