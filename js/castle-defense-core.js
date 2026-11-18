@@ -17,8 +17,8 @@ export const SIEGE_REWARDS=Object.freeze({
   2:Object.freeze({shards:7,bricks:16,xp:145}),
   3:Object.freeze({shards:11,bricks:24,xp:240})
 });
-const finite=(v,d=0)=>Number.isFinite(v)?v:d;
-const bounded=(v,lo,hi,d=lo)=>Math.max(lo,Math.min(hi,Math.floor(finite(v,d))));
+const castleFinite=(v,d=0)=>Number.isFinite(v)?v:d;
+const bounded=(v,lo,hi,d=lo)=>Math.max(lo,Math.min(hi,Math.floor(castleFinite(v,d))));
 export const wardKey=ward=>[ward.x,ward.y,ward.z].join(',');
 export function wardTier(raw){return bounded(raw?.tier,1,MAX_WARD_TIER,1);}
 export function wardStats(ward){return WARD_CONFIG[wardTier(ward)];}
@@ -40,7 +40,7 @@ export function canUpgradeWard(ward,level,stormClears,shards,bricks){
 }
 export function siegeWaves(tier,level){
   const t=wardTier({tier});
-  const l=Math.max(1,Math.floor(finite(level,1)));
+  const l=Math.max(1,Math.floor(castleFinite(level,1)));
   if(t===1)return [
     [{kind:'frostling',level:Math.min(10,Math.max(2,l))},{kind:'frostling',level:Math.min(10,Math.max(2,l))}],
     [{kind:'snow_prowler',level:Math.min(10,Math.max(3,l))},{kind:'frostling',level:Math.min(10,Math.max(2,l))}],
