@@ -157,9 +157,10 @@ document.addEventListener('mousemove', (e) => {
   player.yaw -= e.movementX * s; player.pitch -= e.movementY * s; player.pitch = Math.max(-1.5533, Math.min(1.5533, player.pitch));
 });
 document.addEventListener('mousedown', (e) => {
-  if (game.state === 'play' && !game.paused && !ui.isOpen && !player.dead && !locked() && !touchMode && !(e.target && e.target.closest && e.target.closest('#pause,#screen,#death'))) { try { const p = canvas.requestPointerLock(); if (p && p.catch) p.catch(() => {}); } catch (err) {} }
+  const interactiveUI=game.tourActive||(e.target&&e.target.closest&&e.target.closest('#pause,#screen,#death,#touch,#flurryModal,#fcJudgeTour,#fcQuickMenu,#flurryActions,#fcAdventurePill,#fcDungeonEntry'));
+  if (game.state === 'play' && !game.paused && !ui.isOpen && !player.dead && !locked() && !touchMode && !interactiveUI) { try { const p = canvas.requestPointerLock(); if (p && p.catch) p.catch(() => {}); } catch (err) {} }
   if (game.state !== 'play') return;
-  if (game.paused || ui.isOpen || (e.target && e.target.closest && e.target.closest('#pause,#screen,#death,#touch'))) return;
+  if (game.paused || ui.isOpen || interactiveUI) return;
   if (!controlOn()) return;
   if (lockFail && !touchMode) dragging = true;
   if (e.button === 0) mouseL = true; if (e.button === 2) { mouseR = true; rightPressed = true; }
