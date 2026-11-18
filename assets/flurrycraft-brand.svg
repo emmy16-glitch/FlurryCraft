@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc">
+<title id="title">FlurryCraft project identity</title>
+<desc id="desc">Blue snowy mountain sky, original friendly Yeti and icy FlurryCraft game lettering</desc>
+<defs>
+  <linearGradient id="sky" x2="0" y2="1"><stop stop-color="#09172f"/><stop offset=".52" stop-color="#164c72"/><stop offset="1" stop-color="#4aa6c6"/></linearGradient>
+  <linearGradient id="snow" x2="0" y2="1"><stop stop-color="#f8ffff"/><stop offset="1" stop-color="#8bd3ed"/></linearGradient>
+  <linearGradient id="word" x2="0" y2="1"><stop stop-color="#fff"/><stop offset=".68" stop-color="#d9faff"/><stop offset="1" stop-color="#5fc4f0"/></linearGradient>
+</defs>
+<rect width="1024" height="1024" rx="116" fill="url(#sky)"/>
+<path d="M0 315 142 175l113 131 170-209 167 240 126-142 162 205 144-122V0H0Z" fill="#07233d" opacity=".55"/>
+<path d="M-30 570 154 326l108 117 193-300 172 251 122-130 281 272v112H0Z" fill="#7abbe0" opacity=".66"/>
+<path d="M-30 590 154 326l35 44 73 73 193-300 79 117 93 134 122-130 281 272" fill="none" stroke="#e4f9ff" stroke-width="14" opacity=".8"/>
+<path d="M0 745c136-45 205-54 331-30 132 23 211 0 340-30 147-35 273 10 353 47v292H0Z" fill="url(#snow)"/>
+<g opacity=".67" fill="#dffaff"><circle cx="102" cy="130" r="5"/><circle cx="850" cy="142" r="7"/><circle cx="760" cy="267" r="4"/><circle cx="180" cy="499" r="6"/><circle cx="912" cy="526" r="5"/></g>
+<image href="yeti-guide.svg" x="186" y="43" width="660" height="745" preserveAspectRatio="xMidYMid meet"/>
+<rect x="64" y="758" width="896" height="167" rx="27" fill="#0b2d4d" stroke="#b5edff" stroke-width="9"/>
+<text x="512" y="865" text-anchor="middle" font-family="Verdana,DejaVu Sans,Arial,sans-serif"
+ font-size="98" font-weight="900" letter-spacing="-4" fill="url(#word)" stroke="#0d446a" stroke-width="5" paint-order="stroke">FLURRYCRAFT</text>
+<text x="512" y="964" text-anchor="middle" font-family="Verdana,Arial,sans-serif" font-size="28"
+ font-weight="800" letter-spacing="8" fill="#114862">BUILD A WORLD OF WINTER</text>
+</svg>
