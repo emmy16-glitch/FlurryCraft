@@ -68,8 +68,20 @@ jobs:
           fi
           test -x "$SUI_CLI"
           "$SUI_CLI" --version
-          "$SUI_CLI" move test --path move/flurrycraft
-          "$SUI_CLI" move build --path move/flurrycraft --dump-bytecode-as-base64 > /tmp/flurrycraft-bytecode.json
+          # First-run Sui CLI may print a generated temporary wallet recovery
+          # phrase. Capture raw output and emit only safe test summaries.
+          if ! "$SUI_CLI" move test --path move/flurrycraft > /tmp/flurry-move-tests.log 2>&1; then
+            grep -Ei '(^| )error|FAIL|BUILDING|Test result' /tmp/flurry-move-tests.log |
+              grep -Eiv 'secret recovery phrase|mnemonic|private key|keypair' | tail -n 80 || true
+            exit 1
+          fi
+          grep -E 'BUILDING |\[ PASS|Test result' /tmp/flurry-move-tests.log || true
+          if ! "$SUI_CLI" move build --path move/flurrycraft --dump-bytecode-as-base64 \
+            > /tmp/flurrycraft-bytecode.json 2> /tmp/flurry-move-build.log; then
+            grep -Ei '(^| )error|FAIL' /tmp/flurry-move-build.log |
+              grep -Eiv 'secret recovery phrase|mnemonic|private key|keypair' | tail -n 80 || true
+            exit 1
+          fi
           node scripts/prepare-sui-publish-artifact.mjs /tmp/flurrycraft-bytecode.json dist/flurrycraft-publish.json "$GITHUB_SHA"
       - name: Assemble browser-only site (no node_modules)
         run: |
