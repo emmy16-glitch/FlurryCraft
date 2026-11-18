@@ -1,11 +1,15 @@
 // FlurryCraft Adventure progression. Pure, deterministic rules, no renderer.
-// The 1–100 XP curve is defined here; the first playable chapter is levels 1–10.
+// The 1–100 XP curve is defined here; Chapter 1 plays at 1–10, Chapter 2 at 11–20.
 export const MAX_LEVEL=100;
 export const CHAPTER_CAP=10;
+export const STORM_CAP=20;
 export const FROST_CREATURES=Object.freeze({
   frostling: Object.freeze({name:'Frostling',minLevel:1,xp:16}),
   snow_prowler: Object.freeze({name:'Snow Prowler',minLevel:3,xp:22}),
   glacier_guardian: Object.freeze({name:'Glacier Guardian',minLevel:8,xp:110,boss:true}),
+  storm_hound: Object.freeze({name:'Storm Hound',minLevel:11,xp:35,chapter:2}),
+  rime_knight: Object.freeze({name:'Rime Knight',minLevel:14,xp:48,chapter:2}),
+  blizzard_titan: Object.freeze({name:'Blizzard Titan',minLevel:18,xp:240,boss:true,chapter:2}),
 });
 export function xpToNext(level){
   const n=Math.max(1,Math.min(MAX_LEVEL,Math.floor(Number(level)||1)));
@@ -19,13 +23,21 @@ export function safeAdventure(raw){
   const pos=a.den&&[a.den.x,a.den.y,a.den.z].every(Number.isFinite)&&
     Math.abs(a.den.x)<1000000&&Math.abs(a.den.z)<1000000?
     {x:Math.floor(a.den.x),y:Math.max(2,Math.min(88,Math.floor(a.den.y))),z:Math.floor(a.den.z)}:null;
+  const stormRaw=a.storm&&typeof a.storm==='object'?a.storm:{};
+  const s=stormRaw.site;
+  const stormSite=s&&[s.x,s.y,s.z].every(Number.isInteger)&&
+    Math.abs(s.x)<1000000&&Math.abs(s.z)<1000000&&s.y>=2&&s.y<=85?
+    {x:s.x,y:s.y,z:s.z}:null;
+  const storm={site:stormSite,built:!!stormSite&&!!stormRaw.built,
+    version:stormSite&&stormRaw.built?clamp(stormRaw.version,0,1):0,
+    clears:clamp(stormRaw.clears,0,10000)};
   const beacons=Array.isArray(a.beacons)?a.beacons.slice(0,40).filter(b=>b&&
     [b.x,b.y,b.z].every(Number.isInteger)&&Math.abs(b.x)<1000000&&
     Math.abs(b.z)<1000000&&b.y>0&&b.y<96).map(b=>({x:b.x,y:b.y,z:b.z})):[];
   return {level,xp,kills:clamp(a.kills,0,100000),clears:clamp(a.clears,0,10000),
     den:pos,denBuilt:!!a.denBuilt&&!!pos,
     dungeonVersion:!!pos&&!!a.denBuilt?clamp(a.dungeonVersion,0,2,0):0,
-    swordClaimed:!!a.swordClaimed,beacons};
+    swordClaimed:!!a.swordClaimed,storm,beacons};
 }
 export function grantXP(state,amount) {
   const next=safeAdventure(state),gain=Math.max(0,Math.min(2000,Math.floor(Number(amount)||0)));
@@ -38,13 +50,17 @@ export function grantXP(state,amount) {
 }
 export function winterMobLevel(playerLevel,kind,roll=0.5){
   const low=FROST_CREATURES[kind]?.minLevel||1;
-  const p=Math.max(1,Math.min(CHAPTER_CAP,Math.floor(playerLevel)||1));
+  const cap=FROST_CREATURES[kind]?.chapter===2?STORM_CAP:CHAPTER_CAP;
+  const p=Math.max(1,Math.min(cap,Math.floor(playerLevel)||1));
   const delta=Math.max(0,Math.min(1,Number(roll)||0))<.76?0:1;
-  return Math.max(low,Math.min(CHAPTER_CAP,p+delta));
+  return Math.max(low,Math.min(cap,p+delta));
 }
 export function chooseWinterMob(playerLevel,roll=0.5){
   const p=Math.max(1,Math.floor(Number(playerLevel)||1));
   const r=Math.max(0,Math.min(.99999,Number(roll)||0));
+  if(p>=18&&r>.982)return 'blizzard_titan';
+  if(p>=14&&r>.82)return 'rime_knight';
+  if(p>=11&&r>.55)return 'storm_hound';
   if(p>=8&&r>.965)return 'glacier_guardian';
   if(p>=3&&r>.48)return 'snow_prowler';
   return 'frostling';
@@ -56,6 +72,16 @@ export function trialWaves(level=1){
     [{kind:'snow_prowler',level:Math.max(3,Math.min(7,n+2))},
      {kind:'frostling',level:Math.max(2,Math.min(6,n+1))}],
     [{kind:'glacier_guardian',level:Math.max(8,Math.min(10,n+3))}]
+  ];
+}
+export function stormspireWaves(level=10){
+  const n=Math.max(10,Math.min(STORM_CAP,Math.floor(level)||10));
+  return [
+    [{kind:'storm_hound',level:Math.max(11,Math.min(16,n+1))},
+     {kind:'storm_hound',level:Math.max(11,Math.min(16,n+1))}],
+    [{kind:'rime_knight',level:Math.max(14,Math.min(18,n+2))},
+     {kind:'storm_hound',level:Math.max(12,Math.min(17,n+1))}],
+    [{kind:'blizzard_titan',level:Math.max(16,Math.min(20,n+3))}]
   ];
 }
 export function trialLocation(spawn,gen){
