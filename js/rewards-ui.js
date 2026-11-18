@@ -3,8 +3,10 @@
 import {createRewardsState,rewardCards,collectLocalPoints,recordRewardPlacement,
   requestCryptoPayout,CRYPTO_REWARDS_ENABLED,acceptExpeditionMission,
   collectExpeditionMission} from './rewards-core.js';
+import {expeditionGuideTarget} from './expedition-guide.js';
 
-export function initRewardsHub({game,panel,openDialog,notify,onOpenMarketplace}){
+export function initRewardsHub({game,panel,openDialog,notify,onOpenMarketplace,
+  onNavigate=()=>{},onExpeditionEvent=()=>{}}){
   let state=createRewardsState(null,null);
   const el=(tag,text,parent=panel)=>{
     const node=document.createElement(tag);if(text!==undefined)node.textContent=String(text);
@@ -68,6 +70,42 @@ export function initRewardsHub({game,panel,openDialog,notify,onOpenMarketplace})
     state=recordRewardPlacement(state,adventure());
     hudTick=0;
   }
+  const current=()=>rewardCards(state,adventure(),!!game.player?.creative).expedition;
+  function publishEvent(event){
+    // Visual feedback must never roll back a previously committed mission.
+    try{onExpeditionEvent(event);}catch(error){console.warn('Quest feedback unavailable',error);}
+  }
+  function acceptMission(id){
+    if(game.state!=='play'||game.paused||game.player?.dead)
+      throw new Error('Enter a living Survival world to accept a mission.');
+    const before=current().mission;
+    state=acceptExpeditionMission(state,adventure(),id,!!game.player?.creative);
+    const saved=game.saveRewards?.();
+    if(saved===false)notify(game,'Mission accepted, but storage save failed. Export a world backup.');
+    notify(game,'Mission accepted: '+before.title);
+    hudTick=0;publishEvent({type:'accepted',title:before.title});
+    return current();
+  }
+  function claimMission(id){
+    if(game.state!=='play'||game.paused||game.player?.dead)
+      throw new Error('Return to Survival gameplay to claim your mission.');
+    const claimed=collectExpeditionMission(state,adventure(),id,!!game.player?.creative);
+    if(!game.adventure?.awardExpeditionXP?.(claimed.xp))
+      throw new Error('Adventure XP could not be awarded; retry in Survival.');
+    state=claimed.state; // Points are recorded after XP is successfully awarded.
+    const saved=game.saveRewards?.();
+    if(saved===false)notify(game,'Reward claimed, but storage save failed. Export a world backup.');
+    notify(game,claimed.title+' complete! +'+claimed.points+' Flurry Points · +'+claimed.xp+' XP');
+    hudTick=0;publishEvent({type:'completed',title:claimed.title,
+      points:claimed.points,xp:claimed.xp});
+    return claimed;
+  }
+  function guideMission(){
+    const point=expeditionGuideTarget(current(),adventure());
+    if(!point)return false;
+    onNavigate(point);
+    return true;
+  }
   const section=(title)=>{const h=el('h3',title);h.className='fc-reward-label';};
   const message=text=>{const p=el('p',text);p.className='fc-reward-intro';return p;};
   function open(){
@@ -106,21 +144,16 @@ export function initRewardsHub({game,panel,openDialog,notify,onOpenMarketplace})
       btn.addEventListener('click',()=>{
         btn.disabled=true; // ignore double taps until ledger is updated
         try{
-          if(!m.active){
-            state=acceptExpeditionMission(state,adventure(),m.id,!!game.player?.creative);
-            notify(game,'Mission accepted: '+m.title);
-          }else{
-            const claimed=collectExpeditionMission(state,adventure(),m.id,!!game.player?.creative);
-            if(!game.adventure?.awardExpeditionXP?.(claimed.xp))
-              throw new Error('Adventure XP could not be awarded; retry in Survival.');
-            state=claimed.state;
-            notify(game,m.title+' complete! +'+claimed.points+' Flurry Points · +'+claimed.xp+' XP');
-          }
-          const saved=game.saveRewards?.();
-          if(saved===false)notify(game,'Mission changed but save failed. Export a world backup.');
-          hudTick=0;update();open();
+          if(!m.active)acceptMission(m.id);
+          else claimMission(m.id);
+          update();open();
         }catch(error){notify(game,error.message);btn.disabled=false;}
       });
+    }
+    if(expeditionGuideTarget(expedition,adventure())){
+      const navButton=el('button','🧭 Guide to Frost Ruins',ec);
+      navButton.type='button';
+      navButton.addEventListener('click',()=>{if(!guideMission())notify(game,'Dungeon entrance not yet available.');});
     }
     message('Expedition progress only counts after accepting each contract in Survival. Claims are one-time and saved per world.');
     const renderGroup=(heading,cards)=>{
@@ -163,5 +196,6 @@ export function initRewardsHub({game,panel,openDialog,notify,onOpenMarketplace})
     }
     message('NFT sale proceeds, if any, are separate on-chain payments. No NFT sale or wallet balance is inferred from local points.');
   }
-  return {open,load,serialize,recordPlacement,update,get points(){return state.points;}};
+  return {open,load,serialize,recordPlacement,update,current,acceptMission,claimMission,
+    guideMission,get points(){return state.points;}};
 }

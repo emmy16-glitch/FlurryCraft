@@ -13,6 +13,7 @@ import { initExplorerMap } from './explorer-map.js';
 import { initAdventure } from './adventure.js';
 import { initJudgeTour } from './judge-tour.js';
 import { initRewardsHub } from './rewards-ui.js';
+import {nearLofi,lofiQuestDialogue,lofiWaypoint,expeditionGuideTarget} from './expedition-guide.js';
 import { makeSwordMesh,setItemLight } from './render.js';
 
 const PREFERENCES = 'flurrycraft_yeti_v1';
@@ -113,6 +114,33 @@ export function initFlurry(game) {
   let lofi = createYeti(colors, true);
   avatar.group.visible = false; lofi.group.visible = false;
   game.scene.add(avatar.group, lofi.group);
+  // A single billboard, attached to the existing 3D Lofi model. No extra NPC
+  // meshes per frame and no background texture downloads.
+  const badgeCanvas=document.createElement('canvas');
+  badgeCanvas.width=badgeCanvas.height=128;
+  const badgeContext=badgeCanvas.getContext('2d');
+  const badgeTexture=new THREE.CanvasTexture(badgeCanvas);
+  const badgeSprite=new THREE.Sprite(new THREE.SpriteMaterial({
+    map:badgeTexture,transparent:true,depthWrite:false,depthTest:true
+  }));
+  badgeSprite.position.set(0,2.9,0);
+  badgeSprite.scale.set(1.05,1.05,1);
+  lofi.group.add(badgeSprite);
+  let previousBadge='';
+  function updateLofiBadge(symbol){
+    if(!badgeContext||previousBadge===symbol)return;
+    previousBadge=symbol;
+    badgeContext.clearRect(0,0,128,128);
+    badgeContext.fillStyle='rgba(7,43,64,.91)';
+    badgeContext.beginPath();badgeContext.arc(64,60,40,0,Math.PI*2);badgeContext.fill();
+    badgeContext.lineWidth=6;badgeContext.strokeStyle='#a1f1ff';badgeContext.stroke();
+    badgeContext.font='900 65px system-ui';
+    badgeContext.fillStyle='#dcfbff';badgeContext.textAlign='center';
+    badgeContext.textBaseline='middle';
+    badgeContext.fillText(symbol,64,62);
+    badgeTexture.needsUpdate=true;
+  }
+  updateLofiBadge('?');
   let avatarSword=null,avatarSwordId=-1;
   function discardAvatarSword(){
     if(!avatarSword)return;
@@ -313,6 +341,7 @@ export function initFlurry(game) {
   menuItem('▶ Guided Tour',()=>judgeTour.start());
   menuItem('Winter Adventure',()=>game.adventure.open());
   menuItem('✦ Rewards Hub',()=>game.rewards.open());
+  menuItem('❄ Find Lofi · Quest Giver',()=>guideToLofi());
   menuSection('BUILD');
   menuItem('Walls & Floors',()=>showSmartBuilder());
   menuItem('Save Building',()=>showBlueprint());
@@ -416,6 +445,104 @@ export function initFlurry(game) {
   };
   const label = text=>make('label',text);
   const input = (value='',type='text')=>{const el=make('input');el.value=value;el.type=type;return el;};
+  // One reusable UI for proximity talk and mission rewards; never creates
+  // achievements, XP or tokens without the existing Rewards Hub claim checks.
+  const lofiPrompt=document.createElement('button');
+  lofiPrompt.type='button';lofiPrompt.id='fcTalkLofi';
+  lofiPrompt.setAttribute('aria-label','Talk to Lofi the Yeti about Expeditions');
+  lofiPrompt.textContent='❄ Talk to Lofi · F';
+  lofiPrompt.addEventListener('pointerdown',e=>e.stopPropagation());
+  lofiPrompt.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();openLofiDialogue();});
+  document.body.appendChild(lofiPrompt);
+  const expeditionBanner=document.createElement('div');
+  expeditionBanner.id='fcExpeditionCelebration';
+  expeditionBanner.setAttribute('role','status');
+  expeditionBanner.setAttribute('aria-live','polite');
+  document.body.appendChild(expeditionBanner);
+  let celebrationTimer=null,lofiPoll=0;
+  const lofiStyle=document.createElement('style');
+  lofiStyle.textContent=[
+    '#fcTalkLofi{position:fixed;z-index:28;left:50%;bottom:147px;transform:translateX(-50%);display:none;min-height:43px;max-width:60vw;padding:8px 14px;border:2px solid #b5f4ff;border-radius:13px;background:#14617bdc;color:#f4fdff;font:800 12px system-ui;box-shadow:0 5px 19px #001b2ca6;touch-action:manipulation;cursor:pointer}',
+    '#fcTalkLofi:focus-visible{outline:3px solid #b4f7ff;outline-offset:3px}',
+    '#flurryModal .fc-lofi-dialogue{display:flex;align-items:center;gap:12px;margin:10px 0 14px;background:#153e52;padding:9px;border:1px solid #477e96;border-radius:12px}',
+    '#flurryModal .fc-lofi-dialogue img{width:70px;height:75px;object-fit:contain;flex:none}',
+    '#flurryModal .fc-lofi-dialogue p{color:#e8faff;font:650 12px/1.55 system-ui}',
+    '#flurryModal .fc-lofi-status{font:850 11px system-ui;color:#a5ebf6}',
+    '#fcExpeditionCelebration{display:none;position:fixed;z-index:110;pointer-events:none;left:50%;top:20%;transform:translateX(-50%);width:max-content;max-width:min(85vw,410px);border:2px solid #b3f5ff;border-radius:16px;padding:12px 18px;text-align:center;background:linear-gradient(130deg,#165c75f5,#112f52f5);color:#edfbff;box-shadow:0 12px 38px #00152dc4;font:850 14px/1.55 system-ui}',
+    '#fcExpeditionCelebration strong{display:block;font:900 18px/1.3 system-ui;color:#cbfbff}',
+    '#fcExpeditionCelebration.show{display:block;animation:fcExpeditionReveal .28s ease-out}',
+    '@keyframes fcExpeditionReveal{from{opacity:0;transform:translate(-50%,13px) scale(.96)}to{opacity:1;transform:translate(-50%,0) scale(1)}}',
+    '@media(max-height:520px){#fcTalkLofi{bottom:118px;min-height:35px;padding:6px 9px;font-size:10px}#fcExpeditionCelebration{top:12%;padding:8px 13px;font-size:11px}#fcExpeditionCelebration strong{font-size:14px}}',
+    '@media(prefers-reduced-motion:reduce){#fcExpeditionCelebration.show{animation:none}}'
+  ].join('\n');
+  document.head.appendChild(lofiStyle);
+  function showExpeditionEvent(event){
+    if(!event||!['accepted','completed'].includes(event.type))return;
+    clearTimeout(celebrationTimer);
+    expeditionBanner.replaceChildren();
+    const heading=document.createElement('strong');
+    heading.textContent=event.type==='completed'?'✦ Expedition Complete!':'❄ New Expedition Accepted';
+    expeditionBanner.appendChild(heading);
+    const line=document.createElement('div');
+    line.textContent=event.type==='completed'
+      ?event.title+' · +'+event.points+' local points · +'+event.xp+' XP'
+      :event.title+' · Your mission has begun';
+    expeditionBanner.appendChild(line);
+    expeditionBanner.classList.remove('show');
+    // Reset CSS animation when subsequent contracts are claimed quickly.
+    void expeditionBanner.offsetWidth;
+    expeditionBanner.classList.add('show');
+    if(event.type==='completed'&&game.state==='play'&&!game.player.dead){
+      const p=game.player;
+      game.particles?.burst?.(p.x,p.y+1.4,p.z,[126,229,245],
+        game.touchMode?9:16,2.1);
+      game.sound?.play?.('levelup',{vol:.48});
+    }
+    celebrationTimer=setTimeout(()=>{expeditionBanner.classList.remove('show');},2900);
+  }
+  function guideToLofi(){
+    const point=lofiWaypoint(npcPosition);
+    if(!point||game.state!=='play'){
+      notify(game,'Enter a world to meet Lofi at the starter shack.');return false;
+    }
+    explorer.guideTo(point);
+    return true;
+  }
+  function openLofiDialogue(){
+    if(game.state!=='play'||game.paused||game.player.dead||
+      game.ui.isOpen||overlay.style.display==='flex'||
+      !nearLofi(game.player,npcPosition))return false;
+    const exp=game.rewards.current();
+    const dialogue=lofiQuestDialogue(exp,!!game.player.creative);
+    open('❄ Lofi the Yeti · Expedition Captain');
+    const scene=make('div');scene.className='fc-lofi-dialogue';
+    const portrait=document.createElement('img');
+    portrait.src='./assets/yeti-guide.svg';portrait.alt='Lofi the Yeti';
+    scene.appendChild(portrait);
+    const text=document.createElement('div');scene.appendChild(text);
+    const status=document.createElement('div');
+    status.className='fc-lofi-status';status.textContent=dialogue.status;
+    text.appendChild(status);
+    const speech=document.createElement('p');speech.textContent=dialogue.greeting;
+    text.appendChild(speech);
+    const m=exp.mission;
+    if(m&&!game.player.creative&&(m.available||m.ready)){
+      button(dialogue.action,()=>{
+        try{
+          if(m.available)game.rewards.acceptMission(m.id);
+          else game.rewards.claimMission(m.id);
+          close();
+        }catch(error){notify(game,error.message);}
+      });
+    }
+    button('Open Expedition Board',()=>game.rewards.open(),true);
+    if(expeditionGuideTarget(exp,game.adventure?.serialize?.())){
+      button('🧭 Guide to Frost Ruins',()=>{
+        if(!game.rewards.guideMission())notify(game,'Dungeon location is unavailable.');
+      });
+    }
+    return true;
+  }
   const complete = () => {quest=Math.min(4,quest+1); save(QUEST,quest); placed=0; lastQuestText=''; notify(game,quest===4?'Lofi: Amazing! You are a true Yeti creator!':'Quest completed! '+questNames[quest]);};
   creatorStudio=initCreatorStudioUI({
     game,B,panel,openDialog:open,closeDialog:close,showCapture:showBlueprint,
@@ -433,7 +560,9 @@ export function initFlurry(game) {
     openMarketplace:()=>suiMarket.open(),
     isDialogOpen:()=>overlay.style.display==='flex'||!menu.hidden});
   game.rewards=initRewardsHub({game,panel,openDialog:open,notify,
-    onOpenMarketplace:()=>suiMarket.open()});
+    onOpenMarketplace:()=>suiMarket.open(),
+    onNavigate:place=>explorer.guideTo(place),
+    onExpeditionEvent:showExpeditionEvent});
   // Beginners should be able to build immediately, without finding a recipe book.
   // Derive the library from the engine registry instead of maintaining a
   // hard-coded 12-block selection. All supported placeable inventory blocks
@@ -925,6 +1054,9 @@ export function initFlurry(game) {
     const p=game.player,w=game.world;
     toolState=null;selectionState=null;buildJob=null;progress.hidden=true;editHistory.reset(w);clearPreview();refreshToolActions();
     explorer.reset();
+    lofiPrompt.style.display='none';
+    expeditionBanner.classList.remove('show');
+    clearTimeout(celebrationTimer);lofiPoll=0;
     judgeTour.close();
     game.adventure.resetWorld(isNew);
     // A fresh guided tour showcases the snowy scenery instead of opening in
@@ -1017,7 +1149,7 @@ export function initFlurry(game) {
         (id&&B.ITEMS[id] ? B.itemName(id)+' · PLACE □' : 'Tap + ALL on the bottom bar to choose a block');
       if(helpView.textContent!==text)helpView.textContent=text;
     }
-    if(!isPlaying){avatar.group.visible=false;discardAvatarSword();placementGhost.visible=false;return;}
+    if(!isPlaying){lofiPrompt.style.display='none';avatar.group.visible=false;discardAvatarSword();placementGhost.visible=false;return;}
     updatePlacementGhost(isPlaying);
     const p=game.player;
     avatar.group.visible=third&&!p.dead;
@@ -1034,6 +1166,21 @@ export function initFlurry(game) {
         if(game.world.isSolid(test.x,test.y,test.z)){target.copy(from).addScaledVector(diff,(n-1)/12);break;}
       }
       game.camera.position.copy(target);
+    }
+    lofiPoll-=dt;
+    if(lofiPoll<=0){
+      lofiPoll=.18;
+      const canTalk=nearLofi(p,npcPosition)&&!p.dead&&!game.ui.isOpen&&
+        !game.tourActive&&!game.paused&&overlay.style.display!=='flex'&&
+        menu.hidden&&!previewState;
+      lofiPrompt.style.display=canTalk?'block':'none';
+      if(canTalk){
+        const exp=game.rewards.current();
+        const label=lofiQuestDialogue(exp,!!p.creative);
+        lofiPrompt.textContent=label.icon+' Talk to Lofi · F';
+      }
+      if(npcPosition)updateLofiBadge(lofiQuestDialogue(
+        game.rewards.current(),!!p.creative).icon);
     }
     if(npcPosition&&lofi.group.visible){
       // The guide should look at the player during the official demo,
@@ -1117,7 +1264,9 @@ export function initFlurry(game) {
   all.style.pointerEvents='auto';
   all.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();showBuildMenu();});
   hotbar.appendChild(all);
-  game.flurry={update,onWorldReady,countPlayerPlacement,recordChange,isApplyingEdit:()=>editHistory.applying,buildInProgress:()=>!!buildJob,isThird:()=>third,daylightLocked:()=>brightWorld,openBlockLibrary:showBuildMenu,openCreatorStudio:()=>creatorStudio.open(),openMarketplace:()=>suiMarket.open(),startJudgeTour:()=>judgeTour.start(),showSmartBuilder,undoEdit:undoSmartBuild,redoEdit:redoLastEdit};
+  game.flurry={update,onWorldReady,openLofiDialogue,guideToLofi,
+    getLofiPosition:()=>npcPosition?{...npcPosition}:null,
+    countPlayerPlacement,recordChange,isApplyingEdit:()=>editHistory.applying,buildInProgress:()=>!!buildJob,isThird:()=>third,daylightLocked:()=>brightWorld,openBlockLibrary:showBuildMenu,openCreatorStudio:()=>creatorStudio.open(),openMarketplace:()=>suiMarket.open(),startJudgeTour:()=>judgeTour.start(),showSmartBuilder,undoEdit:undoSmartBuild,redoEdit:redoLastEdit};
   document.addEventListener('keydown', e=>{
     if(e.target && /INPUT|TEXTAREA/.test(e.target.tagName))return;
     if(e.code==='Escape' && overlay.style.display==='flex'){close();e.stopImmediatePropagation();return;}
@@ -1136,5 +1285,9 @@ export function initFlurry(game) {
     if(e.code==='KeyEscape' && previewState)clearPreview();
     // G is reserved for Sword Guard; N opens the building catalog.
     if(e.code==='KeyN')showBuildMenu();
+    if(e.code==='KeyF'&&!e.repeat&&menu.hidden&&overlay.style.display!=='flex'&&
+      !previewState&&!game.tourActive&&nearLofi(game.player,npcPosition)){
+      e.preventDefault();openLofiDialogue();
+    }
   });
 }

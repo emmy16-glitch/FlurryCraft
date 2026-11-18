@@ -4,6 +4,17 @@ Browser-first, free-to-play voxel sandbox for Android, iPhone and desktop. Flurr
 
 Built on the MIT-licensed [Yet Another VoxelCraft](https://github.com/GoldwinXS/YetAnotherVoxelCraft) engine by GoldwinXS, with a local bundled Three.js r160. Original attribution is preserved in UPSTREAM_LICENSE.txt.
 
+## ❄ Talk to Lofi — the 3D Expedition Captain
+
+Meet the existing Lofi Yeti by the starter shack, then **press F** on
+desktop or tap **Talk to Lofi** on mobile. His floating icon marks available,
+active, and ready-to-claim quests; his dialogue offers mission acceptance and
+one-time local point/XP claims using the same Rewards Hub ledger.
+Use **Menu → Find Lofi** to follow an actual world-map compass to the
+shack. The Ruins Expedition also points to the known Frost Ruins entrance.
+Short celebratory banners and modest effects accompany completed missions.
+[See the Lofi quest-giver guide](docs/LOFI_QUEST_GIVER.md).
+
 ## 🧭 Expedition Board — complete missions, earn XP
 
 Survival players have four sequential expedition contracts in **Menu →
