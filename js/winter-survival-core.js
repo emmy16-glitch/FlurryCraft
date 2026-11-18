@@ -34,6 +34,9 @@ export function recoveredHealth(health) {
 
 /** Comfortable minimum spacing for winter creatures on a first-person phone screen. */
 export function winterMeleeSpacing(kind) {
+  if(kind==='boreal_sovereign')return {stop:2.8,attack:3.3};
+  if(kind==='prism_stalker')return {stop:1.9,attack:2.25};
+  if(kind==='aurora_wisp')return {stop:1.9,attack:2.25};
   if (kind === 'glacier_guardian') return { stop: 2.35, attack: 2.85 };
   if (kind === 'snow_prowler') return { stop: 1.65, attack: 1.9 };
   if (kind === 'frostling') return { stop: 1.65, attack: 1.9 };
