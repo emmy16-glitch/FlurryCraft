@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {initAdventure} from '../js/adventure.js';
 import {xpToNext} from '../js/adventure-core.js';
 import {playerMaxHealth} from '../js/combat-progression.js';
+import {createRewardsState,acceptExpeditionMission,collectExpeditionMission} from '../js/rewards-core.js';
 
 class Element {
  constructor(tag='div'){
@@ -773,5 +774,36 @@ test('Reload during active Chapter 4 fight removes its monsters and keeps clears
   assert.equal(h.adventure.isDungeonActive(),false);
   assert.ok(active.every(m=>m.dead));
   assert.equal(h.adventure.serialize().abyss.clears,0);
+ }finally{h.restore();}
+});
+
+test('real adventure kills complete a sequential Expedition and award real Adventure XP once',()=>{
+ const h=createHarness();try{
+  const now=Date.parse('2026-11-18T12:00:00Z');
+  h.adventure.load(null);h.adventure.resetWorld(false);
+  let state=createRewardsState(null,h.adventure.serialize(),now);
+  state=acceptExpeditionMission(state,h.adventure.serialize(),'frost-patrol',false,now);
+  for(let i=0;i<3;i++){
+   h.adventure.monsterDefeated({kind:'frostling',level:1,sp:{iceNative:true}},true);
+  }
+  assert.equal(h.adventure.serialize().kills,3);
+  const before=h.adventure.serialize();
+  const earned=collectExpeditionMission(state,before,'frost-patrol',false,now);
+  assert.equal(earned.state.points,35);
+  assert.equal(earned.xp,45);
+  assert.equal(h.adventure.awardExpeditionXP(earned.xp),true);
+  const after=h.adventure.serialize();
+  assert.ok(after.level>before.level||after.xp>before.xp);
+  assert.throws(()=>collectExpeditionMission(earned.state,after,'frost-patrol',false,now),
+    /incomplete or already claimed/);
+  h.adventure.load(after);
+  assert.deepEqual(h.adventure.serialize().level,after.level);
+  h.game.player.creative=true;
+  assert.equal(h.adventure.awardExpeditionXP(45),false,'Creative cannot claim XP');
+  h.game.player.creative=false;
+  h.game.player.dead=true;
+  assert.equal(h.adventure.awardExpeditionXP(45),false,'dead player cannot claim XP');
+  h.game.player.dead=false;
+  assert.equal(h.adventure.awardExpeditionXP(5000),false,'XP cannot be unbounded');
  }finally{h.restore();}
 });
