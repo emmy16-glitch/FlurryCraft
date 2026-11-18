@@ -24,7 +24,7 @@ The organizer announced round III beginning **16 November 2026** and running thr
 |---|---|---|
 | Lofi/Yeti-themed snow game and 4 dungeon chapters | Implemented | Real-phone QA pending |
 | Mobile mining, castle building, combat, saves, 3D weapons | Implemented | Real-phone QA pending |
-| World-save validation and small rolling backups | Implemented and tested | Real-browser quota checks pending |
+| World-save validation, rolling backups and portable full-world export/import | Implemented and tested | Real-phone cross-device restore pending |
 | Sui Move NFT blueprint + escrow marketplace | Source + scenario tests | **No deployed package ID; NOT live** |
 | Sui optional wallet inspector | Code: read-only Testnet connection | Android wallet/browser QA pending |
 | Walrus Testnet public blueprint storage | HTTP Testnet publisher + aggregator, canonical geometry and SHA-256 receipt | Public service/CORS + live roundtrip QA pending |
@@ -37,7 +37,7 @@ The organizer announced round III beginning **16 November 2026** and running thr
 2. Under a saved or starter house card choose **More options → Walrus Testnet Share**.
 3. Read the public-storage warning and *explicitly confirm*. Only the selected blueprint's safe, canonical voxel geometry (at most 24 KB) is uploaded to Walrus Testnet using the official public publisher.
 4. If the upload succeeds, save **Download Verification Receipt**. This contains a blob ID, SHA-256 fingerprint, name and author (not wallet secrets).
-5. The same public design can be retrieved in **My Builds → Storage & Backup → Import Walrus Blueprint**, by pasting the 43-character blob ID and optionally the expected SHA-256 fingerprint.
+5. The same public design can be retrieved in **My Builds → Storage & Backup → Import Walrus Receipt File** (recommended: preserves name and verifies SHA-256), or by pasting the 43-character blob ID and optionally the expected SHA-256 fingerprint.
 6. The imported blueprint must pass canonical block/dimension validation before becoming a local design.
 
 Walrus is public and has storage epoch/availability limits. This is not a private backup, an NFT, ownership proof or guarantee of permanent retention. Public Testnet endpoints have rate and uptime limits. No upload happens without a user action. Existing local worlds and builds are never uploaded automatically.
