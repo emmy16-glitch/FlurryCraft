@@ -125,3 +125,22 @@ test('guard stance prevents simultaneous block mining, attack and placement',()=
   p.update(.016,neutral);
   assert.equal(p.guarding,false,'a pickaxe cannot raise sword guard');
 });
+
+test('actual guarded monster damage records a Perfect Parry exactly once per valid hit',()=>{
+  const {game}=gameForPlayer(),p=new Player(game);game.player=p;
+  let parries=0;game.rewards={recordParry(){parries++;}};
+  p.guarding=true;p.guardElapsed=.1;p.guardStamina=100;
+  p.hurt(8,0,-2,'melee');
+  assert.equal(parries,1);
+  p.hurt(8,0,-2,'melee');
+  assert.equal(parries,1,'invulnerability prevents duplicate event credits');
+  p.invuln=0;p.guardElapsed=.4;p.guarding=true;
+  p.hurt(5,0,-2,'melee');
+  assert.equal(parries,1,'late ordinary guard does not count as perfect');
+  p.invuln=0;p.guardElapsed=.1;p.guarding=true;
+  p.hurt(5,0,2,'melee');
+  assert.equal(parries,1,'rear attacks bypass parry credit');
+  p.invuln=0;p.guardElapsed=.1;p.guarding=true;
+  p.hurt(5,0,-2,'environment');
+  assert.equal(parries,1,'environmental hazards cannot award perfect parries');
+});
