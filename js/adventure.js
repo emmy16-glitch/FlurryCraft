@@ -439,7 +439,10 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
       trial.remaining.delete(mob);
       if(trial.remaining.size===0){
         trial.nextIn=.75;
-        if(trial.wave<2)notify(game,trial.chapter==='storm'?'Hall cleared · Continue toward the blizzard':'Chamber cleared · Walk deeper into the ruins');
+        if(trial.wave<(trial.chapter==='aurora'?3:2))
+          notify(game,trial.chapter==='aurora'?'Aurora hall clear · Advance to the next seal':
+            trial.chapter==='storm'?'Hall cleared · Continue toward the blizzard':
+            'Chamber cleared · Walk deeper into the ruins');
       }
     }
   }
@@ -540,8 +543,10 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
     }
   }
   function trialSpawn(kind,level,index){
-    const den=trial.chapter==='storm'?progress.storm.site:progress.den;
-    const room=trial.chapter==='storm'?stormRoom(den,trial.wave):chamberPosition(den,trial.wave);
+    const den=trial.chapter==='aurora'?progress.aurora.site:
+      trial.chapter==='storm'?progress.storm.site:progress.den;
+    const room=trial.chapter==='aurora'?auroraRoom(den,trial.wave):
+      trial.chapter==='storm'?stormRoom(den,trial.wave):chamberPosition(den,trial.wave);
     const locations=[[-2,-2],[2,2],[-2,2],[2,-2],[0,0]];
     const [dx,dz]=locations[index%locations.length];
     const x=room.x+dx+.5,z=room.z+dz+.5;
@@ -551,16 +556,34 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
   }
   function spawnWave(){
     if(!trial)return;
-    const members=(trial.chapter==='storm'?stormspireWaves(progress.level):trialWaves(progress.level))[trial.wave]||[];
+    const members=(trial.chapter==='aurora'?auroraWaves(progress.level):
+      trial.chapter==='storm'?stormspireWaves(progress.level):trialWaves(progress.level))[trial.wave]||[];
     trial.remaining=new Set();trial.waiting=false;trial.nextIn=0;
     members.forEach((spec,index)=>trialSpawn(spec.kind,spec.level,index));
     refreshPill();
-    notify(game,(trial.chapter==='storm'?STORM_ROOM_NAMES:ROOM_NAMES)[trial.wave]+' · Defeat '+members.length+' '+(members.length===1?'enemy':'enemies'));
+    const rooms=trial.chapter==='aurora'?AURORA_ROOM_NAMES:
+      trial.chapter==='storm'?STORM_ROOM_NAMES:ROOM_NAMES;
+    notify(game,rooms[trial.wave]+' · Defeat '+members.length+
+      ' '+(members.length===1?'enemy':'enemies'));
   }
   function finishTrial(){
     const chapter=trial?.chapter||'frost';
     trial=null;
-    if(chapter==='storm'){
+    if(chapter==='aurora'){
+      const first=progress.aurora.clears===0;
+      progress.aurora.clears++;
+      safeItem(B.AURORA_CRYSTAL,AURORA_REWARDS.crystals);
+      safeItem(B.FROST_SHARD,AURORA_REWARDS.shards);
+      safeItem(B.FROST_BRICK,AURORA_REWARDS.bricks);
+      if(first)safeItem(B.AURORA_BLADE,1);
+      const old=progress.level;
+      progress=grantXP(progress,AURORA_REWARDS.xp);
+      refreshPill();
+      notify(game,first?
+        'Aurora Citadel conquered! Aurora Blade, crystals, XP and winter materials earned':
+        'Aurora Citadel conquered! Aurora Crystals, Froststone and XP earned');
+      levelUp(old);
+    }else if(chapter==='storm'){
       const first=progress.storm.clears===0;
       progress.storm.clears++;
       safeItem(B.FROST_SHARD,9);
@@ -592,8 +615,18 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
   function startTrial(chapter='frost'){
     if(game.player.creative){notify(game,'Enter a Survival world for dungeon combat');return;}
     if(trial||siege){notify(game,'Finish your current fight before entering a dungeon');return;}
-    const storm=chapter==='storm',p=game.player;
-    if(storm){
+    const aurora=chapter==='aurora',storm=chapter==='storm',p=game.player;
+    if(aurora){
+      if(!canEnterAurora()){
+        notify(game,'Reach Level 20 and clear Stormspire Keep once');return;
+      }
+      if(!progress.aurora.built||progress.aurora.version<AURORA_VERSION){
+        notify(game,'Prepare Aurora Citadel before entering');return;
+      }
+      if(!nearAuroraGate(p,progress.aurora.site)){
+        notify(game,'Approach the northern Aurora Citadel gate first');return;
+      }
+    }else if(storm){
       if(!canEnterStorm()){notify(game,'Level 10 and one Frost Ruins clear required');return;}
       if(!progress.storm.built||progress.storm.version<STORM_VERSION){
         notify(game,'Prepare Stormspire Keep first');return;
@@ -611,7 +644,7 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
     }
     if(game.difficulty<=0){notify(game,'Enable Easy or Normal combat to enter');return;}
     closeDialog();
-    trial={id:++nextRun,chapter:storm?'storm':'frost',wave:0,
+    trial={id:++nextRun,chapter:aurora?'aurora':storm?'storm':'frost',wave:0,
       remaining:new Set(),nextIn:0,waiting:false};
     spawnWave();
   }
