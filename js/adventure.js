@@ -12,12 +12,16 @@ import { STORM_VERSION,STORM_UNLOCK_LEVEL,STORM_ROOM_NAMES,STORM_ROOM_OFFSETS,
   from './stormspire-dungeon.js';
 import { survivalVitals,checkFrostRecovery,recoveredHealth,
   FROST_RECOVERY_COST,FROST_RECOVERY_COOLDOWN } from './winter-survival-core.js';
+import {MAX_WARD_TIER,WARD_COSTS,WARD_CONFIG,REPAIR_COST,REPAIR_INTEGRITY,
+  SIEGE_REWARDS,wardKey,wardTier,wardStats,wardContains,canUpgradeWard,
+  siegeWaves,canStartSiege} from './castle-defense-core.js';
 
 export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explorer,isInterfaceBusy=()=>false}) {
   let progress=safeAdventure(),world=null,denPending=false,buildPlan=[],buildIndex=0;
   let trial=null,nextRun=0,levelNoticeTime=0,lastTargetStamp='',lastTouchMode='';
   let entryLabel='',lastDungeonStatus='';
   let recoveryCooldown=0,vitalsTick=0,lastVitals='';
+  let siege=null,siegeCounter=0,wardFireAcc=0,siegeRepairsAt=0;
   let stormPending=false,stormBuildPlan=[],stormBuildIndex=0,entryChapter='frost';
   const make=(tag,text,parent=panel)=>{
     const n=document.createElement(tag);if(text!==undefined)n.textContent=text;
@@ -49,6 +53,11 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
     '#fcSurvivalVitals.critical{border-color:#fb9a9a}#fcSurvivalVitals.critical .fc-hp-fill{background:#ff8585}',
     '#fcSurvivalVitals .fc-heal{display:block;width:100%;margin-top:6px;padding:5px 8px;border:1px solid #91dae5;border-radius:7px;background:#20566b;color:#e0f9ff;font:800 10px system-ui;touch-action:manipulation;cursor:pointer}',
     '#fcSurvivalVitals .fc-heal.ready{background:#9ae9ee;color:#063247;border-color:#c7fbff}',
+    '#fcSiegeHUD{position:fixed;z-index:28;left:12px;top:185px;max-width:min(248px,40vw);border:1px solid #79d1e9;border-radius:12px;padding:8px 11px;background:#0a3046ed;color:#f1fdff;font:750 11px/1.4 system-ui;display:none;pointer-events:auto;box-shadow:0 8px 22px #001d2e88}',
+    '#fcSiegeHUD .fc-siege-row{display:flex;gap:5px;margin-top:6px}',
+    '#fcSiegeHUD button{min-height:32px;padding:5px 8px;border:1px solid #7fbcd0;background:#23526a;color:#eaf9ff;border-radius:8px;font:750 10px system-ui;touch-action:manipulation}',
+    '#fcSiegeHUD button:disabled{opacity:.52}',
+    '@media(max-height:520px){#fcSiegeHUD{top:171px;left:7px;max-width:35vw;padding:6px 8px}#fcSiegeHUD button{min-height:27px;padding:4px}}',
     '#fcDungeonEntry{position:fixed;z-index:27;top:179px;left:12px;display:none;min-height:43px;max-width:min(200px,46vw);padding:9px 13px;background:#88dce9;border:1px solid #bdf8ff;border-radius:12px;color:#092f42;font:800 12px system-ui;box-shadow:0 5px 20px #001b2b86;cursor:pointer;touch-action:manipulation}',
     '#fcDungeonEntry:focus-visible{outline:2px solid #e8ffff;outline-offset:2px}',
     '#fcDungeonStatus{position:fixed;z-index:25;top:12px;left:50%;transform:translateX(-50%);display:none;max-width:45vw;min-width:140px;padding:7px 12px;background:#0b3348df;border:1px solid #5087a0;border-radius:12px;color:#e8fbff;text-align:center;font:750 11px system-ui;pointer-events:none;backdrop-filter:blur(7px)}',
@@ -114,6 +123,12 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
   entryButton.addEventListener('pointerdown',e=>e.stopPropagation());
   entryButton.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();startTrial(entryChapter);});
   const dungeonStatus=make('div','',document.body);dungeonStatus.id='fcDungeonStatus';
+  const siegeHUD=make('section',undefined,document.body);siegeHUD.id='fcSiegeHUD';
+  siegeHUD.setAttribute('role','status');
+  const siegeText=make('div','',siegeHUD);
+  const siegeActions=make('div',undefined,siegeHUD);siegeActions.className='fc-siege-row';
+  const repairButton=button('Repair Ward',()=>repairSiege(),siegeActions);
+  const retreatButton=button('End Defense',()=>stopSiege('Defense stopped · counted as a loss'),siegeActions);
   const totalXP=()=>progress.xp;
   const needed=()=>xpToNext(progress.level);
   function serialize(){
@@ -121,10 +136,10 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
     return {...saved,beacons:progress.beacons.map(b=>({...b})),
       storm:{...progress.storm,site:progress.storm.site?{...progress.storm.site}:null}};
   }
-  function load(raw){progress=safeAdventure(raw);world=game.world;trial=null;denPending=false;stormPending=false;
+  function load(raw){stopSiege(null,false);progress=safeAdventure(raw);world=game.world;trial=null;denPending=false;stormPending=false;
     buildPlan=[];buildIndex=0;stormBuildPlan=[];stormBuildIndex=0;nextRun++;levelNoticeTime=0;hitTimer=0;levelNotice.hidden=true;
     enemyHUD.hidden=true;entryButton.style.display='none';dungeonStatus.style.display='none';
-    lastTargetStamp='';recoveryCooldown=0;vitalsTick=0;lastVitals='';vitals.style.display='none';refreshPill();}
+    lastTargetStamp='';recoveryCooldown=0;vitalsTick=0;lastVitals='';vitals.style.display='none';siegeHUD.style.display='none';refreshPill();}
   function resetWorld(isNew){
     world=game.world;
     if(isNew&&!game.player.creative&&!progress.den){
@@ -185,19 +200,50 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
   function trackBlock(worldRef,x,y,z,before,after){
     if(worldRef!==world||before===after)return;
     const key=(v)=>v.x===x&&v.y===y&&v.z===z;
-    if(before===B.WARD_BEACON)progress.beacons=progress.beacons.filter(v=>!key(v));
+    if(before===B.WARD_BEACON){
+      if(siege?.wardKey===x+','+y+','+z)stopSiege('Winter Ward removed · defense lost');
+      progress.beacons=progress.beacons.filter(v=>!key(v));
+    }
     if(after===B.WARD_BEACON&&!progress.beacons.some(key)){
-      progress.beacons.push({x,y,z});
+      progress.beacons.push({x,y,z,tier:1});
       if(progress.beacons.length>40)progress.beacons.shift();
     }
   }
   function isShielded(x,y,z){
     if(!world||world!==game.world)return false;
     for(const b of progress.beacons){
-      if(Math.abs(b.y-y)>8||Math.hypot(b.x+.5-x,b.z+.5-z)>10)continue;
+      if(!wardContains(b,x,y,z))continue;
       if(world.loaded(b.x,b.z)&&world.getBlock(b.x,b.y,b.z)===B.WARD_BEACON)return true;
     }
     return false;
+  }
+  function currentWard(ward){
+    if(!ward||!world||world!==game.world||!world.loaded(ward.x,ward.z))return null;
+    if(world.getBlock(ward.x,ward.y,ward.z)!==B.WARD_BEACON)return null;
+    return progress.beacons.find(b=>wardKey(b)===wardKey(ward))||null;
+  }
+  function nearbyWard(radius=16){
+    const p=game.player;
+    let closest=null,dist=Infinity;
+    for(const ward of progress.beacons){
+      if(!currentWard(ward))continue;
+      const d=Math.hypot(p.x-ward.x-.5,p.z-ward.z-.5);
+      if(d<dist&&d<=radius&&Math.abs(p.y-ward.y)<9){closest=ward;dist=d;}
+    }
+    return closest;
+  }
+  function upgradeWard(ward){
+    const w=currentWard(ward),p=game.player;
+    if(!w){notify(game,'Place or load this Ward before upgrading');return false;}
+    if(!nearbyWard()||nearbyWard()!==w){notify(game,'Stand within 16 blocks of this Ward');return false;}
+    const check=canUpgradeWard(w,progress.level,progress.storm.clears,
+      p.countItem(B.FROST_SHARD),p.countItem(B.FROST_BRICK));
+    if(!check.ok){notify(game,check.reason);return false;}
+    for(let i=0;i<check.cost.shards;i++)p.takeItem(B.FROST_SHARD);
+    for(let i=0;i<check.cost.bricks;i++)p.takeItem(B.FROST_BRICK);
+    w.tier=check.next;
+    notify(game,'Winter Ward upgraded to Tier '+w.tier+' · radius '+wardStats(w).radius);
+    return true;
   }
   function mobLevel(kind){return winterMobLevel(progress.level,kind,Math.random());}
   function roamingKind(){return chooseWinterMob(progress.level,Math.random());}
