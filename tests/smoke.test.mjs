@@ -167,3 +167,23 @@ test('custom game systems are connected', () => {
   assert.match(readFileSync('js/touch.js','utf8'),/lastPlacementTip/);
   assert.match(flurry,/MeshBasicMaterial/);
 });
+
+test('Rewards Hub is installed, world-scoped, and never presents local points as crypto', () => {
+  const main = readFileSync('js/main.js','utf8');
+  const flurry = readFileSync('js/flurry.js','utf8');
+  const ui = readFileSync('js/rewards-ui.js','utf8');
+  const core = readFileSync('js/rewards-core.js','utf8');
+  const marketplace = readFileSync('js/sui-market-ui.js','utf8');
+  assert.match(flurry,/initRewardsHub/);
+  assert.match(flurry,/Rewards Hub/);
+  assert.match(main,/rewards:game\.rewards\?\.serialize\(\)/);
+  assert.match(main,/game\.rewards\.load\(save\?\.rewards\)/);
+  assert.match(main,/game\.rewards\?\.recordPlacement\(\)/);
+  assert.match(core,/export const CRYPTO_REWARDS_ENABLED=false/);
+  assert.match(core,/export function requestCryptoPayout\(\)\{throw new Error/);
+  assert.match(ui,/LOCAL GAME POINTS — NOT CRYPTO/);
+  assert.match(ui,/Crypto withdrawals — not enabled/);
+  assert.match(marketplace,/get\('developer'\)==='1'/);
+  assert.ok(existsSync('tests/rewards-core.test.mjs'));
+  assert.ok(existsSync('docs/REWARDS_HUB.md'));
+});
