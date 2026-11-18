@@ -1,0 +1,29 @@
+name: Walrus Testnet live blueprint + browser CORS
+on:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/walrus-live-qa.mjs"
+      - ".github/workflows/walrus-live-qa.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  testnet:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Upload synthetic PUBLIC Testnet-only geometry and check readback
+        run: node scripts/walrus-live-qa.mjs
+      - name: Save verifiable public Walrus receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: public-testnet-walrus-receipt
+          path: walrus-qa-artifacts/
+          retention-days: 14
+          if-no-files-found: warn
