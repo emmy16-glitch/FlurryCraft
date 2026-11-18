@@ -68,7 +68,7 @@ function createHarness(){
   }
  };
  const B={toolId:(kind,tier)=>280+kind*4+tier,AIR:0,ICE:29,STONE_BRICKS:35,SNOW:17,TORCH:22,FROST_BRICK:79,
-  WARD_BEACON:80,FROST_SHARD:278,AURORA_CRYSTAL:279,AURORA_BLADE:324};
+  WARD_BEACON:80,FROST_SHARD:278,AURORA_CRYSTAL:279,AURORA_BLADE:324,ABYSS_CRYSTAL:325,ABYSS_BLADE:326};
  const nav=[];
  const explorer={guideTo(where){nav.push(where);}};
  const openDialog=()=>{panel.children.length=0;};
@@ -649,5 +649,129 @@ test('high-level player can heal beyond the old 20 HP ceiling without exceeding 
   h.adventure.update(12.1);
   assert.equal(h.document.getElementById('fcSurvivalVitals').findButton('HEAL'),null);
   assert.match(h.document.getElementById('fcSurvivalVitals').renderedText,/Health full/);
+ }finally{h.restore();}
+});
+
+test('Chapter 4 unlock requires Level 30 and at least one Aurora clear',()=>{
+ const h=createHarness();try{
+  h.adventure.load({level:29,aurora:{clears:1}});
+  h.adventure.resetWorld(false);h.adventure.open();
+  assert.equal(h.panel.findButton('Scout Frostbound Abyss Site'),null);
+  h.adventure.load({level:30,aurora:{clears:0}});
+  h.adventure.resetWorld(false);h.adventure.open();
+  assert.equal(h.panel.findButton('Scout Frostbound Abyss Site'),null);
+  h.adventure.load({level:30,aurora:{clears:1}});
+  h.adventure.resetWorld(false);h.adventure.open();
+  assert.ok(h.panel.findButton('Scout Frostbound Abyss Site'));
+ }finally{h.restore();}
+});
+
+test('Frostbound Abyss builds only on command and clears all four boss chambers',()=>{
+ const h=createHarness();try{
+  h.adventure.load({level:30,clears:4,
+    den:{x:23,y:43,z:10},denBuilt:true,dungeonVersion:2,
+    storm:{site:{x:110,y:43,z:17},built:true,version:1,clears:2},
+    aurora:{site:{x:188,y:43,z:15},built:true,version:1,clears:1},
+    castle:{wins:4,losses:1,bestTier:3}});
+  h.adventure.resetWorld(false);h.adventure.open();
+  h.panel.findButton('Scout Frostbound Abyss Site').listeners.click();
+  const site=h.adventure.serialize().abyss.site;
+  assert.ok(site);
+  assert.equal(h.adventure.serialize().abyss.built,false);
+  assert.equal(h.world.getBlock(site.x,site.y-1,site.z),0,'scouting does not edit terrain');
+  assert.ok(h.nav.some(p=>p.name==='Frostbound Abyss'));
+  h.panel.findButton('Build Frostbound Abyss').listeners.click();
+  for(let i=0;i<1600;i++)h.adventure.update(.02);
+  const built=h.adventure.serialize();
+  assert.equal(built.abyss.built,true);
+  assert.equal(built.abyss.version,1);
+  assert.equal(h.world.getBlock(site.x,site.y-1,site.z),h.B.FROST_BRICK);
+  assert.equal(built.aurora.clears,1);
+  h.game.player.x=site.x+.5;h.game.player.z=site.z-8.5;h.game.player.y=site.y;
+  h.adventure.update(.02);
+  const entry=h.document.getElementById('fcDungeonEntry');
+  assert.equal(entry.textContent,'Enter Frostbound Abyss');
+  h.adventure.open();
+  h.panel.findButton('Enter Frostbound Abyss').listeners.click();
+  const offsets=[0,19,38,57];
+  for(let wave=0;wave<4;wave++){
+   const living=h.game.mobs.filter(m=>!m.dead&&m.trialId);
+   assert.equal(living.length,wave===3?1:2,'wave '+wave);
+   if(wave===0)assert.ok(living.every(m=>m.kind==='rift_stalker'));
+   if(wave===1)assert.ok(living.some(m=>m.kind==='umbral_sentinel'));
+   if(wave===2)assert.ok(living.every(m=>m.kind==='umbral_sentinel'));
+   if(wave===3)assert.equal(living[0].kind,'abyss_keeper');
+   for(const mob of living){mob.dead=true;h.adventure.monsterDefeated(mob,true);}
+   if(wave<3){
+    h.game.player.x=site.x+.5;h.game.player.z=site.z+offsets[wave+1]+.5;
+   }
+   h.adventure.update(1);
+  }
+  const done=h.adventure.serialize();
+  assert.equal(done.abyss.clears,1);
+  assert.equal(done.aurora.clears,1);
+  assert.equal(done.castle.wins,4);
+  assert.equal(h.game.player.countItem(h.B.ABYSS_CRYSTAL),7);
+  assert.equal(h.game.player.countItem(h.B.ABYSS_BLADE),1);
+  assert.equal(h.game.player.countItem(h.B.FROST_SHARD),16);
+  assert.equal(h.game.player.countItem(h.B.FROST_BRICK),36);
+  h.adventure.load(done);h.adventure.resetWorld(false);
+  assert.deepEqual(h.adventure.serialize().abyss,done.abyss);
+ }finally{h.restore();}
+});
+
+test('Frostbound Abyss waits for distant chunks and never auto-builds when loaded',()=>{
+ const h=createHarness();try{
+  h.adventure.load({level:32,aurora:{clears:1}});
+  h.adventure.resetWorld(false);h.adventure.open();
+  h.panel.findButton('Scout Frostbound Abyss Site').listeners.click();
+  const site=h.adventure.serialize().abyss.site;
+  const prior=h.world.loaded;
+  h.world.loaded=(x,z)=>Math.abs(x-site.x)>30;
+  h.panel.findButton('Build Frostbound Abyss').listeners.click();
+  for(let i=0;i<80;i++)h.adventure.update(.02);
+  assert.equal(h.adventure.serialize().abyss.built,false);
+  assert.equal(h.world.getBlock(site.x,site.y-1,site.z),0);
+  h.world.loaded=prior;
+  for(let i=0;i<1600;i++)h.adventure.update(.02);
+  assert.equal(h.adventure.serialize().abyss.built,true);
+ }finally{h.restore();}
+});
+
+test('Abyss repeat clears give crystals but do not duplicate first-clear weapon',()=>{
+ const h=createHarness();try{
+  const site={x:260,y:43,z:12};
+  h.adventure.load({level:34,aurora:{clears:1},
+    abyss:{site,built:true,version:1,clears:1}});
+  h.adventure.resetWorld(false);
+  h.game.player.x=site.x+.5;h.game.player.y=site.y;h.game.player.z=site.z-8.5;
+  h.adventure.open();h.panel.findButton('Enter Frostbound Abyss').listeners.click();
+  for(let wave=0;wave<4;wave++){
+   const enemies=h.game.mobs.filter(m=>!m.dead&&m.trialId);
+   for(const mob of enemies){mob.dead=true;h.adventure.monsterDefeated(mob,true);}
+   if(wave<3){h.game.player.x=site.x+.5;h.game.player.z=site.z+19*(wave+1)+.5;}
+   h.adventure.update(1);
+  }
+  assert.equal(h.adventure.serialize().abyss.clears,2);
+  assert.equal(h.game.player.countItem(h.B.ABYSS_CRYSTAL),7);
+  assert.equal(h.game.player.countItem(h.B.ABYSS_BLADE),0);
+ }finally{h.restore();}
+});
+
+test('Reload during active Chapter 4 fight removes its monsters and keeps clears',()=>{
+ const h=createHarness();try{
+  const site={x:260,y:43,z:10};
+  h.adventure.load({level:30,aurora:{clears:1},
+    abyss:{site,built:true,version:1,clears:0}});
+  h.adventure.resetWorld(false);
+  h.game.player.x=site.x+.5;h.game.player.y=site.y;h.game.player.z=site.z-8.5;
+  h.adventure.open();h.panel.findButton('Enter Frostbound Abyss').listeners.click();
+  const active=h.game.mobs.filter(m=>!m.dead&&m.trialId);
+  assert.equal(active.length,2);
+  assert.equal(h.adventure.isDungeonActive(),true);
+  h.adventure.load(h.adventure.serialize());h.adventure.resetWorld(false);
+  assert.equal(h.adventure.isDungeonActive(),false);
+  assert.ok(active.every(m=>m.dead));
+  assert.equal(h.adventure.serialize().abyss.clears,0);
  }finally{h.restore();}
 });
