@@ -57,11 +57,29 @@ async function smoke(label,options){
     if(!(await tour.innerText()).includes('Complete quests'))throw new Error('Rewards tour step missing');
     await page.locator('.fc-tour-open').click({timeout:10000});
     await page.getByText('LOCAL GAME POINTS — NOT CRYPTO').waitFor({state:'visible',timeout:15000});
+    // Accept a real expedition via the visible UI, without awarding fake kills
+    // or scripted XP. Claimed/active status persists in the world-scoped ledger.
+    await page.locator('#flurryModal .fc-expedition-card button')
+      .getByText('Accept Expedition').click({timeout:10000});
+    await page.waitForFunction(()=>window.game?.rewards?.serialize?.()?.expedition?.active==='frost-patrol');
+    const contract=await page.evaluate(()=>{
+      const g=window.game,r=g.rewards.serialize();
+      return {active:r.expedition.active,completed:r.expedition.claimed.length,
+        points:r.points,killsBase:r.expedition.base.kills};
+    });
+    if(contract.active!=='frost-patrol'||contract.completed!==0||contract.points!==0)
+      throw new Error('Expedition acceptance fabricated rewards: '+JSON.stringify(contract));
+    console.log(label+' Expedition acceptance saved '+JSON.stringify(contract));
     await page.screenshot({path:out+'/'+label+'-rewards.png'});
     await page.locator('#flurryModal .fc-dialog-close').click({timeout:10000});
     await tour.waitFor({state:'visible',timeout:10000});
     await page.locator('.fc-tour-close').click({timeout:10000});
     await tour.waitFor({state:'hidden',timeout:10000});
+    // Accepted mission is visible in the actual world as a click-to-open HUD,
+    // not only in a menu. This must not cover the touch attack controls.
+    await page.locator('#fcExpeditionTracker').waitFor({state:'visible',timeout:10000});
+    if(!(await page.locator('#fcExpeditionTracker').innerText()).includes('Frost Patrol'))
+      throw new Error('Accepted expedition missing from in-world tracker');
     // Actual player movement: keyboard on desktop and captured touch joystick
     // in the landscape emulation. No coordinate teleporting or fake XP.
     const position=()=>page.evaluate(()=>({x:window.game.player.x,z:window.game.player.z}));
@@ -163,6 +181,26 @@ async function smoke(label,options){
         defense.guarded>=defense.unguarded*.5)
       throw new Error('Real sword guard failed: '+JSON.stringify(defense));
     console.log(label+' real sword guard passed '+JSON.stringify(defense));
+    // Press the *actual keyboard key* on desktop. Earlier Blocks shortcut G
+    // collided with Guard; G now raises sword while N opens the block catalog.
+    if(!options.isMobile){
+      const oldSlot=await page.evaluate(()=>{
+        const g=window.game,p=g.player;
+        const index=p.inv.findIndex(s=>s&&s.id>=0&&
+          [280+3*4,280+3*4+1,280+3*4+2,280+3*4+3].includes(s.id));
+        const previous=p.sel;
+        if(index>=0)p.sel=index;
+        return {index,previous};
+      });
+      if(oldSlot.index<0)throw new Error('Guided Survival player has no starter sword');
+      await page.keyboard.down('g');
+      await page.waitForFunction(()=>window.game.player.guarding===true,{timeout:8000});
+      if(await page.locator('#flurryModal').evaluate(el=>el.style.display==='flex'))
+        throw new Error('Guard key reopened the Blocks dialog');
+      await page.keyboard.up('g');
+      await page.waitForFunction(()=>window.game.player.guarding===false,{timeout:8000});
+      await page.evaluate(index=>{window.game.player.sel=index;},oldSlot.previous);
+    }
 
     await page.screenshot({path:out+'/'+label+'-moving.png'});
     // Lighting showcase only: time-of-day and camera angle for a REAL game
