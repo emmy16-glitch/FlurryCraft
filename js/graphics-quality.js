@@ -31,12 +31,14 @@ export function createGraphicsController(mode='auto',touch=false,deviceDpr=1){
     return ratio;
   }
   function sample(elapsed,active=true){
-    if(mode!=='auto'||!active||!Number.isFinite(elapsed)||elapsed<=0||elapsed>0.25){
+    if(mode!=='auto'||!active||!Number.isFinite(elapsed)||elapsed<=0||elapsed>1){
       // A hidden tab, loading pause or window being dragged is not a slow GPU.
       seconds=0;frames=0;stableFastWindows=0;
       return false;
     }
-    seconds+=elapsed;frames++;
+    // Very slow foreground frames are evidence of load, not a reason to
+    // disable adaptation; clamp their influence instead of discarding them.
+    seconds+=Math.min(elapsed,.5);frames++;
     if(seconds<2.5)return false;
     const fps=frames/seconds;
     measuredFPS=Math.round(fps);
