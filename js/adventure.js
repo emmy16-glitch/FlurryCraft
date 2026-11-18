@@ -987,7 +987,7 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
 
   refreshPill();
   return {serialize,load,resetWorld,open,update,mobLevel,roamingKind,
-    siegeWardTarget,siegeWardHit,isSiegeActive:()=>!!siege,
+    siegeWardTarget,siegeWardHit,isSiegeActive:()=>!!siege,isDungeonActive:()=>!!trial,
     monsterDefeated,hitFeedback,trackBlock,isShielded,markStarterSword(){progress.swordClaimed=true;},
     get level(){return progress.level;},
     get den(){return progress.den;}};
