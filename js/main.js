@@ -371,13 +371,14 @@ function saveGame() {
     const data = {
       seed: game.world.seed, mode: settings.mode, diff: settings.diff, tod: game.env.tod, edits, containers: ui.serialize(),
       player: { x: player.x, y: player.y, z: player.z, yaw: player.yaw, pitch: player.pitch, health: player.health, healthCap: player.maxHealth, hunger: player.hunger, sat: player.sat, inv: player.inv, sel: player.sel, spawn: player.spawn, flying: player.flying, armor: player.armor },
-      adv: [...game.adv], adventure:game.adventure?.serialize(), played: basePlayed + game.time,
+      adv: [...game.adv], adventure:game.adventure?.serialize(), rewards:game.rewards?.serialize(), played: basePlayed + game.time,
     };
     saveWorldSafely(localStorage,currentId,data);
     const idx = loadIndex().filter((w) => w.id !== currentId); idx.push({ id: currentId, name: currentName, date: Date.now(), mode: settings.mode, played: Math.round(basePlayed + game.time) }); saveIndex(idx);
     return true;
   } catch (e) { ui.toast('Save failed: storage may be full');return false; }
 }
+game.saveRewards=saveGame; // World-scoped local points use the normal validated world save.
 setInterval(() => { if (game.state === 'play' && !player.dead) saveGame(); }, 30000);
 window.addEventListener('beforeunload', () => { if (game.state === 'play') saveGame(); });
 document.addEventListener('visibilitychange', () => {
@@ -405,6 +406,7 @@ function startGame(cont, id) {
   else { basePlayed = 0; currentId = 'w' + Date.now().toString(36); const n = loadIndex().length + 1; currentName = seedStr ? 'Seed ' + seedStr.slice(0, 18) : 'World ' + n; }
   game.worldId = currentId;game.worldName = currentName;
   if(game.adventure)game.adventure.load(save?.adventure);
+  if(game.rewards)game.rewards.load(save?.rewards);
   game.difficulty = [0, 1, 1.5][settings.diff];
   if (touchMode) { try { document.documentElement.requestFullscreen && document.documentElement.requestFullscreen(); if (screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(() => {}); } catch (e) {} }
   $('menu').style.display = 'none'; $('loading').style.display = 'flex'; game.state = 'loading'; disposeMenuWorld(); camera.fov = settings.fov; camera.updateProjectionMatrix();
@@ -418,6 +420,11 @@ function startGame(cont, id) {
       game.flurry.recordChange(world, x, y, z, old, id);
       game.adventure?.trackBlock(world,x,y,z,old,id);
       if (!game.flurry.isApplyingEdit()) game.flurry.countPlayerPlacement(x, y, z, old, id);
+      // Local preview points only; these events are not proof for crypto payouts.
+      if(!game.flurry.isApplyingEdit()&&game.state==='play'&&
+        old===B.AIR&&id!==B.AIR&&!player.creative&&
+        Math.hypot(x-player.x,y-player.y,z-player.z)<7)
+        game.rewards?.recordPlacement();
     }
     return result;
   };
