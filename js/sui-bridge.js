@@ -33,13 +33,24 @@ export async function checkPackage(value){
   const id=verifiedPackage(value);
   if(checkedPackage===id)return id;
   // Reject a syntactically valid but unknown package before any wallet signing.
-  for(const name of ['mint','list','buy','cancel']){
+  // This ABI check catches accidental package ID mix-ups but is NOT a
+  // cryptographic substitute for verifying published source / bytecode.
+  const expected={mint:3,list:3,buy:3,cancel:2};
+  for(const [name,arity] of Object.entries(expected)){
     const result=await client().getMoveFunction({packageId:id,moduleName:'market',name});
-    if(!result?.function || String(result.function.visibility).toLowerCase()!=='public')
-      throw new Error('This is not the expected FlurryCraft marketplace contract.');
+    const fn=result?.function;
+    if(!fn||String(fn.visibility).toLowerCase()!=='public'||
+       !Array.isArray(fn.parameters)||fn.parameters.length!==arity||
+       (Array.isArray(fn.typeParameters)&&fn.typeParameters.length>0))
+      throw new Error('The package ABI is not the expected FlurryCraft marketplace. Verify the published source and package ID.');
   }
   checkedPackage=id;
   return id;
+}
+// Read-only Testnet endpoint check. No wallet signature is requested.
+export async function testnetStatus(){
+  const price=await client().getReferenceGasPrice();
+  return {network:'testnet',reachable:true,referenceGasPrice:String(price?.referenceGasPrice ?? 'unknown')};
 }
 export async function testnetBalance(){
   const owner=requireAccount();
@@ -78,10 +89,10 @@ function requireAccount(){
 async function submit(tx){
   requireAccount();
   const result=await kit.signAndExecuteTransaction({transaction:tx,network:'testnet'});
-  if(result.FailedTransaction)
+  if(result.FailedTransaction||result.$kind==='FailedTransaction')
     throw new Error(result.FailedTransaction.status?.error?.message||'Sui Testnet execution failed.');
-  if(!result.Transaction?.digest)
-    throw new Error('No confirmed Sui transaction digest returned.');
+  if(!result.Transaction?.digest||result.Transaction.status?.success===false)
+    throw new Error('No successful Sui transaction was confirmed.');
   // Indexes can lag execution; wait before refreshing ownership or listings.
   await client().waitForTransaction({digest:result.Transaction.digest});
   return result.Transaction.digest;
@@ -121,6 +132,10 @@ export async function owned(pkg){
     if(!page.hasNextPage||++n>=10)break;
     page=await client().listOwnedObjects({owner,type:nftType(id),cursor:page.cursor,limit:50,include:{content:true}});
   }
+  // Wallets can change accounts while an asynchronous inventory query runs.
+  // Never display assets from a previous account as if they belong to the new one.
+  if(requireAccount().toLowerCase()!==owner.toLowerCase())
+    throw new Error('Wallet account changed during NFT verification. Refresh the marketplace.');
   return {nfts,invalid};
 }
 export async function getListing(pkg,listingId){
@@ -128,8 +143,11 @@ export async function getListing(pkg,listingId){
   if(!/^0x[0-9a-fA-F]{1,64}$/.test(String(listingId)))throw new Error('Invalid listing ID.');
   const {object}=await client().getObject({objectId:listingId,include:{content:true}});
   if(!object?.content)throw new Error('Listing not found on Sui Testnet.');
-  if(object.type&&object.type!==listingType(id))throw new Error('Wrong contract package for listing.');
+  if(object.type!==listingType(id))throw new Error('Wrong contract package for listing.');
+  if(object.owner?.$kind!=='Shared')throw new Error('Listing is not a shared escrow object.');
   const parsed=listingBcs.parse(object.content);
+  if(BigInt(parsed.price)<=0n||parsed.digest?.length!==32)
+    throw new Error('Listing has invalid price or digest metadata.');
   // Never offer a sale in the UI without verifying the escrowed voxel bytes,
   // their SHA-256 and the listing's declared digest/title.
   let blocks=0,blueprint=null;
@@ -204,7 +222,9 @@ export async function buy(pkg,listingId,expectedPriceMist){
   if(item.priceMist!==String(expectedPriceMist))
     throw new Error('Listing price changed. Refresh before buying.');
   const tx=new Transaction();
-  const [payment]=tx.splitCoins(tx.gas,[tx.pure.u64(item.priceMist)]);
+  // Sui v2 balances may be held as address balance, not a gas coin object.
+  // tx.coin resolves either source while keeping the exact requested MIST.
+  const payment=tx.coin({balance:BigInt(item.priceMist)});
   tx.moveCall({target:id+'::market::buy',arguments:[tx.object(listingId),payment]});
   return await submit(tx);
 }
