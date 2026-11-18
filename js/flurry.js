@@ -1002,6 +1002,7 @@ export function initFlurry(game) {
   function update(dt) {
     judgeTour.update();
     game.adventure.update(dt);
+    game.rewards?.update?.(dt);
     explorer.update(dt);
     const isPlaying=game.state==='play' && !game.paused;
     actions.style.display=isPlaying&&!game.ui.isOpen&&!previewState&&overlay.style.display!=='flex'?'flex':'none';
@@ -1133,6 +1134,7 @@ export function initFlurry(game) {
     if(e.code==='KeyV'){third=!third;notify(game,third?'Third-person camera':'First-person camera');}
     if(e.code==='KeyB')showBlueprint();
     if(e.code==='KeyEscape' && previewState)clearPreview();
-    if(e.code==='KeyG')showBuildMenu();
+    // G is reserved for Sword Guard; N opens the building catalog.
+    if(e.code==='KeyN')showBuildMenu();
   });
 }
