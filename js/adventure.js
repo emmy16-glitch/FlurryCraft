@@ -703,6 +703,55 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
       notify(game,'Winter Ward crafted');
       open();
     },defense);
+    const fort=make('section',undefined,panel);fort.className='fc-adventure-card';
+    make('h3','⚔ Castle Defense · Winter Wards',fort);
+    make('p','Upgrade a placed Winter Ward and start a three-wave raid. The shield must survive. Upgraded Wards automatically strike hostile creatures in sight. Your buildings are never removed by raids.',fort);
+    make('p','Defense victories: '+progress.castle.wins+' · Defeats: '+progress.castle.losses+
+      ' · Best Tier '+(progress.castle.bestTier||'—'),fort);
+    if(siege){
+      make('p','ACTIVE DEFENSE · Wave '+(siege.wave+1)+'/3 · Shield '+Math.ceil(siege.integrity)+'/'+siege.maxIntegrity,fort);
+      button('Return to Defense',closeDialog,fort);
+    }else{
+      const p=game.player;
+      const placed=progress.beacons.filter(b=>!!currentWard(b)).sort((a,b)=>
+        Math.hypot(p.x-a.x-.5,p.z-a.z-.5)-Math.hypot(p.x-b.x-.5,p.z-b.z-.5)).slice(0,6);
+      if(!placed.length)make('p','Place a Winter Ward block near your castle to unlock the defense interface. Older wards upgrade automatically to Tier I.',fort);
+      for(const ward of placed){
+        const stats=wardStats(ward),row=make('div',undefined,fort);
+        make('p','Winter Ward T'+wardTier(ward)+' · X '+ward.x+' Z '+ward.z+
+          ' · Shield '+stats.integrity+' · Radius '+stats.radius+' · Damage '+stats.damage,row);
+        const distance=Math.hypot(p.x-ward.x-.5,p.z-ward.z-.5);
+        if(distance>16||Math.abs(p.y-ward.y)>8){
+          button('Guide to this Ward',()=>{
+            explorer.guideTo({id:'ward-'+wardKey(ward),name:'Winter Ward',x:ward.x,z:ward.z});
+            closeDialog();
+          },row);
+        }else if(!p.creative){
+          const check=canUpgradeWard(ward,progress.level,progress.storm.clears,
+            p.countItem(B.FROST_SHARD),p.countItem(B.FROST_BRICK));
+          if(wardTier(ward)<MAX_WARD_TIER){
+            const cost=WARD_COSTS[wardTier(ward)+1];
+            const btn=button('Upgrade to T'+(wardTier(ward)+1)+' · '+
+              cost.shards+' Shards + '+cost.bricks+' Froststone',()=>{
+              if(upgradeWard(ward))open();
+            },row);
+            btn.disabled=!check.ok;
+            if(!check.ok)make('p',check.reason,row);
+          }
+          const gate=canStartSiege({player:p,ward,world,level:progress.level,
+            clears:progress.clears,trialActive:!!trial,raidActive:false});
+          const start=button('Start Defense Trial · Tier '+wardTier(ward),()=>{
+            if(typeof confirm==='function'&&!confirm(
+              'Start a 3-wave Castle Defense raid? Monsters will attack this Ward shield. Your buildings will not be destroyed.'))return;
+            startSiege(ward);
+          },row);
+          start.disabled=!gate.ok;
+          if(!gate.ok)make('p',gate.reason,row);
+        }
+      }
+      make('p','Ward Tier II: Level 10 · 8 Shards + 16 Froststone. Tier III: Level 15 and one Stormspire clear · 16 Shards + 32 Froststone.',fort);
+      make('p','During raids, tap Repair Ward to spend 2 Shards + 4 Froststone and restore 22 shield. Retreating or leaving the area counts as a loss; upgrades remain.',fort);
+    }
     const details=make('details',undefined,panel);
     make('summary','Future chapters · Levels 21–100',details);
     make('p','Frost Ruins and Stormspire Keep are playable in this release. Content for Levels 21–100 and advanced castle defense remains planned.',details);
