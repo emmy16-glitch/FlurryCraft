@@ -1,0 +1,37 @@
+name: Chromium gameplay smoke (desktop and Android-like touch)
+on:
+  push:
+    branches: [main]
+    paths:
+      - "js/**"
+      - "index.html"
+      - "scripts/browser-qa.mjs"
+      - ".github/workflows/browser-qa.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  chromium:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install game dependencies
+        run: npm install --no-audit --no-fund
+      - name: Install pinned browser test runner
+        run: npm install --no-save --no-audit --no-fund playwright@1.57.0
+      - name: Install headless Chromium runtime
+        run: npx playwright install --with-deps chromium
+      - name: Launch a real WebGL game on desktop and touch landscape
+        run: node scripts/browser-qa.mjs
+      - name: Keep real game screenshots and browser recordings
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: flurrycraft-browser-qa
+          path: browser-qa-artifacts/
+          retention-days: 7
+          if-no-files-found: warn
