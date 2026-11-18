@@ -54,8 +54,13 @@ function createHarness(){
   Mob:class{
    constructor(game,kind,x,y,z,options={}){
     this.kind=kind;this.x=x;this.y=y;this.z=z;this.level=options.level||1;
-    this.trialId=options.trialId||null;
-    this.sp={iceNative:true};this.dead=false;
+    this.trialId=options.trialId||null;this.raidId=options.raidId||null;
+    this.sp={iceNative:true};this.dead=false;this.hp=32;this.maxHp=32;this.h=1.5;
+   }
+   hurt(damage,x,z,byPlayer){
+    if(this.dead)return;
+    this.hp-=damage;
+    if(this.hp<=0){this.dead=true;game.adventure.monsterDefeated(this,!!byPlayer);}
    }
    remove(){this.dead=true;}
   }
@@ -349,5 +354,99 @@ test('Stormspire construction waits for nearby chunks and can be resumed safely'
   h.world.loaded=oldLoaded;
   for(let i=0;i<1000;i++)h.adventure.update(.02);
   assert.equal(h.adventure.serialize().storm.built,true);
+ }finally{h.restore();}
+});
+
+test('Castle Defense creates real raids, supports shield repairs and persists victories',()=>{
+ const h=createHarness();try{
+  h.adventure.load({level:10,clears:1});h.adventure.resetWorld(false);
+  h.world.setBlock(0,43,0,h.B.WARD_BEACON);
+  h.inventory.set(h.B.FROST_SHARD,22);h.inventory.set(h.B.FROST_BRICK,40);
+  h.adventure.open();
+  const upgrade=h.panel.findButton('Upgrade to T2');
+  assert.ok(upgrade);assert.equal(upgrade.disabled,false);
+  upgrade.listeners.click();
+  assert.equal(h.adventure.serialize().beacons[0].tier,2);
+  assert.equal(h.game.player.countItem(h.B.FROST_SHARD),14);
+  assert.equal(h.game.player.countItem(h.B.FROST_BRICK),24);
+  const start=h.panel.findButton('Start Defense Trial');
+  assert.ok(start);start.listeners.click();
+  assert.equal(h.adventure.isSiegeActive(),true);
+  const attackers=h.game.mobs.filter(m=>!m.dead&&m.raidId);
+  assert.equal(attackers.length,2);
+  assert.ok(attackers.every(m=>m.kind==='storm_hound'));
+  const id=attackers[0].raidId;
+  const target=h.adventure.siegeWardTarget(attackers[0]);
+  assert.ok(target);assert.equal(target.x,.5);
+  assert.equal(h.adventure.siegeWardHit(attackers[0],23),true);
+  h.adventure.update(.1);
+  const shield=h.document.getElementById('fcSiegeHUD');
+  assert.match(shield.renderedText,/47\/70/);
+  const repair=shield.findButton('Repair Ward');
+  assert.ok(repair);assert.equal(repair.disabled,false);
+  repair.listeners.click();
+  assert.equal(h.game.player.countItem(h.B.FROST_SHARD),12);
+  assert.equal(h.game.player.countItem(h.B.FROST_BRICK),20);
+  h.adventure.update(.1);
+  assert.match(shield.renderedText,/69\/70/);
+  for(let wave=0;wave<3;wave++){
+   const live=h.game.mobs.filter(m=>!m.dead&&m.raidId===id);
+   assert.equal(live.length,2);
+   for(const mob of live){mob.dead=true;h.adventure.monsterDefeated(mob,true);}
+   h.adventure.update(1);
+   h.adventure.update(.1);
+  }
+  assert.equal(h.adventure.isSiegeActive(),false);
+  const s=h.adventure.serialize();
+  assert.equal(s.castle.wins,1);assert.equal(s.castle.losses,0);
+  assert.equal(s.castle.bestTier,2);
+  assert.equal(s.clears,1,'Frost Ruins history unchanged');
+  assert.equal(s.beacons[0].tier,2);
+  assert.ok(h.game.player.countItem(h.B.FROST_SHARD)>=19);
+  h.adventure.load(s);h.adventure.resetWorld(false);
+  assert.equal(h.adventure.serialize().castle.wins,1);
+  assert.equal(h.adventure.serialize().beacons[0].tier,2);
+ }finally{h.restore();}
+});
+
+test('Castle Defense loses safely when the Ward breaks, without damaging nearby builds',()=>{
+ const h=createHarness();try{
+  h.adventure.load({level:7,clears:1});h.adventure.resetWorld(false);
+  h.world.setBlock(0,43,0,h.B.WARD_BEACON);
+  h.world.setBlock(2,43,2,h.B.STONE_BRICKS);
+  h.adventure.open();
+  h.panel.findButton('Start Defense Trial').listeners.click();
+  assert.equal(h.adventure.isSiegeActive(),true);
+  const attacker=h.game.mobs.find(m=>m.raidId);
+  assert.equal(h.adventure.siegeWardHit(attacker,100),true);
+  assert.equal(h.adventure.isSiegeActive(),false);
+  assert.equal(h.adventure.serialize().castle.losses,1);
+  assert.equal(h.world.getBlock(0,43,0),h.B.WARD_BEACON);
+  assert.equal(h.world.getBlock(2,43,2),h.B.STONE_BRICKS);
+  h.adventure.open();
+  const retry=h.panel.findButton('Start Defense Trial');
+  assert.ok(retry);retry.listeners.click();
+  assert.equal(h.adventure.isSiegeActive(),true);
+  h.adventure.load(h.adventure.serialize());h.adventure.resetWorld(false);
+  assert.equal(h.adventure.isSiegeActive(),false);
+  assert.equal(h.adventure.serialize().castle.losses,1,'reload must not register another defeat');
+ }finally{h.restore();}
+});
+
+test('Tier III Winter Ward requires Stormspire progression and boosts castle protection',()=>{
+ const h=createHarness();try{
+  h.adventure.load({level:16,clears:1,storm:{clears:1}});
+  h.adventure.resetWorld(false);
+  h.world.setBlock(0,43,0,h.B.WARD_BEACON);
+  h.inventory.set(h.B.FROST_SHARD,40);h.inventory.set(h.B.FROST_BRICK,60);
+  h.adventure.open();
+  h.panel.findButton('Upgrade to T2').listeners.click();
+  h.panel.findButton('Upgrade to T3').listeners.click();
+  assert.equal(h.adventure.serialize().beacons[0].tier,3);
+  assert.equal(h.adventure.isShielded(15.5,43,.5),true);
+  assert.equal(h.adventure.isShielded(18.5,43,.5),false);
+  h.world.setBlock(0,43,0,h.B.AIR);
+  assert.equal(h.adventure.serialize().beacons.length,0);
+  assert.equal(h.adventure.isShielded(.5,43,.5),false);
  }finally{h.restore();}
 });
