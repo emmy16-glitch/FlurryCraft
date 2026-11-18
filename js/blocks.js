@@ -11,7 +11,7 @@ export const AIR = 0, STONE = 1, GRASS = 2, DIRT = 3, COBBLE = 4, SAND = 5, GRAV
 // Non-block items
 export const STICK = 256, COAL = 257, IRON_INGOT = 258, GOLD_INGOT = 259, DIAMOND = 260, APPLE = 261,
   PORK_RAW = 262, PORK_COOKED = 263, BEEF_RAW = 264, BEEF_COOKED = 265, MUTTON_RAW = 266, MUTTON_COOKED = 267,
-  ROTTEN_FLESH = 268, GUNPOWDER = 269, BONE = 270, ARROW = 271, STRING = 272, BOW = 273, SEEDS = 274, WHEAT = 275, BREAD = 276, FLINT_STEEL = 277, FROST_SHARD = 278, AURORA_CRYSTAL = 279, HOE_BASE = 320, AURORA_BLADE = 324;
+  ROTTEN_FLESH = 268, GUNPOWDER = 269, BONE = 270, ARROW = 271, STRING = 272, BOW = 273, SEEDS = 274, WHEAT = 275, BREAD = 276, FLINT_STEEL = 277, FROST_SHARD = 278, AURORA_CRYSTAL = 279, HOE_BASE = 320, AURORA_BLADE = 324, ABYSS_CRYSTAL = 325, ABYSS_BLADE = 326;
 export const ARMOR_BASE = 300; // kind*2 + tier: helmet, chest, legs, boots; iron, diamond
 export const ARMOR_KINDS = ['helmet', 'chestplate', 'leggings', 'boots'];
 export const ARMOR_TIERS = [{ name: 'Iron', col: '#dcdcdc', dark: '#9a9a9a', pts: [2, 6, 5, 2], dur: [165, 240, 225, 195] }, { name: 'Diamond', col: '#4ee8e0', dark: '#1fa9b0', pts: [3, 8, 6, 3], dur: [363, 528, 495, 429] }];
@@ -431,6 +431,9 @@ item(FROST_SHARD, 'Frost Shard');
 item(AURORA_CRYSTAL,'Aurora Crystal');
 item(AURORA_BLADE,'Aurora Blade',{stack:1,kind:3,tierIdx:3,
   tool:{type:'sword',tier:5,speed:9,dur:480,dmg:9}});
+item(ABYSS_CRYSTAL,'Abyss Crystal');
+item(ABYSS_BLADE,'Abyss Blade',{stack:1,kind:3,tierIdx:3,
+  tool:{type:'sword',tier:6,speed:10,dur:590,dmg:11}});
 item(APPLE, 'Apple', { food: 4 });
 item(PORK_RAW, 'Raw Porkchop', { food: 3 }); item(PORK_COOKED, 'Cooked Porkchop', { food: 8 });
 item(BEEF_RAW, 'Raw Beef', { food: 3 }); item(BEEF_COOKED, 'Steak', { food: 8 });
@@ -493,6 +496,8 @@ shaped(['###', '###'], { '#': PLANKS }, GLASS, 0); RECIPES.pop();
 // A four-material 2x2 infusion recipe — crystal rewards upgrade a real weapon.
 shapeless([toolId(3,3),AURORA_CRYSTAL,AURORA_CRYSTAL,FROST_SHARD],
   AURORA_BLADE,1);
+shapeless([AURORA_BLADE,ABYSS_CRYSTAL,ABYSS_CRYSTAL,FROST_SHARD],
+  ABYSS_BLADE,1);
 const mats = [PLANKS, COBBLE, IRON_INGOT, DIAMOND];
 for (let t = 0; t < 4; t++) {
   const m = mats[t];
@@ -665,6 +670,14 @@ function drawItemBuf(id) {
     }
     bline(buf,8,2,7,12,hex('#fffaff'));
     bline(buf,10,5,11,11,hex('#5ff6ee'));
+  } else if (id === ABYSS_CRYSTAL) {
+    for(let y=2;y<=14;y++){
+      const half=y<7?(y-2)*.75:(14-y)*.5;
+      for(let x=Math.ceil(8-half);x<=Math.floor(8+half);x++)
+        bput(buf,x,y,hex(y<6?'#dedcff':x<8?'#9a92f1':'#5450a5'));
+    }
+    bline(buf,8,3,7,11,hex('#f9efff'));
+    bline(buf,10,5,11,12,hex('#aaa7ff'));
   } else if (id === DIAMOND) {
     const g = [['#b8fff8', 8, 3, 9], ['#6ff0e6', 6, 5, 11], ['#2fc4c0', 4, 8, 13]];
     for (let y = 3; y <= 13; y++) { const half = y < 6 ? 2 + (y - 3) * 1.2 : 5.6 - (y - 6) * 0.65; for (let x = 8 - half; x <= 8 + half; x++) bput(buf, x, y, hex(y < 6 ? '#a8fff6' : (x < 8 ? '#5fe6dc' : '#2db8b4'))); }
@@ -691,6 +704,17 @@ function drawAuroraBladeBuf(){
   bput(buf,12,3,pale);bput(buf,13,4,teal);
   return outlineBuf(buf);
 }
+function drawAbyssBladeBuf(){
+  const buf=newBuf(),dark=hex('#29275b'),violet=hex('#8a7aee'),
+    lilac=hex('#d6c7ff'),ice=hex('#f3f1ff');
+  bline(buf,4,13,12,5,dark,3);
+  bline(buf,5,12,12,4,violet,2);
+  bline(buf,6,11,12,4,lilac);
+  bline(buf,6,11,6,15,hex('#b4a5e5'),2);
+  bline(buf,3,12,7,8,dark,2);
+  bput(buf,12,3,ice);bput(buf,13,4,violet);bput(buf,5,14,ice);
+  return outlineBuf(buf);
+}
 export function itemIcon(id) {
   if (iconCache.has(id)) return iconCache.get(id);
   let canvas;
@@ -699,7 +723,8 @@ export function itemIcon(id) {
   else {
     const c = document.createElement('canvas'); c.width = c.height = 16;
     const ctx = c.getContext('2d'); const im = ctx.createImageData(16, 16);
-    const buf = id===AURORA_BLADE?drawAuroraBladeBuf():
+    const buf = id===ABYSS_BLADE?drawAbyssBladeBuf():
+      id===AURORA_BLADE?drawAuroraBladeBuf():
       it && it.tool ? drawToolBuf(it.kind, it.tierIdx) :
       it && it.armor ? drawArmorBuf(it.armor.slot, it.armor.tier) : drawItemBuf(id);
     im.data.set(buf); ctx.putImageData(im, 0, 0);
