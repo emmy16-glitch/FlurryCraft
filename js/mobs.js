@@ -46,6 +46,9 @@ const SPEC = {
   frostling: {hw:.30,h:1.30,hp:12,spd:2.35,snd:'zombie',drops:[[B.FROST_SHARD,0,2]],dmg:1.25,iceNative:true},
   snow_prowler: {hw:.42,h:1.05,hp:17,spd:3.15,snd:'spider',drops:[[B.FROST_SHARD,1,2]],dmg:1.8,iceNative:true},
   glacier_guardian: {hw:.67,h:2.7,hp:65,spd:1.25,snd:'zombie',drops:[[B.FROST_SHARD,3,6],[B.FROST_BRICK,2,5]],dmg:3.5,iceNative:true,boss:true},
+  storm_hound: {hw:.47,h:1.25,hp:27,spd:3.25,snd:'spider',drops:[[B.FROST_SHARD,1,3]],dmg:1.9,iceNative:true,chapter2:true},
+  rime_knight: {hw:.42,h:2.2,hp:42,spd:2.15,snd:'zombie',drops:[[B.FROST_SHARD,1,3],[B.FROST_BRICK,1,2]],dmg:2.8,iceNative:true,chapter2:true},
+  blizzard_titan: {hw:.85,h:3.4,hp:120,spd:1.25,snd:'zombie',drops:[[B.FROST_SHARD,5,9],[B.FROST_BRICK,4,9]],dmg:3.7,iceNative:true,chapter2:true,boss:true,stormPulse:true},
 };
 export const MOB_KINDS = Object.keys(SPEC);
 
@@ -170,20 +173,63 @@ function winterCreature(kind) {
   return {group,parts};
 }
 
+// Distinct silhouettes for Chapter 2; the new monsters never reuse zombie skins.
+function stormCreature(kind){
+  const parts={},group=new THREE.Group();
+  if(kind==='storm_hound'){
+    const fur=skin([84,149,184],{seed:221,jit:19});
+    const face=skin([112,201,228],{seed:222,jit:9,front:(c,o)=>{
+      px(c,o,1,3,2,2,'#cdfaff');px(c,o,5,3,2,2,'#cdfaff');
+      px(c,o,3,5,2,1,'#173a68');
+    }});
+    makePart(group,parts,'body',[13,11,19],[0,15,0],[0,0,0],fur);
+    makePart(group,parts,'head',[13,11,11],[0,20,10],[0,0,3],face);
+    for(const [name,x,z] of [['legFL',-1,1],['legFR',1,1],['legBL',-1,-1],['legBR',1,-1]])
+      makePart(group,parts,name,[4,13,5],[x*5,12,z*7],[0,-6,0],skin([47,114,158],{seed:225}));
+    for(const side of [-1,1]){
+      makePart(group,parts,'spike'+side,[4,9,5],[side*5,28,6],[0,4,0],skin([190,242,255],{seed:229,jit:5}));
+      makePart(group,parts,'fang'+side,[2,5,3],[side*3,15,17],[0,-2,0],skin([224,251,255],{seed:231,jit:2}));
+    }
+    makePart(group,parts,'tail',[5,5,14],[0,19,-14],[0,0,-4],fur);
+    group.scale.setScalar(1.04);
+  }else{
+    const boss=kind==='blizzard_titan';
+    const ice=skin(boss?[57,140,180]:[115,187,209],{seed:240,jit:13});
+    const armor=skin(boss?[24,64,101]:[38,104,153],{seed:241,jit:11});
+    const glow=skin(boss?[141,236,255]:[168,232,244],{seed:242,jit:4,front:(c,o)=>{
+      px(c,o,1,3,2,2,'#d5faff');px(c,o,5,3,2,2,'#d5faff');
+      px(c,o,3,6,2,1,'#1f6eac');
+    }});
+    makePart(group,parts,'body',boss?[20,22,15]:[15,18,10],[0,boss?19:16,0],[0,0,0],armor);
+    makePart(group,parts,'head',boss?[15,14,14]:[12,12,12],[0,boss?34:29,2],[0,2,1],glow);
+    for(const side of [-1,1]){
+      makePart(group,parts,side<0?'armL':'armR',
+        boss?[9,20,10]:[7,17,7],[side*(boss?16:11),boss?22:19,0],[0,-8,0],ice);
+      makePart(group,parts,side<0?'legL':'legR',
+        boss?[9,15,11]:[6,13,8],[side*(boss?7:5),9,0],[0,-6,0],armor);
+      makePart(group,parts,'horn'+side,
+        boss?[6,15,7]:[4,9,5],[side*(boss?9:7),boss?45:37,-2],[0,5,0],ice);
+    }
+    makePart(group,parts,'core',boss?[9,9,3]:[7,6,2],[0,boss?22:18,8],[0,0,0],glow);
+    group.scale.setScalar(boss?1.10:1.02);
+  }
+  return {group,parts};
+}
+
 const angDiff = (a, b) => { let d = b - a; while (d > Math.PI) d -= Math.PI * 2; while (d < -Math.PI) d += Math.PI * 2; return d; };
 
 export class Mob {
   constructor(game, kind, x, y, z, options={}) {
     const sp = SPEC[kind];if(!sp)throw new Error('Unknown mob kind: '+kind);
     this.game = game; this.kind = kind; this.sp = sp;
-    this.level=sp.iceNative?Math.max(1,Math.min(10,Math.floor(options.level||game.adventure?.mobLevel(kind)||1))):1;
+    this.level=sp.iceNative?Math.max(1,Math.min(sp.chapter2?20:10,Math.floor(options.level||game.adventure?.mobLevel(kind)||1))):1;
     this.trialId=options.trialId||null;
-    this.attackScale=1+(this.level-1)*.055;
+    this.attackScale=1+(this.level-1)*(sp.chapter2?.035:.055);
     this.x = x; this.y = y; this.z = z; this.vx = this.vy = this.vz = 0; this.hw = sp.hw; this.h = sp.h;
     this.hp = Math.round(sp.hp*(1+(this.level-1)*.09));this.maxHp=this.hp; this.yaw = Math.random() * 6.28; this.dead = false; this.deadT = 0; this.hurtT = 0; this.fleeT = 0;
     this.walk = 0; this.amp = 0; this.wanderT = 1 + Math.random() * 3; this.wanderDir = this.yaw; this.moving = false;
-    this.cool = 0; this.fuse = -1; this.shootT = 1 + Math.random() * 2; this.fireT = 0; this.soundT = 3 + Math.random() * 8; this.age = 0; this.strafe = Math.random() < 0.5 ? 1 : -1;
-    const m = sp.iceNative?winterCreature(kind):kind === 'zombie' || kind === 'skeleton' ? humanoid(kind) : kind === 'creeper' ? creeper() : kind === 'spider' ? spider() : quad(kind);
+    this.cool = 0; this.pulseClock=5; this.pulseCharging=0; this.fuse = -1; this.shootT = 1 + Math.random() * 2; this.fireT = 0; this.soundT = 3 + Math.random() * 8; this.age = 0; this.strafe = Math.random() < 0.5 ? 1 : -1;
+    const m = sp.iceNative?(sp.chapter2?stormCreature(kind):winterCreature(kind)):kind === 'zombie' || kind === 'skeleton' ? humanoid(kind) : kind === 'creeper' ? creeper() : kind === 'spider' ? spider() : quad(kind);
     this.group = m.group; this.parts = m.parts; game.scene.add(this.group);
     this.mats = []; this.group.traverse((o) => { if (o.material) this.mats.push(o.material); });
     // blob shadow
@@ -272,6 +318,22 @@ export class Mob {
       const detect = sp.ranged ? 18 : 22;
       const dusk = sp.spider ? (this.angry || this.game.lightAt(p.x, p.y + 1, p.z) < 0.42) : true;
       if (canSee && dusk && dist < detect && Math.abs(dyp) < 12) {
+        // Stormspire boss: a clearly warned, dodgeable pulse — never through walls.
+        if(sp.stormPulse&&this.trialId){
+          if(this.pulseCharging>0){
+            this.pulseCharging-=dt;
+            if(this.pulseCharging<=0&&dist<4.3&&Math.abs(dyp)<3&&this.hasLOS(p))
+              p.hurt(2.5*g.difficulty,this.x,this.z);
+          }else{
+            this.pulseClock-=dt;
+            if(this.pulseClock<=0&&dist<8){
+              this.pulseClock=7;
+              this.pulseCharging=1.2;
+              g.ui?.toast?.('⚠ Blizzard Titan gathering a storm — move back!');
+              g.sound?.play?.('fuse',{pos:this,vol:.7});
+            }
+          }
+        }
         if (sp.ranged) {
           face = Math.atan2(dxp, dzp);
           const los = dist < 16 && this.hasLOS(p);
@@ -364,11 +426,11 @@ export class Mob {
   }
   animate(dt) {
     const P = this.parts, a = Math.sin(this.walk) * this.amp * 0.9, k = this.kind, t = this.age;
-    if (k === 'zombie' || k === 'skeleton' || k === 'frostling' || k === 'glacier_guardian') {
+    if (['zombie','skeleton','frostling','glacier_guardian','rime_knight','blizzard_titan'].includes(k)) {
       P.legL.rotation.x = a; P.legR.rotation.x = -a;
       this.armSwing = Math.max(0, (this.armSwing || 0) - dt);
-      const raise = (k === 'zombie'|| k==='frostling'||k==='glacier_guardian') ? -1.0 : -0.2, sw = this.armSwing > 0 ? Math.sin(this.armSwing / 0.3 * Math.PI) * 0.9 : 0;
-      P.armL.rotation.x = (k==='zombie'||k==='frostling'||k==='glacier_guardian') ? raise - sw + Math.sin(t * 1.5) * 0.05 : -a - 0.1; P.armR.rotation.x = (k==='zombie'||k==='frostling'||k==='glacier_guardian') ? raise - sw - Math.sin(t * 1.5) * 0.05 : a - 0.1 - sw;
+      const raise = (k === 'zombie'|| k==='frostling'||k==='glacier_guardian'||k==='rime_knight'||k==='blizzard_titan') ? -1.0 : -0.2, sw = this.armSwing > 0 ? Math.sin(this.armSwing / 0.3 * Math.PI) * 0.9 : 0;
+      P.armL.rotation.x = (k==='zombie'||k==='frostling'||k==='glacier_guardian'||k==='rime_knight'||k==='blizzard_titan') ? raise - sw + Math.sin(t * 1.5) * 0.05 : -a - 0.1; P.armR.rotation.x = (k==='zombie'||k==='frostling'||k==='glacier_guardian'||k==='rime_knight'||k==='blizzard_titan') ? raise - sw - Math.sin(t * 1.5) * 0.05 : a - 0.1 - sw;
       if (k === 'skeleton' && this.shootT < 0.5) { P.armL.rotation.x = -1.4; P.armR.rotation.x = -1.4; }
     } else if (k === 'spider') {
       for (let i = 0; i < 4; i++) for (const sd of [-1, 1]) {
@@ -382,6 +444,6 @@ export class Mob {
       P.legFL.rotation.x = P.legBR.rotation.x = a; P.legFR.rotation.x = P.legBL.rotation.x = -a;
       if (P.head) { const pl = this.game.player; P.head.rotation.x = 0; P.head.rotation.y = 0; if (Math.hypot(pl.x - this.x, pl.z - this.z) < 6 && !this.fleeT) { const d = angDiff(this.yaw, Math.atan2(pl.x - this.x, pl.z - this.z)); P.head.rotation.y = Math.max(-0.7, Math.min(0.7, d)); } P.head.rotation.x = Math.sin(t * 0.7) * 0.05; }
     }
-    if (k === 'zombie' || k === 'skeleton' || k === 'frostling' || k === 'glacier_guardian') { const pl = this.game.player; const d = angDiff(this.yaw, Math.atan2(pl.x - this.x, pl.z - this.z)); P.head.rotation.y = Math.abs(d) < 1.2 ? d * 0.7 : 0; }
+    if (['zombie','skeleton','frostling','glacier_guardian','rime_knight','blizzard_titan'].includes(k)) { const pl = this.game.player; const d = angDiff(this.yaw, Math.atan2(pl.x - this.x, pl.z - this.z)); P.head.rotation.y = Math.abs(d) < 1.2 ? d * 0.7 : 0; }
   }
 }
