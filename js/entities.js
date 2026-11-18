@@ -102,7 +102,7 @@ export class Arrow {
     // entities
     const p = g.player;
     if (this.hostile && !p.dead && Math.abs(this.x - p.x) < 0.5 && Math.abs(this.z - p.z) < 0.5 && this.y > p.y - 0.1 && this.y < p.y + 1.9) {
-      p.hurt(this.dmg, this.x - this.vx, this.z - this.vz); this.dead = true; g.scene.remove(this.mesh); return;
+      p.hurt(this.dmg, this.x - this.vx, this.z - this.vz, 'projectile'); this.dead = true; g.scene.remove(this.mesh); return;
     }
     if (!this.hostile) for (const m of g.mobs) {
       if (m.dead) continue;
