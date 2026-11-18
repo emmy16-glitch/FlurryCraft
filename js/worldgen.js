@@ -289,7 +289,9 @@ export class Gen {
       put(x, top, z, LG, false);
     } else { // spruce
       const top = y + ht;
-      for (let dy = 0; dy <= ht - 1; dy++) {
+      // Keep the lowest four air blocks open for mobile combat and exploration.
+      // The old dense leaves at eye level formed a very low, opaque ceiling.
+      for (let dy = 0; dy <= ht - 3; dy++) {
         const ly = top + 1 - dy;
         let r = Math.min(3, Math.ceil(dy / 2)); if (dy > 2 && dy % 2 === 0) r = Math.max(1, r - 1); if (dy === 0) r = 0;
         for (let dz = -r; dz <= r; dz++) for (let dx = -r; dx <= r; dx++) {
