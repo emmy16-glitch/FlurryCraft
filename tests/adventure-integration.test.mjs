@@ -271,3 +271,83 @@ test('Survival healing consumes two Frost Shards, shows real HP and enforces coo
   assert.equal(h.game.player.countItem(h.B.FROST_SHARD),0);
  }finally{h.restore();}
 });
+
+test('Stormspire remains locked until Level 10 and a successful Frost Ruins clear',()=>{
+ const h=createHarness();try{
+  h.adventure.load({level:9,clears:1});h.adventure.resetWorld(false);
+  h.adventure.open();
+  assert.equal(h.panel.findButton('Scout Stormspire Site'),null);
+  assert.equal(h.adventure.serialize().storm.site,null);
+  h.adventure.load({level:10,clears:0});h.adventure.resetWorld(false);
+  h.adventure.open();
+  assert.equal(h.panel.findButton('Scout Stormspire Site'),null);
+  assert.match(h.panel.renderedText,/LOCKED/);
+  h.adventure.load({level:10,clears:1});h.adventure.resetWorld(false);
+  h.adventure.open();
+  assert.ok(h.panel.findButton('Scout Stormspire Site'));
+ }finally{h.restore();}
+});
+
+test('Chapter 2 builds only after opt-in, completes 3 connected halls and saves rewards',()=>{
+ const h=createHarness();try{
+  const oldDen={x:31,y:43,z:17};
+  h.adventure.load({level:10,clears:1,den:oldDen,denBuilt:true,dungeonVersion:2});
+  h.adventure.resetWorld(false);
+  h.adventure.open();
+  const scout=h.panel.findButton('Scout Stormspire Site');
+  assert.ok(scout);scout.listeners.click();
+  const site=h.adventure.serialize().storm.site;
+  assert.ok(site);
+  assert.equal(h.world.getBlock(site.x,site.y-1,site.z),0,
+    'scouting alone must never overwrite the terrain');
+  const build=h.panel.findButton('Build Stormspire');
+  assert.ok(build);build.listeners.click();
+  for(let i=0;i<1000;i++)h.adventure.update(.02);
+  const built=h.adventure.serialize();
+  assert.equal(built.storm.built,true);
+  assert.equal(built.storm.version,1);
+  assert.equal(h.world.getBlock(site.x,site.y-1,site.z),h.B.FROST_BRICK);
+  assert.equal(built.clears,1,'first chapter clears untouched');
+  h.game.player.x=site.x+.5;h.game.player.z=site.z-7.5;h.game.player.y=site.y;
+  h.adventure.update(.016);
+  const entry=h.document.getElementById('fcDungeonEntry');
+  assert.equal(entry.textContent,'Enter Stormspire');
+  h.adventure.open();
+  const enter=h.panel.findButton('Enter Stormspire');
+  assert.ok(enter);enter.listeners.click();
+  for(let wave=0;wave<3;wave++){
+    const live=h.game.mobs.filter(m=>!m.dead&&m.trialId);
+    assert.equal(live.length,wave===2?1:2);
+    if(wave===0)assert.ok(live.every(m=>m.kind==='storm_hound'));
+    if(wave===1)assert.ok(live.some(m=>m.kind==='rime_knight'));
+    if(wave===2)assert.equal(live[0].kind,'blizzard_titan');
+    for(const mob of live){mob.dead=true;h.adventure.monsterDefeated(mob,true);}
+    if(wave<2){h.game.player.x=site.x+.5;h.game.player.z=site.z+18*(wave+1)+.5;}
+    h.adventure.update(1);
+  }
+  assert.equal(h.adventure.serialize().storm.clears,1);
+  assert.equal(h.adventure.serialize().clears,1);
+  assert.equal(h.game.player.countItem(h.B.FROST_BRICK),24);
+  assert.equal(h.game.player.countItem(h.B.toolId(3,2)),1,'first clear awards one iron sword');
+  const saved=h.adventure.serialize();
+  h.adventure.load(saved);h.adventure.resetWorld(false);
+  assert.equal(h.adventure.serialize().storm.clears,1);
+  assert.equal(h.adventure.serialize().storm.built,true);
+ }finally{h.restore();}
+});
+
+test('Stormspire construction waits for nearby chunks and can be resumed safely',()=>{
+ const h=createHarness();try{
+  h.adventure.load({level:10,clears:1});h.adventure.resetWorld(false);
+  h.adventure.open();h.panel.findButton('Scout Stormspire Site').listeners.click();
+  const site=h.adventure.serialize().storm.site;
+  const oldLoaded=h.world.loaded;
+  h.world.loaded=(x,z)=>Math.abs(x-site.x)>30;
+  h.panel.findButton('Build Stormspire').listeners.click();
+  for(let i=0;i<40;i++)h.adventure.update(.02);
+  assert.equal(h.adventure.serialize().storm.built,false);
+  h.world.loaded=oldLoaded;
+  for(let i=0;i<1000;i++)h.adventure.update(.02);
+  assert.equal(h.adventure.serialize().storm.built,true);
+ }finally{h.restore();}
+});
