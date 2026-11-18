@@ -1,12 +1,15 @@
-// FlurryCraft Adventure: first chapter (levels 1–10), Frost Ruins trial,
+// FlurryCraft Adventure: Frost Ruins (1–10) and Stormspire Keep (11–20),
 // winter-specific enemy rewards and real protective Winter Ward blocks.
 // Future chapters can reuse the 1–100 rules without cluttering gameplay.
 import { xpToNext,safeAdventure,grantXP,trialLocation,ruinBlocks,
-  FROST_CREATURES,winterMobLevel,trialWaves,withinWard,chooseWinterMob }
+  FROST_CREATURES,winterMobLevel,trialWaves,stormspireWaves,withinWard,chooseWinterMob }
 from './adventure-core.js';
 import { DUNGEON_VERSION,ROOM_NAMES,ROOM_OFFSETS,chamberPosition,dungeonEntrance,
  withinDungeonEntry,enteredChamber,generateFrostDungeon } from './frost-dungeon.js';
 import { aimedCreature,actionForTarget } from './combat-hud-core.js';
+import { STORM_VERSION,STORM_UNLOCK_LEVEL,STORM_ROOM_NAMES,STORM_ROOM_OFFSETS,
+  STORM_FOOTPRINT,stormRoom,nearStormGate,inStormRoom,stormSite,generateStormspire }
+  from './stormspire-dungeon.js';
 import { survivalVitals,checkFrostRecovery,recoveredHealth,
   FROST_RECOVERY_COST,FROST_RECOVERY_COOLDOWN } from './winter-survival-core.js';
 
@@ -15,6 +18,7 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
   let trial=null,nextRun=0,levelNoticeTime=0,lastTargetStamp='',lastTouchMode='';
   let entryLabel='',lastDungeonStatus='';
   let recoveryCooldown=0,vitalsTick=0,lastVitals='';
+  let stormPending=false,stormBuildPlan=[],stormBuildIndex=0,entryChapter='frost';
   const make=(tag,text,parent=panel)=>{
     const n=document.createElement(tag);if(text!==undefined)n.textContent=text;
     parent.appendChild(n);return n;
@@ -108,16 +112,17 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
   entryButton.id='fcDungeonEntry';entryButton.type='button';
   entryButton.setAttribute('aria-label','Enter Frost Ruins dungeon');
   entryButton.addEventListener('pointerdown',e=>e.stopPropagation());
-  entryButton.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();startTrial();});
+  entryButton.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();startTrial(entryChapter);});
   const dungeonStatus=make('div','',document.body);dungeonStatus.id='fcDungeonStatus';
   const totalXP=()=>progress.xp;
   const needed=()=>xpToNext(progress.level);
   function serialize(){
     const {levelsGained,...saved}=progress;
-    return {...saved,beacons:progress.beacons.map(b=>({...b}))};
+    return {...saved,beacons:progress.beacons.map(b=>({...b})),
+      storm:{...progress.storm,site:progress.storm.site?{...progress.storm.site}:null}};
   }
-  function load(raw){progress=safeAdventure(raw);world=game.world;trial=null;denPending=false;
-    buildPlan=[];buildIndex=0;nextRun++;levelNoticeTime=0;hitTimer=0;levelNotice.hidden=true;
+  function load(raw){progress=safeAdventure(raw);world=game.world;trial=null;denPending=false;stormPending=false;
+    buildPlan=[];buildIndex=0;stormBuildPlan=[];stormBuildIndex=0;nextRun++;levelNoticeTime=0;hitTimer=0;levelNotice.hidden=true;
     enemyHUD.hidden=true;entryButton.style.display='none';dungeonStatus.style.display='none';
     lastTargetStamp='';recoveryCooldown=0;vitalsTick=0;lastVitals='';vitals.style.display='none';refreshPill();}
   function resetWorld(isNew){
@@ -131,7 +136,7 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
   function refreshPill(){
     pillLevel.textContent='LV '+progress.level;
     barFill.style.width=(needed()?Math.min(100,progress.xp/needed()*100):100)+'%';
-    if(trial)activeLabel.textContent='WAVE '+(trial.wave+1)+'/3';
+    if(trial)activeLabel.textContent=(trial.chapter==='storm'?'SPIRE ':'WAVE ')+(trial.wave+1)+'/3';
     else activeLabel.textContent='';
     pill.setAttribute('aria-label','Level '+progress.level+', '+progress.xp+
       ' of '+needed()+' XP. Open Winter Adventure');
@@ -174,6 +179,8 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
     levelNoticeNumber.textContent='Level '+progress.level;
     levelNoticeTime=2.9;levelNotice.hidden=false;
     game.sound?.play?.('levelup',{vol:.6});
+    if(previous<STORM_UNLOCK_LEVEL&&progress.level>=STORM_UNLOCK_LEVEL)
+      notify(game,'Level 10! Clear Frost Ruins to unlock Stormspire Keep.');
   }
   function trackBlock(worldRef,x,y,z,before,after){
     if(worldRef!==world||before===after)return;
@@ -216,6 +223,37 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
     const remaining=game.player.addItem(id,n);
     if(remaining>0)game.spawnItem(id,remaining,game.player.x,game.player.y+.8,game.player.z);
   }
+  function canEnterStorm(){return progress.level>=STORM_UNLOCK_LEVEL&&progress.clears>=1;}
+  function guideStorm(){
+    const s=progress.storm.site;
+    if(s)explorer.guideTo({id:'stormspire-keep',name:'Stormspire Keep',x:s.x,z:s.z-7});
+  }
+  function buildStormspire(fromMenu=false){
+    const state=progress.storm;
+    if(!world||!state.site||state.built||stormPending)return false;
+    stormBuildPlan=generateStormspire(state.site,B,world.gen);
+    stormBuildIndex=0;stormPending=true;
+    if(fromMenu)notify(game,'Stormspire construction queued · Follow the map to the site');
+    return true;
+  }
+  function stormBuildTick(){
+    if(!stormPending||!world||world!==game.world)return;
+    // Building offscreen is deliberately paused until its terrain is loaded.
+    const end=Math.min(stormBuildPlan.length,stormBuildIndex+24);
+    for(let i=stormBuildIndex;i<end;i++){
+      const [x,y,z]=stormBuildPlan[i];
+      if(!world.loaded(x,z))return;
+    }
+    for(;stormBuildIndex<end;stormBuildIndex++){
+      const [x,y,z,id]=stormBuildPlan[stormBuildIndex];
+      if(world.getBlock(x,y,z)!==id)world.setBlock(x,y,z,id);
+    }
+    if(stormBuildIndex>=stormBuildPlan.length){
+      stormPending=false;stormBuildPlan=[];stormBuildIndex=0;
+      progress.storm.built=true;progress.storm.version=STORM_VERSION;
+      notify(game,'Stormspire Keep ready! Enter through the northern arch.');
+    }
+  }
   function createPlan(){
     return progress.den?generateFrostDungeon(progress.den,B,world.gen):[];
   }
@@ -243,7 +281,8 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
     }
   }
   function trialSpawn(kind,level,index){
-    const den=progress.den,room=chamberPosition(den,trial.wave);
+    const den=trial.chapter==='storm'?progress.storm.site:progress.den;
+    const room=trial.chapter==='storm'?stormRoom(den,trial.wave):chamberPosition(den,trial.wave);
     const locations=[[-2,-2],[2,2],[-2,2],[2,-2],[0,0]];
     const [dx,dz]=locations[index%locations.length];
     const x=room.x+dx+.5,z=room.z+dz+.5;
@@ -253,22 +292,37 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
   }
   function spawnWave(){
     if(!trial)return;
-    const members=trialWaves(progress.level)[trial.wave]||[];
+    const members=(trial.chapter==='storm'?stormspireWaves(progress.level):trialWaves(progress.level))[trial.wave]||[];
     trial.remaining=new Set();trial.waiting=false;trial.nextIn=0;
     members.forEach((spec,index)=>trialSpawn(spec.kind,spec.level,index));
     refreshPill();
-    notify(game,ROOM_NAMES[trial.wave]+' · Defeat '+members.length+' enemies');
+    notify(game,(trial.chapter==='storm'?STORM_ROOM_NAMES:ROOM_NAMES)[trial.wave]+' · Defeat '+members.length+' enemies');
   }
   function finishTrial(){
-    trial=null;progress.clears++;
-    safeItem(B.FROST_SHARD,5);
-    safeItem(B.FROST_BRICK,16);
-    if(progress.clears===1)safeItem(B.WARD_BEACON,1);
-    const result=grantXP(progress,105);
-    const old=progress.level;progress=result;
-    refreshPill();
-    notify(game,'Frost Ruins cleared! Froststone and a Winter Ward earned');
-    levelUp(old);
+    const chapter=trial?.chapter||'frost';
+    trial=null;
+    if(chapter==='storm'){
+      const first=progress.storm.clears===0;
+      progress.storm.clears++;
+      safeItem(B.FROST_SHARD,9);
+      safeItem(B.FROST_BRICK,24);
+      if(first&&typeof B.toolId==='function')safeItem(B.toolId(3,2),1);
+      const old=progress.level;progress=grantXP(progress,260);
+      refreshPill();
+      notify(game,first?'Stormspire cleared! Iron sword, XP and winter materials earned':
+        'Stormspire cleared! 9 Frost Shards, 24 Froststone and XP earned');
+      levelUp(old);
+    }else{
+      progress.clears++;
+      safeItem(B.FROST_SHARD,5);
+      safeItem(B.FROST_BRICK,16);
+      if(progress.clears===1)safeItem(B.WARD_BEACON,1);
+      const result=grantXP(progress,105);
+      const old=progress.level;progress=result;
+      refreshPill();
+      notify(game,'Frost Ruins cleared! Froststone and a Winter Ward earned');
+      levelUp(old);
+    }
   }
   function stopTrial(reason){
     if(!trial)return;
@@ -276,19 +330,30 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
     trial=null;refreshPill();
     if(reason)notify(game,reason);
   }
-  function startTrial(){
+  function startTrial(chapter='frost'){
     if(game.player.creative){notify(game,'Enter a Survival world for dungeon combat');return;}
-    if(!progress.denBuilt||progress.dungeonVersion<DUNGEON_VERSION){
-      notify(game,'Prepare the three-room Frost Ruins first');return;
-    }
     if(trial)return;
-    const p=game.player,d=progress.den;
-    if(!withinDungeonEntry(p,d)){
-      notify(game,'Go to the Frost Ruins entrance to begin');return;
+    const storm=chapter==='storm',p=game.player;
+    if(storm){
+      if(!canEnterStorm()){notify(game,'Level 10 and one Frost Ruins clear required');return;}
+      if(!progress.storm.built||progress.storm.version<STORM_VERSION){
+        notify(game,'Prepare Stormspire Keep first');return;
+      }
+      if(!nearStormGate(p,progress.storm.site)){
+        notify(game,'Walk to the Stormspire entrance to begin');return;
+      }
+    }else{
+      if(!progress.denBuilt||progress.dungeonVersion<DUNGEON_VERSION){
+        notify(game,'Prepare the three-room Frost Ruins first');return;
+      }
+      if(!withinDungeonEntry(p,progress.den)){
+        notify(game,'Go to the Frost Ruins entrance to begin');return;
+      }
     }
     if(game.difficulty<=0){notify(game,'Enable Easy or Normal combat to enter');return;}
     closeDialog();
-    trial={id:++nextRun,wave:0,remaining:new Set(),nextIn:0,waiting:false};
+    trial={id:++nextRun,chapter:storm?'storm':'frost',wave:0,
+      remaining:new Set(),nextIn:0,waiting:false};
     spawnWave();
   }
   function guide(){
@@ -301,7 +366,7 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
     const hero=make('section',undefined,panel);hero.className='fc-level-overview';
     const head=make('div',undefined,hero);head.className='fc-level-top';
     make('strong','Level '+progress.level,head);
-    make('span',progress.level<=10?'CHAPTER 1 · FROST RUINS':'WINTER ADVENTURER',head);
+    make('span',progress.level<=10?'CHAPTER 1 · FROST RUINS':progress.level<=20?'CHAPTER 2 · STORMSPIRE':'WINTER ADVENTURER',head);
     const meter=make('div',undefined,hero);meter.className='fc-adventure-meter';
     meter.setAttribute('role','progressbar');meter.setAttribute('aria-label','Experience to next level');
     meter.setAttribute('aria-valuemin','0');
@@ -314,7 +379,8 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
     xp.className='fc-level-xp';
     const activity=make('div',undefined,hero);activity.className='fc-level-stats';
     make('span',progress.kills+' creatures defeated',activity);
-    make('span',progress.clears+' dungeon clears',activity);
+    make('span',progress.clears+' Frost Ruins clears',activity);
+    make('span',progress.storm.clears+' Stormspire clears',activity);
     if(!game.player.creative){
       const recovery=make('section',undefined,panel);recovery.className='fc-adventure-card';
       make('h3','Survival · Recover Health',recovery);
@@ -366,12 +432,47 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
             'Extend Frost Ruins into a three-room dungeon? This replaces terrain in a 13 × 41 area and may overwrite nearby builds.'))return;
           buildRuins(true);closeDialog();
         },den);
-      }else if(trial){
+      }else if(trial?.chapter==='frost'){
         make('p',ROOM_NAMES[trial.wave]+' · Chamber '+(trial.wave+1)+' / 3',den);
         button('Return to Dungeon',closeDialog,den);
       }else{
         make('p','Walk through the gate at the marked entrance to begin.',den);
         button('Enter Dungeon',startTrial,den);
+      }
+    }
+    const stormCard=make('section',undefined,panel);stormCard.className='fc-adventure-card';
+    make('h3','Chapter 2 · Stormspire Keep',stormCard);
+    make('p','Levels 11–20 · Fight Storm Hounds, Rime Knights, then the Blizzard Titan in three new halls.',stormCard);
+    make('p','First clear: an Iron Sword, Frost Shards, Froststone and 260 XP. Repeat clears earn materials and XP.',stormCard);
+    if(!canEnterStorm()){
+      make('p','LOCKED · Reach Level 10 and clear Frost Ruins once. You need both achievements.',stormCard);
+    }else if(!progress.storm.site){
+      button('Scout Stormspire Site',()=>{
+        const s=stormSite(game.player.spawn,world.gen,progress.den);
+        if(!s){notify(game,'No suitable site found on this world seed');return;}
+        progress.storm.site=s;
+        guideStorm();notify(game,'Stormspire site marked on your map. Return to Winter Adventure to prepare it.');
+        open();
+      },stormCard);
+    }else{
+      const s=progress.storm.site;
+      make('p','Map marker · X '+s.x+' · Z '+(s.z-7)+' · '+progress.storm.clears+' clears',stormCard);
+      button('Guide to Stormspire',guideStorm,stormCard);
+      if(!progress.storm.built){
+        make('p',stormPending?'Construction in progress · travel toward the marked site to load the terrain':
+          'Only build this fortress when you are ready. It occupies '+STORM_FOOTPRINT+'.',stormCard);
+        if(!stormPending)button('Build Stormspire · '+STORM_FOOTPRINT,()=>{
+          if(typeof confirm==='function'&&!confirm(
+            'Build Stormspire Keep? This replaces terrain and ANY EXISTING BUILDS in a '+STORM_FOOTPRINT+' area at X '+
+            s.x+', Z '+s.z+'. Save/backup your world and ensure nothing valuable is there first.'))return;
+          if(buildStormspire(true)){guideStorm();closeDialog();}
+        },stormCard);
+      }else if(trial?.chapter==='storm'){
+        make('p',STORM_ROOM_NAMES[trial.wave]+' · Hall '+(trial.wave+1)+' / 3',stormCard);
+        button('Return to Stormspire',closeDialog,stormCard);
+      }else{
+        make('p','Approach the northern arch to begin the three-hall challenge.',stormCard);
+        button('Enter Stormspire',()=>startTrial('storm'),stormCard);
       }
     }
     const defense=make('section',undefined,panel);defense.className='fc-adventure-card';
@@ -392,8 +493,8 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
       open();
     },defense);
     const details=make('details',undefined,panel);
-    make('summary','Future chapters · Levels 11–100',details);
-    make('p','More ice regions, larger dungeons and castle tiers are planned. Only the first winter chapter is playable in this release.',details);
+    make('summary','Future chapters · Levels 21–100',details);
+    make('p','Frost Ruins and Stormspire Keep are playable in this release. Content for Levels 21–100 and advanced castle defense remains planned.',details);
   }
   function hitFeedback(mob,damage){
     if(!mob||!game.player||game.player.mobTarget!==mob)return;
@@ -457,26 +558,34 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
       return;
     }
     if(denPending)buildTick();
+    if(stormPending)stormBuildTick();
     const dungeonReady=!game.player.creative&&progress.denBuilt&&
       progress.dungeonVersion>=DUNGEON_VERSION;
-    const atEntry=dungeonReady&&!trial&&withinDungeonEntry(game.player,progress.den);
-    entryButton.style.display=unobstructed&&atEntry?'block':'none';
+    const atFrost=dungeonReady&&!trial&&withinDungeonEntry(game.player,progress.den);
+    const atStorm=canEnterStorm()&&!trial&&progress.storm.built&&
+      progress.storm.version>=STORM_VERSION&&nearStormGate(game.player,progress.storm.site);
+    entryChapter=atStorm?'storm':'frost';
+    entryButton.textContent=atStorm?'Enter Stormspire':'Enter Frost Ruins';
+    entryButton.setAttribute('aria-label',atStorm?'Enter Stormspire Keep dungeon':'Enter Frost Ruins dungeon');
+    entryButton.style.display=unobstructed&&(atStorm||atFrost)?'block':'none';
     if(!trial){
       dungeonStatus.style.display='none';
       return;
     }
-    const p=game.player,d=progress.den;
-    if(p.dead||p.creative||Math.hypot(p.x-d.x,p.z-d.z)>38){
-      stopTrial('Frost Ruins run ended');return;
+    const p=game.player,stormRun=trial.chapter==='storm';
+    const d=stormRun?progress.storm.site:progress.den;
+    if(!d||p.dead||p.creative||Math.hypot(p.x-d.x,p.z-d.z)>(stormRun?54:38)){
+      stopTrial((stormRun?'Stormspire':'Frost Ruins')+' run ended');return;
     }
-    let stage=ROOM_NAMES[trial.wave]+' · '+(trial.wave+1)+'/3';
+    const names=stormRun?STORM_ROOM_NAMES:ROOM_NAMES;
+    let stage=names[trial.wave]+' · '+(trial.wave+1)+'/3';
     if(trial.remaining.size===0&&trial.wave<2)stage='Room clear · Continue deeper';
     dungeonStatus.textContent=stage;
     dungeonStatus.style.display=unobstructed?'block':'none';
     if(trial.nextIn>0)trial.nextIn-=dt;
     if(trial.remaining.size===0&&trial.nextIn<=0){
       if(trial.wave>=2){finishTrial();return;}
-      if(enteredChamber(p,d,trial.wave+1)){
+      if((stormRun?inStormRoom(p,d,trial.wave+1):enteredChamber(p,d,trial.wave+1))){
         trial.wave++;spawnWave();
       }
     }
