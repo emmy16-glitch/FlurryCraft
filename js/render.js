@@ -229,8 +229,11 @@ function voxelData(id) {
 export function makeSwordMesh(id,size=1){
   const g=new THREE.Group(),item=B.ITEMS[id]||{};
   const aurora=id===B.AURORA_BLADE;
+  const abyss=id===B.ABYSS_BLADE;
   const tier=Math.max(0,Math.min(3,item.tierIdx??0));
-  const palette=aurora?
+  const palette=abyss?
+    {blade:'#6967c8',edge:'#f1ecff',core:'#a39af2',guard:'#8e88ce',grip:'#242340',gem:'#e4d6ff'}:
+    aurora?
     {blade:'#70f9ff',edge:'#e0ffff',core:'#db70f5',guard:'#cfaae6',grip:'#35305c',gem:'#f7a5ff'}:
     [
       {blade:'#b68b54',edge:'#e7c28c',core:'#81603e',guard:'#9c7a4f',grip:'#543824',gem:'#d6aa72'},
@@ -258,21 +261,32 @@ export function makeSwordMesh(id,size=1){
   }
   cuboid('pommel',.18,.105,.15,0,-.64,0,guard);
   cuboid('pommel-gem',.09,.07,.164,0,-.65,0,jewel);
-  cuboid('crossguard',aurora?.54:.45,.085,.16,0,-.20,0,guard);
+  cuboid('crossguard',abyss?.64:aurora?.54:.45,.085,.16,0,-.20,0,guard);
   for(const x of [-.22,.22]){
     const claw=cuboid('guard-wing',.10,.14,.13,x,-.15,0,edge);
     claw.rotation.z=x>0?.35:-.35;
   }
   cuboid('ricasso',.18,.12,.09,0,-.105,0,metal);
   // Rectangular polygonal blade plus reinforced edge rails and ridge.
-  cuboid('blade',aurora?.18:.16,.65,.077,0,.275,0,metal);
-  for(const x of [-1,1])cuboid('cutting-edge',.026,.60,.06,x*(aurora?.085:.074),.28,0,edge);
+  cuboid('blade',abyss?.22:aurora?.18:.16,.65,.077,0,.275,0,metal);
+  for(const x of [-1,1])cuboid('cutting-edge',.026,.60,.06,x*(abyss?.102:aurora?.085:.074),.28,0,edge);
   cuboid('blade-fuller',.036,.58,.085,0,.29,0,ridge);
   // A four-sided sharpened tip instead of a blunt block at the top.
-  const tip=new THREE.Mesh(new THREE.ConeGeometry(aurora?.117:.106,.23,4,1),
+  const tip=new THREE.Mesh(new THREE.ConeGeometry(abyss?.136:aurora?.117:.106,.23,4,1),
     metal);
   tip.name='sword-point';tip.position.set(0,.705,0);tip.rotation.y=Math.PI/4;
   g.add(tip);
+  if(abyss){
+    cuboid('abyss-rift-core',.09,.33,.12,0,.20,0,jewel);
+    for(const side of [-1,1]){
+      const claw=cuboid('abyss-guard-horn',.085,.23,.13,
+        side*.27,-.12,0,edge);
+      claw.rotation.z=side*.45;
+      const fin=cuboid('abyss-blade-fin',.09,.25,.095,
+        side*.15,.53,0,ridge);
+      fin.rotation.z=side*.23;
+    }
+  }
   if(aurora){
     cuboid('aurora-crystal-core',.075,.20,.105,0,.10,0,jewel);
     for(const x of [-1,1]){
