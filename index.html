@@ -251,6 +251,18 @@ body.touch #tbInv{right:74px}
 @media(max-height:520px){#pause .box{padding:12px 17px}#pause .box h2{margin-bottom:8px;font-size:19px}#pause .box .btn{padding:9px;margin:5px 0}#menu .fc-menu-card{max-height:calc(100dvh - 85px)}}
 @media(prefers-reduced-motion:reduce){#menu .fc-start,#hotbar .slot{transition:none}}
 
+/* Sword defense: compact stamina indicator and reachable right-thumb button. */
+#guardMeter{display:none;position:absolute;left:50%;bottom:112px;transform:translateX(-50%);
+ z-index:6;pointer-events:none;white-space:nowrap;font:800 10px/1.2 system-ui;
+ color:#b9eeff;background:#0b2f45da;border:1px solid #75cfe3;border-radius:7px;
+ padding:4px 8px;box-shadow:0 3px 12px #00192766;text-shadow:0 1px 2px #0008}
+#guardMeter.active{color:#fff;background:#146b83ed;border-color:#c3faff}
+#tbGuard{right:211px;bottom:133px;width:55px;height:55px;font-size:24px;
+ background:rgba(28,92,115,.82);border-color:#a7e7f5;touch-action:none}
+#tbGuard:after{content:'GUARD';position:absolute;top:100%;margin-top:1px;
+ color:#fff;font:800 9px system-ui;text-shadow:0 1px 3px #001927}
+#tbGuard.down,#tbGuard.on{background:rgba(28,155,183,.95);border-color:#e1fbff}
+@media(max-height:410px){#tbGuard{bottom:124px}#guardMeter{bottom:98px}}
 </style>
 </head>
 <body>
@@ -258,7 +270,7 @@ body.touch #tbInv{right:74px}
 <div id="hud">
   <div id="vig"></div><div id="underwater"></div><div id="fire"></div><div id="dmg"></div>
   <div id="cross"></div>
-  <div id="mineinfo"></div>
+  <div id="mineinfo"></div><div id="guardMeter" role="status" aria-live="off"></div>
   <div id="eat"><i></i></div>
   <div id="air"></div><div id="armorbar"></div><div id="adv"></div>
   <div id="bars"><div id="hearts"></div><div id="food"></div></div>
@@ -269,7 +281,7 @@ body.touch #tbInv{right:74px}
   <div id="debug"></div>
 </div>
 <div id="touch"><div id="lookzone"></div><div id="joyzone"></div><div id="joybase"><div id="joyknob"></div></div>
-  <div class="tb" id="tbJump">&#9650;</div><div class="tb" id="tbBreak" data-action="mine" data-label="MINE" role="button" aria-label="Hold to mine block" title="Hold to mine; automatically switches to Attack near a creature">⚒</div><div class="tb" id="tbPlace" title="Tap to place the selected block">&#9635;</div>
+  <div class="tb" id="tbJump">&#9650;</div><div class="tb sm" id="tbGuard" role="button" aria-label="Hold to guard with equipped sword" title="Hold while wielding a sword to block attacks from the front">🛡</div><div class="tb" id="tbBreak" data-action="mine" data-label="MINE" role="button" aria-label="Hold to mine block" title="Hold to mine; automatically switches to Attack near a creature">⚒</div><div class="tb" id="tbPlace" title="Tap to place the selected block">&#9635;</div>
   <div class="tb sm" id="tbSneak">&#9660;</div><div class="tb sm" id="tbInv">&#9776;</div><div class="tb sm" id="tbDrop">Q</div><div class="tb sm" id="tbMenu">II</div></div>
 <div class="overlay" id="screen"><div id="panel" role="dialog" aria-label="Inventory or crafting"></div><button id="fcClosePanel" class="fc-close-panel" type="button" aria-label="Close inventory and return to game">✕ <span>Close</span></button></div>
 <div id="cursor"></div><div id="tip"></div>
