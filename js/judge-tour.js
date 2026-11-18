@@ -59,7 +59,7 @@ export function initJudgeTour({game,openAdventure,openBlocks,openRewards,openStu
       step.id==='battle'?'Open Adventure':step.id==='rewards'?'Open Rewards':'Choose blocks';
     $('fc-tour-next').textContent=index===JUDGE_TOUR_STEPS.length-1?'Finish':'Next →';
   }
-  function close(){active=false;root.hidden=true;lastVisible=false;
+  function close(){active=false;game.tourActive=false;root.hidden=true;lastVisible=false;
     // Re-enter mouse capture only after the player clicks the game again.
     // The guide must never trap camera movement or force a hidden pointer.
   }
@@ -71,6 +71,9 @@ export function initJudgeTour({game,openAdventure,openBlocks,openRewards,openStu
   function start(){if(game.state!=='play')return false;
     // Desktop gameplay captures the pointer. Release it before showing
     // clickable tour buttons, otherwise clicks are intercepted by canvas.
+    // Set this BEFORE releasing mouse capture so the main game
+    // does not interpret a deliberate tour open as lost focus.
+    game.tourActive=true;
     game.releasePointer?.();
     active=true;index=0;draw();update();return true;}
   $('fc-tour-close').addEventListener('click',close);
