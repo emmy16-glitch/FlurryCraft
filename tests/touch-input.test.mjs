@@ -12,7 +12,7 @@ const fire=(el,type,id,x,y)=>el.dispatchEvent(pointer(type,id,x,y));
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 function setup() {
   const names=['touch','joyzone','joybase','joyknob','lookzone','tbJump',
-    'tbBreak','tbPlace','tbSneak','tbInv','tbMenu','tbDrop','hotbar','flurryModal'];
+    'tbBreak','tbPlace','tbGuard','tbSneak','tbInv','tbMenu','tbDrop','hotbar','flurryModal'];
   const classes=()=>{const set=new Set();return {
     add:v=>set.add(v),remove:v=>set.delete(v),contains:v=>set.has(v),
     toggle:(v,on)=>on?set.add(v):set.delete(v)
@@ -105,7 +105,7 @@ test('blur releases captured buttons and cancels delayed ghost mining',async()=>
   fire(el('tbPlace'),'pointerdown',4);
   assert.equal(game.touch.right,true);
   window.dispatchEvent(new Event('blur'));
-  for(const name of ['fwd','strafe','left','jump','right','rightPressed','attackPressed'])
+  for(const name of ['fwd','strafe','left','jump','right','rightPressed','attackPressed','guard'])
     assert.equal(game.touch[name],name==='fwd'||name==='strafe'?0:false,name);
   assert.equal(el('tbJump').classList.contains('down'),false);
   assert.equal(el('joyzone').capture,null);
