@@ -180,7 +180,7 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
     levelNoticeTime=2.9;levelNotice.hidden=false;
     game.sound?.play?.('levelup',{vol:.6});
     if(previous<STORM_UNLOCK_LEVEL&&progress.level>=STORM_UNLOCK_LEVEL)
-      notify(game,'Level 10! Clear Frost Ruins to unlock Stormspire Keep.');
+      notify(game,progress.clears>0?'Stormspire Keep unlocked · Open Winter Adventure':'Level 10! Clear Frost Ruins to unlock Stormspire Keep.');
   }
   function trackBlock(worldRef,x,y,z,before,after){
     if(worldRef!==world||before===after)return;
@@ -230,7 +230,7 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
   }
   function buildStormspire(fromMenu=false){
     const state=progress.storm;
-    if(!world||!state.site||state.built||stormPending)return false;
+    if(!world||!state.site||stormPending||(state.built&&state.version>=STORM_VERSION))return false;
     stormBuildPlan=generateStormspire(state.site,B,world.gen);
     stormBuildIndex=0;stormPending=true;
     if(fromMenu)notify(game,'Stormspire construction queued · Follow the map to the site');
@@ -458,7 +458,7 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
       const s=progress.storm.site;
       make('p','Map marker · X '+s.x+' · Z '+(s.z-7)+' · '+progress.storm.clears+' clears',stormCard);
       button('Guide to Stormspire',guideStorm,stormCard);
-      if(!progress.storm.built){
+      if(!progress.storm.built||progress.storm.version<STORM_VERSION){
         make('p',stormPending?'Construction in progress · travel toward the marked site to load the terrain':
           'Only build this fortress when you are ready. It occupies '+STORM_FOOTPRINT+'.',stormCard);
         if(!stormPending)button('Build Stormspire · '+STORM_FOOTPRINT,()=>{
