@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {FROST_CREATURES,CHAPTER_CAP,STORM_CAP,safeAdventure,grantXP,
-  stormspireWaves,chooseWinterMob,winterMobLevel} from '../js/adventure-core.js';
+  stormspireWaves,chooseWinterMob,winterMobLevel,winterKillXP} from '../js/adventure-core.js';
 import {STORM_VERSION,STORM_UNLOCK_LEVEL,STORM_ROOM_OFFSETS,
   STORM_FOOTPRINT,stormRoom,stormGate,nearStormGate,inStormRoom,
   stormSite,generateStormspire} from '../js/stormspire-dungeon.js';
@@ -23,6 +23,9 @@ test('chapter 2 unlock rules and monster tiers keep Frost Ruins capped at level 
   assert.equal(chooseWinterMob(13,.7),'storm_hound');
   assert.equal(chooseWinterMob(15,.9),'rime_knight');
   assert.equal(chooseWinterMob(20,.99),'blizzard_titan');
+  assert.ok(winterKillXP('storm_hound',12)>=35);
+  assert.ok(winterKillXP('blizzard_titan',20)<1000);
+  assert.ok(winterKillXP('storm_hound',12)<winterKillXP('blizzard_titan',20));
 });
 
 test('Chapter 2 has three ordered fights ending with the Blizzard Titan',()=>{
