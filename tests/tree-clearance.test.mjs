@@ -14,5 +14,5 @@ test('new spruce canopies leave enough headroom to fight and walk below the boug
     }
   }
   assert.equal(chunk.blocks[8 + (8 << 4) + (12 << 8)], B.SPRUCE_LOG);
-  assert.equal(chunk.blocks[8 + (8 << 4) + (18 << 8)], B.LEAVES);
+  assert.equal(chunk.blocks[9 + (8 << 4) + (18 << 8)], B.LEAVES);
 });
