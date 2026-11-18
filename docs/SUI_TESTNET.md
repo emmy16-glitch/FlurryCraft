@@ -39,7 +39,7 @@ When GitHub Actions successfully compiles and tests the Move package, the Pages 
 From a compatible Sui wallet browser:
 
 1. Make sure your wallet is on **Sui Testnet** and has faucet-provided Testnet SUI to pay deployment gas. The official Testnet web faucet is https://faucet.sui.io/. Do **not** buy Mainnet SUI for this experiment.
-2. Open the FlurryCraft site and enter a world. Open **Menu → Sui Testnet**.
+2. **Developer only:** open the FlurryCraft site with `?developer=1` appended to the URL, enter a world, then open **Menu → Sui Testnet**. Normal players never need this setup. The URL flag only reveals developer controls; it is not authentication or authorization.
 3. Expand **Developer · Publish Sui Testnet Contract** and press **Check compiled Testnet contract**. If the compiled bundle is missing, stop; the GitHub Actions Move compiler must pass first.
 4. Open the **Check Testnet Wallet (read only)** wallet panel and connect the wallet you own. Connecting alone never signs.
 5. Expand the developer section again, check the displayed source SHA and code size, and tap **Review and sign Testnet publication**.
@@ -49,6 +49,8 @@ From a compatible Sui wallet browser:
 9. Once verification is complete, register that exact 0x + 64-hex Testnet ID in `js/sui-config.js` and redeploy. This **separately** unlocks mint/list/buy/cancel. Test using two different Testnet wallets before a public demo.
 
 The publishing action must run under the wallet owner's direct control. ChatGPT and the GitHub repository **cannot sign on behalf of a wallet they do not have access to**. Do not upload or paste private keys, keystores or recovery phrases.
+
+Normal gameplay and **Menu → Adventure → ✦ Rewards Hub** do not require users to publish a contract or obtain faucet coins. The local Flurry Points ledger is distinct from Sui cryptocurrency and is not withdrawable. See [Rewards Hub](REWARDS_HUB.md).
 
 ## Before real Testnet transactions are possible
 
