@@ -1,6 +1,8 @@
 // Browser-only Creator Studio. No wallet or marketplace payments.
 import { normalizeBlueprint, canonicalBlueprintContent, blueprintFingerprint,
  blueprintSummary, downloadName, makeStarterBlueprints, drawBlueprintCard } from './creator-studio.js';
+import {uploadWalrusBlueprint,fetchWalrusBlueprint,walrusTestnetURL}
+ from './walrus-blueprints.js';
 const KEY='flurrycraft_blueprints_v1',LIMIT=30;
 const el=(tag,text)=>{const node=document.createElement(tag);if(text!==undefined)node.textContent=text;return node;};
 const read=()=>{try{const v=JSON.parse(localStorage.getItem(KEY)||'[]');return Array.isArray(v)?v:[];}catch{return [];}};
@@ -65,6 +67,36 @@ export function initCreatorStudioUI({game,B,panel,openDialog,closeDialog,showCap
   all.push(data);return write(all)?'saved':'storage';
  }
  const download=data=>{const clean=valid(data);downloadJSON(clean,downloadName(clean.name));};
+ async function shareWalrus(data){
+  const clean=valid(data);
+  // Unlike local browser saves, uploads can be copied by anyone and may
+  // remain readable through the storage epochs. Explicit opt-in required.
+  if(typeof confirm==='function'&&!confirm(
+    'Publish "'+clean.name+'" to PUBLIC Walrus TESTNET storage? Anyone with the blob ID can copy the building. This is NOT an NFT or private backup. Continue?'))return;
+  heading('Walrus Testnet · Share Building');
+  const status=text('Uploading public blueprint to Walrus Testnet…');
+  try{
+   const receipt=await uploadWalrusBlueprint(clean);
+   if(!status.isConnected)return;
+   status.textContent='Walrus Testnet stored '+clean.blocks.length+
+    ' blocks. Save the receipt to verify this exact design later.';
+   const info=el('div');info.className='fc-studio-hash';
+   info.textContent='Blob ID: '+receipt.blobId+'\nSHA-256: '+receipt.digest;
+   panel.appendChild(info);
+   const link=el('a','View public Walrus blob');
+   link.href=walrusTestnetURL(receipt.blobId);
+   link.target='_blank';link.rel='noopener noreferrer';panel.appendChild(link);
+   btn(panel,'Download Verification Receipt',()=>downloadJSON(
+    receipt,'flurrycraft-walrus-receipt.json'));
+   btn(panel,'Copy Blob ID',()=>{
+    if(navigator.clipboard?.writeText)navigator.clipboard.writeText(receipt.blobId)
+      .then(()=>notify(game,'Walrus blob ID copied'))
+      .catch(()=>notify(game,'Copy unavailable. Select the ID manually.'));
+    else notify(game,'Select the ID from the screen to copy it.');
+   });
+  }catch(error){status.textContent='Walrus upload unavailable: '+error.message;}
+  btn(panel,'Back to My Builds',open);
+ }
  async function share(data){
   const clean=valid(data),file=new File([JSON.stringify(clean)],downloadName(clean.name),{type:'application/json'});
   if(navigator.share&&navigator.canShare?.({files:[file]})){
@@ -114,6 +146,31 @@ export function initCreatorStudioUI({game,B,panel,openDialog,closeDialog,showCap
    downloadJSON({format:'flurrycraft-library-v1',blueprints:all},'flurrycraft-my-builds-backup.json');
   });
   backup.appendChild(el('p','Builds are saved on this device. Back up before clearing browser data.'));
+  backup.appendChild(el('p','Walrus Testnet is optional, PUBLIC storage for shareable building designs, not a private world backup or NFT.'));
+  const blobInput=el('input');blobInput.type='text';
+  blobInput.placeholder='Walrus Testnet blob ID (43 characters)';
+  blobInput.setAttribute('aria-label','Walrus Testnet blob ID');
+  blobInput.style.width='100%';backup.appendChild(blobInput);
+  const digestInput=el('input');digestInput.type='text';
+  digestInput.placeholder='SHA-256 from receipt (optional)';
+  digestInput.setAttribute('aria-label','Expected Walrus SHA-256 digest');
+  digestInput.style.width='100%';backup.appendChild(digestInput);
+  btn(backup,'Import Walrus Blueprint',async()=>{
+   const id=blobInput.value.trim(),hash=digestInput.value.trim();
+   if(!id){notify(game,'Enter the Walrus blob ID.');return;}
+   try{
+    const source=hash?{
+     format:'flurrycraft-walrus-blueprint-v1',
+     blobId:id,digest:hash,name:'Walrus Building',author:'Walrus Testnet',
+    }:id;
+    const result=await fetchWalrusBlueprint(source);
+    const status=add(result.blueprint);
+    if(status==='saved'){notify(game,'Verified Walrus blueprint imported safely.');open();}
+    else notify(game,status==='exists'?'Already in My Builds':
+      status==='full'?'My Builds is full. Remove a design or export a backup.':
+      'Local storage unavailable.');
+   }catch(error){notify(game,'Walrus import failed: '+error.message);}
+  });
   advanced.appendChild(backup);panel.appendChild(advanced);
   const tabs=el('div');tabs.className='fc-studio-tabs';tabs.setAttribute('role','tablist');panel.appendChild(tabs);
   let source=entries().length?'mine':'starter';
@@ -169,6 +226,7 @@ export function initCreatorStudioUI({game,B,panel,openDialog,closeDialog,showCap
     btn(actions,'Download',()=>download(data));
     btn(actions,'Share',()=>share(data));
     btn(actions,'Fingerprint',()=>proof(data));
+    btn(actions,'Walrus Testnet Share',()=>shareWalrus(data));
     if(onMintTestnet)btn(actions,'NFT Testnet',()=>onMintTestnet(data));
     if(kind==='saved'){
      btn(actions,'Delete',()=>{
