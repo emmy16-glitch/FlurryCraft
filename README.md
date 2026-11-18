@@ -4,6 +4,22 @@ Browser-first, free-to-play voxel sandbox for Android, iPhone and desktop. Flurr
 
 Built on the MIT-licensed [Yet Another VoxelCraft](https://github.com/GoldwinXS/YetAnotherVoxelCraft) engine by GoldwinXS, with a local bundled Three.js r160. Original attribution is preserved in UPSTREAM_LICENSE.txt.
 
+## ❄️ CLAY Hackathon III — judge-first guided adventure
+
+The welcome screen now includes **▶ Try Guided Adventure Demo**.
+This opens a fresh **Survival** save and a dismissible six-step guide:
+meet Lofi, fight snowy enemies, build, inspect Rewards Hub missions,
+open Creator Studio/Walrus features, and inspect Sui Testnet safely.
+The guide **does not grant fake levels, loot, crypto or NFT sales**.
+
+Open **Menu → Adventure → ▶ Guided Tour** to restart the walkthrough
+inside an existing world; click **X** to return to normal gameplay.
+No wallet is needed to play. The guide works on mobile landscape and desktop.
+
+For the official submission checklist, 3–5-minute video storyboard,
+truthful pitch, and device verification checklist, see
+[CLAY III Submission Pack](docs/CLAY_III_SUBMISSION.md).
+
 ## ✦ Flurry Rewards Hub (local points, no cryptocurrency payout)
 
 In a playable Survival world, choose **Menu → ADVENTURE → ✦ Rewards Hub**.
