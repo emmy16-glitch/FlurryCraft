@@ -11,6 +11,7 @@ import { ItemEntity, FallingBlock, PrimedTNT } from './entities.js';
 import { Weather } from './weather.js';
 import { initTouch } from './touch.js';
 import { initFlurry } from './flurry.js';
+import { migratePlayerHealth } from './combat-progression.js';
 
 const $ = (id) => document.getElementById(id);
 const SAVE_KEY = 'flurrycraft_save_v1', SET_KEY = 'flurrycraft_settings_v1';
@@ -289,7 +290,7 @@ function saveGame() {
     const edits = {}; for (const [k, m] of game.world.edits) { const a = []; for (const [i, v] of m) a.push(i, v); edits[k] = a; }
     const data = {
       seed: game.world.seed, mode: settings.mode, diff: settings.diff, tod: game.env.tod, edits, containers: ui.serialize(),
-      player: { x: player.x, y: player.y, z: player.z, yaw: player.yaw, pitch: player.pitch, health: player.health, hunger: player.hunger, sat: player.sat, inv: player.inv, sel: player.sel, spawn: player.spawn, flying: player.flying, armor: player.armor },
+      player: { x: player.x, y: player.y, z: player.z, yaw: player.yaw, pitch: player.pitch, health: player.health, healthCap: player.maxHealth, hunger: player.hunger, sat: player.sat, inv: player.inv, sel: player.sel, spawn: player.spawn, flying: player.flying, armor: player.armor },
       adv: [...game.adv], adventure:game.adventure?.serialize(), played: basePlayed + game.time,
     };
     localStorage.setItem('vc_world_' + currentId, JSON.stringify(data));
@@ -337,7 +338,12 @@ function startGame(cont, id) {
     if (!c.spawns) return; for (const s of c.spawns) if (game.mobs.length < 60) game.mobs.push(new Mob(game, s.kind, s.x, s.y, s.z)); };
   if (save) {
     for (const k in save.edits) { const a = save.edits[k], m = new Map(); for (let i = 0; i < a.length; i += 2) m.set(a[i], a[i + 1]); world.edits.set(+k, m); }
-    ui.restore(save.containers); Object.assign(player, save.player); player.inv = save.player.inv; game.env.tod = save.tod; game.adv = new Set(save.adv || []);
+    ui.restore(save.containers); Object.assign(player, save.player);
+    // Legacy worlds stored a fixed 20-HP limit. Preserve missing HP rather
+    // than resetting injuries, and never recalculate this on later saves.
+    player.health=migratePlayerHealth(save.player.health,save.player.healthCap,player.maxHealth);
+    player.healthCap=player.maxHealth;
+    player.inv = save.player.inv; game.env.tod = save.tod; game.adv = new Set(save.adv || []);
   } else {
     const sp = world.gen.findSpawn(); player.x = sp.x; player.y = sp.y; player.z = sp.z; player.spawn = { x: sp.x, y: sp.y, z: sp.z };
     game.env.tod = 0.25; // Clear midday for a comfortable first building session.
