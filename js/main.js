@@ -362,6 +362,15 @@ $('worldlist').addEventListener('click', (e) => {
 });
 renderWorlds();
 $('bNew').onclick = () => { sound.init(); startGame(false); };
+let judgeDemoRequested=false;
+$('bJudgeDemo').onclick=()=>{
+  // This starts a REAL Survival world, with no fabricated XP or NFT awards.
+  settings.mode='s';settings.diff=1;
+  initSeg($('mMode'),'s');initSeg($('mDiff'),1);saveSettings();
+  $('mSeed').value='CLAY-LOFI-ADVENTURE';
+  judgeDemoRequested=true;
+  sound.init();startGame(false);
+};
 
 // ---------------------------------------------------------------- save / load
 function saveGame() {
@@ -403,7 +412,7 @@ function startGame(cont, id) {
   const seedStr = $('mSeed').value.trim();
   let seed = save ? save.seed : (seedStr ? (/^-?\d+$/.test(seedStr) ? parseInt(seedStr, 10) : [...seedStr].reduce((a, c) => (Math.imul(a, 31) + c.charCodeAt(0)) | 0, 7)) : Math.floor(Math.random() * 1e9));
   if (save) { settings.mode = save.mode; settings.diff = save.diff; currentId = id; basePlayed = save.played || 0; const m = loadIndex().find((w) => w.id === id); currentName = m ? m.name : 'World'; }
-  else { basePlayed = 0; currentId = 'w' + Date.now().toString(36); const n = loadIndex().length + 1; currentName = seedStr ? 'Seed ' + seedStr.slice(0, 18) : 'World ' + n; }
+  else { basePlayed = 0; currentId = 'w' + Date.now().toString(36); const n = loadIndex().length + 1; currentName = judgeDemoRequested?'CLAY Guided Adventure':seedStr ? 'Seed ' + seedStr.slice(0, 18) : 'World ' + n; }
   game.worldId = currentId;game.worldName = currentName;
   if(game.adventure)game.adventure.load(save?.adventure);
   if(game.rewards)game.rewards.load(save?.rewards);
@@ -478,6 +487,11 @@ function startGame(cont, id) {
     ui.dirtyInv = true; game.requestPointer();
     if (!save) ui.toast(player.creative ? 'Welcome to FlurryCraft (Creative)' : 'Welcome to FlurryCraft! Meet Lofi, then build your dream.');
     if (!save && !player.creative) ui.toast('Press E for inventory & crafting');
+    if(judgeDemoRequested){
+      judgeDemoRequested=false;
+      saveGame(); // Save as a new world, never overwrite the user's other saves.
+      requestAnimationFrame(()=>{if(game.state==='play')game.flurry?.startJudgeTour();});
+    }
   };
   requestAnimationFrame(prime);
 }
