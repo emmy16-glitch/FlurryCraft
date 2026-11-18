@@ -4,6 +4,26 @@ Browser-first, free-to-play voxel sandbox for Android, iPhone and desktop. Flurr
 
 Built on the MIT-licensed [Yet Another VoxelCraft](https://github.com/GoldwinXS/YetAnotherVoxelCraft) engine by GoldwinXS, with a local bundled Three.js r160. Original attribution is preserved in UPSTREAM_LICENSE.txt.
 
+## ✦ Flurry Rewards Hub (local points, no cryptocurrency payout)
+
+In a playable Survival world, choose **Menu → ADVENTURE → ✦ Rewards Hub**.
+The hub shows milestones for levels 10–100 and the four dungeon chapters,
+plus daily/weekly monster, construction and dungeon missions. Completing
+them awards **local, world-specific Flurry Points** after tapping Collect.
+The mission ledger is included in world saves and downloadable world backups.
+
+**Flurry Points are NOT SUI, not redeemable, and have no fiat value.**
+No server-side anti-cheat verifier or funded crypto treasury is deployed.
+Real cryptocurrency withdrawals are deliberately disabled; normal gameplay
+does not need a wallet. A future funded claim system needs server-verified
+achievements, rate limits, a secure treasury contract and a Mainnet rollout.
+See [Rewards Hub architecture](docs/REWARDS_HUB.md).
+
+The Sui developer contract-publishing controls are no longer shown to normal
+players: they are available only when a developer explicitly adds
+`?developer=1` to the game URL. This is a UI affordance, **not access control**,
+and publishing still requires the signer's own Testnet wallet approval.
+
 ## Play in a browser
 
 To publish your own website:
