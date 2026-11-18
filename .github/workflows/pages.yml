@@ -62,8 +62,14 @@ jobs:
           tar -xzf suiup-Linux-musl-x86_64.tar.gz -C "$HOME/.local/bin"
           "$HOME/.local/bin/suiup" install sui@testnet-1.84.0
           cd "$GITHUB_WORKSPACE"
-          "$HOME/.suiup/bin/sui" move test --path move/flurrycraft
-          "$HOME/.suiup/bin/sui" move build --path move/flurrycraft --dump-bytecode-as-base64 > /tmp/flurrycraft-bytecode.json
+          SUI_CLI="$HOME/.local/bin/sui"
+          if [ ! -x "$SUI_CLI" ]; then
+            SUI_CLI="$HOME/.local/share/suiup/binaries/testnet/sui-v1.84.0"
+          fi
+          test -x "$SUI_CLI"
+          "$SUI_CLI" --version
+          "$SUI_CLI" move test --path move/flurrycraft
+          "$SUI_CLI" move build --path move/flurrycraft --dump-bytecode-as-base64 > /tmp/flurrycraft-bytecode.json
           node scripts/prepare-sui-publish-artifact.mjs /tmp/flurrycraft-bytecode.json dist/flurrycraft-publish.json "$GITHUB_SHA"
       - name: Assemble browser-only site (no node_modules)
         run: |
