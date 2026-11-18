@@ -640,11 +640,15 @@ export function initFlurry(game) {
         buildJob=null;progress.hidden=true;return;
       }
       const end=Math.min(changes.length,job.at+budget);
-      for(;job.at<end;job.at++){
-        const [x,y,z,id]=changes[job.at];
+      // A single block can trigger expensive lighting work. Limit by elapsed
+      // time as well as count to avoid a visible freeze on giant blueprints.
+      const deadline=performance.now()+(game.touchMode?2.5:4);
+      while(job.at<end){
+        const [x,y,z,id]=changes[job.at++];
         // Never overwrite terrain or a new edit made since preview.
         if(world.loaded(x,z)&&world.getBlock(x,y,z)===B.AIR&&world.setBlock(x,y,z,id)!==false)
           job.applied.push([x,y,z,B.AIR,id]);
+        if(performance.now()>=deadline)break; // Always process at least one.
       }
       const pct=Math.round(100*job.at/changes.length);
       progressFill.style.width=pct+'%';
