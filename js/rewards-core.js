@@ -1,4 +1,5 @@
 // FlurryCraft Rewards Hub: OFFLINE GAME POINTS ONLY.
+import {safeExpedition,expeditionCard,acceptExpedition,recordExpeditionPlacement,finishExpedition} from './expedition-core.js';
 // Browser saves can be modified. Nothing in this module authorizes or pays SUI.
 export const REWARD_SCHEMA=1;
 export const CRYPTO_REWARDS_ENABLED=false;
@@ -66,7 +67,8 @@ export function createRewardsState(raw,adventure,now=Date.now()){
     dayBase:baseline(oldDay?r.dayBase:total,total),
     weekBase:baseline(oldWeek?r.weekBase:total,total),
     dailyBlocks:oldDay?num(r.dailyBlocks,500):0,
-    weeklyBlocks:oldWeek?num(r.weeklyBlocks,2000):0};
+    weeklyBlocks:oldWeek?num(r.weeklyBlocks,2000):0,
+    expedition:safeExpedition(valid?r.expedition:null,total)};
 }
 export function rewardCards(state,adventure,creative=false,now=Date.now()){
   const s=createRewardsState(state,adventure,now),totals=rewardTotals(adventure);
@@ -87,6 +89,7 @@ export function rewardCards(state,adventure,creative=false,now=Date.now()){
     milestones:MILESTONES.map(m=>convert(m,'once:'+m.id)),
     daily:DAILY_MISSIONS.map(m=>convert(m,'daily:'+s.day+':'+m.id)),
     weekly:WEEKLY_MISSIONS.map(m=>convert(m,'weekly:'+s.week+':'+m.id)),
+    expedition:expeditionCard(s.expedition,totals,creative),
     sandbox:!!creative,cryptoEnabled:CRYPTO_REWARDS_ENABLED
   };
 }
@@ -94,6 +97,7 @@ export function recordRewardPlacement(state,adventure,now=Date.now()){
   const s=createRewardsState(state,adventure,now);
   s.dailyBlocks=Math.min(500,s.dailyBlocks+1);
   s.weeklyBlocks=Math.min(2000,s.weeklyBlocks+1);
+  s.expedition=recordExpeditionPlacement(s.expedition,rewardTotals(adventure));
   return s;
 }
 export function collectLocalPoints(state,adventure,key,creative=false,now=Date.now()){
@@ -106,6 +110,24 @@ export function collectLocalPoints(state,adventure,key,creative=false,now=Date.n
   s.history.push({id:item.key,title:item.title,points:item.points,at:now});
   if(s.history.length>60)s.history.splice(0,s.history.length-60);
   return s;
+}
+// Expeditions award local game points and adventure XP; they are NOT SUI.
+export function acceptExpeditionMission(state,adventure,id,creative=false,now=Date.now()){
+  const s=createRewardsState(state,adventure,now);
+  s.expedition=acceptExpedition(s.expedition,rewardTotals(adventure),id,creative);
+  return s;
+}
+export function collectExpeditionMission(state,adventure,id,creative=false,now=Date.now()){
+  const s=createRewardsState(state,adventure,now);
+  const result=finishExpedition(s.expedition,rewardTotals(adventure),id,creative);
+  if(s.points+result.mission.points>10000000)throw new Error('Local points limit reached.');
+  s.expedition=result.state;
+  s.points+=result.mission.points;
+  s.history.push({id:'expedition:'+id,title:result.mission.title,
+    points:result.mission.points,at:now});
+  if(s.history.length>60)s.history.splice(0,s.history.length-60);
+  return {state:s,xp:result.mission.xp,points:result.mission.points,
+    title:result.mission.title};
 }
 // An intentional hard stop. A backend-signed, funded, replay-resistant
 // Mainnet claim must be implemented separately. Never convert local points.
