@@ -32,7 +32,7 @@ canvas#gl{position:fixed;inset:0;width:100%;height:100%;display:block;outline:no
 .slot.big:hover{background:#a8a8ff88}
 #itemname{position:absolute;left:50%;bottom:108px;transform:translateX(-50%);font:bold 16px "Courier New",monospace;text-shadow:2px 2px 0 #222;opacity:0;transition:opacity .4s;white-space:nowrap}
 #vig,#underwater,#fire,#dmg{position:absolute;inset:0;pointer-events:none;opacity:0}
-#dmg{background:radial-gradient(ellipse at center,rgba(255,0,0,0) 40%,rgba(200,0,0,.75) 100%)}
+#dmg{background:radial-gradient(ellipse at center,rgba(255,0,0,0) 40%,rgba(200,0,0,.52) 100%)}
 #underwater{background:rgba(20,70,170,.42)}
 #fire{background:radial-gradient(ellipse at 50% 100%,rgba(255,140,20,.8),rgba(255,60,0,0) 60%)}
 #debug{position:absolute;left:8px;top:8px;font:12px/16px "Courier New",monospace;text-shadow:1px 1px 0 #000;background:rgba(0,0,0,.35);padding:6px 8px;display:none;white-space:pre}
@@ -113,7 +113,7 @@ canvas#gl{position:fixed;inset:0;width:100%;height:100%;display:block;outline:no
 #tbSneak{right:120px;bottom:130px}
 #tbInv{right:14px;top:14px}#tbMenu{right:70px;top:14px}#tbDrop{right:126px;top:14px}
 body.touch #keys{display:none}
-body.touch #hotbar{bottom:6px}
+body.touch #hotbar{bottom:6px;width:min(84vw,440px)!important;}
 @media (max-width:640px){.slot{width:38px;height:38px}#hotbar .slot{width:36px;height:36px}.slot img{width:28px;height:28px}#bars,#air{width:300px}#hearts img,#food img,#air img{width:14px;height:14px}#armorbar{left:calc(50% - 150px)}#logo{font-size:44px}.box{min-width:0;width:92vw}#tag{font-size:13px}}
 @media (max-height:520px){#logo{font-size:40px;margin-bottom:0}#tag{margin-bottom:8px}.box{padding:8px 14px}#worldlist{max-height:70px}.btn{padding:6px;margin:3px 0}.opt{margin:3px 0}#bars{bottom:64px}#air{bottom:88px}#armorbar{bottom:86px}}
 #keys{font:12px/1.6 "Courier New",monospace;color:#ddd;columns:2;margin-top:10px}
