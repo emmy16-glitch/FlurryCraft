@@ -15,6 +15,8 @@ test('Lofi proximity is bounded and cannot be spoofed by invalid positions',()=>
   assert.equal(nearLofi({x:0,z:0},{x:3,z:4}),true);
   assert.equal(nearLofi({x:0,z:0},{x:7,z:0}),false);
   assert.equal(nearLofi({x:0,z:0},{x:6.2,z:0}),true);
+  assert.equal(nearLofi({x:0,y:80,z:0},{x:0,y:40,z:0}),false);
+  assert.equal(nearLofi({x:0,y:42,z:0},{x:0,y:40,z:0}),true);
   assert.equal(nearLofi({x:Infinity,z:0},{x:0,z:0}),false);
   assert.equal(nearLofi({x:0,z:0},{x:NaN,z:0}),false);
   assert.equal(nearLofi(null,null),false);
