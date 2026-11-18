@@ -53,7 +53,15 @@ export class UI {
   }
   dirVel() { const p = this.game.player, cp = Math.cos(p.pitch); return [-Math.sin(p.yaw) * cp * 4, Math.sin(p.pitch) * 4 + 1.5, -Math.cos(p.yaw) * cp * 4]; }
   get isOpen() { return !!this.scr; }
-  toast(msg) { const d = document.createElement('div'); d.textContent = msg; $('toasts').appendChild(d); setTimeout(() => d.remove(), 3600); if ($('toasts').children.length > 4) $('toasts').firstChild.remove(); }
+  toast(msg) {
+    const root=$('toasts'),message=String(msg);
+    if(root.lastElementChild?.textContent===message)return;
+    const d=document.createElement('div');d.textContent=message;root.appendChild(d);
+    // Large stacks used to hide both Lofi and the attack target on phones.
+    const limit=this.game.touchMode?2:3;
+    while(root.children.length>limit)root.firstElementChild.remove();
+    setTimeout(()=>d.remove(),3200);
+  }
 
   // -------------------------------------------------------------- HUD
   slotHTML(s, big) {
