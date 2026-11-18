@@ -1,9 +1,10 @@
 // FlurryCraft Adventure progression. Pure, deterministic rules, no renderer.
-// XP is defined through Level 100; Chapter 3 adds Aurora Citadel (21–30).
+// XP is defined through Level 100; Chapters 1–4 now cover Levels 1–40.
 export const MAX_LEVEL=100;
 export const CHAPTER_CAP=10;
 export const STORM_CAP=20;
 export const AURORA_CAP=30;
+export const ABYSS_CAP=40;
 export const FROST_CREATURES=Object.freeze({
   frostling: Object.freeze({name:'Frostling',minLevel:1,xp:16}),
   snow_prowler: Object.freeze({name:'Snow Prowler',minLevel:3,xp:22}),
@@ -14,6 +15,9 @@ export const FROST_CREATURES=Object.freeze({
   aurora_wisp: Object.freeze({name:'Aurora Wisp',minLevel:21,xp:70,chapter:3}),
   prism_stalker: Object.freeze({name:'Prism Stalker',minLevel:24,xp:90,chapter:3}),
   boreal_sovereign: Object.freeze({name:'Boreal Sovereign',minLevel:28,xp:270,chapter:3,boss:true}),
+  rift_stalker: Object.freeze({name:'Rift Stalker',minLevel:31,xp:98,chapter:4}),
+  umbral_sentinel: Object.freeze({name:'Umbral Sentinel',minLevel:34,xp:120,chapter:4}),
+  abyss_keeper: Object.freeze({name:'Abyss Keeper',minLevel:38,xp:360,chapter:4,boss:true}),
 });
 export function xpToNext(level){
   const n=Math.max(1,Math.min(MAX_LEVEL,Math.floor(Number(level)||1)));
@@ -44,6 +48,15 @@ export function safeAdventure(raw){
   const aurora={site,built:!!site&&!!auroraRaw.built,
     version:site&&auroraRaw.built?clamp(auroraRaw.version,0,1):0,
     clears:clamp(auroraRaw.clears,0,10000)};
+  const abyssRaw=a.abyss&&typeof a.abyss==='object'?a.abyss:{};
+  const abyssPos=abyssRaw.site;
+  const abyssSite=abyssPos&&[abyssPos.x,abyssPos.y,abyssPos.z].every(Number.isInteger)&&
+    Math.abs(abyssPos.x)<1000000&&Math.abs(abyssPos.z)<1000000&&
+    abyssPos.y>=2&&abyssPos.y<=82?
+    {x:abyssPos.x,y:abyssPos.y,z:abyssPos.z}:null;
+  const abyss={site:abyssSite,built:!!abyssSite&&!!abyssRaw.built,
+    version:abyssSite&&abyssRaw.built?clamp(abyssRaw.version,0,1):0,
+    clears:clamp(abyssRaw.clears,0,10000)};
   const beacons=Array.isArray(a.beacons)?a.beacons.slice(0,40).filter(b=>b&&
     [b.x,b.y,b.z].every(Number.isInteger)&&Math.abs(b.x)<1000000&&
     Math.abs(b.z)<1000000&&b.y>0&&b.y<96).map(b=>({x:b.x,y:b.y,z:b.z,
@@ -51,7 +64,7 @@ export function safeAdventure(raw){
   return {level,xp,kills:clamp(a.kills,0,100000),clears:clamp(a.clears,0,10000),
     den:pos,denBuilt:!!a.denBuilt&&!!pos,
     dungeonVersion:!!pos&&!!a.denBuilt?clamp(a.dungeonVersion,0,2,0):0,
-    swordClaimed:!!a.swordClaimed,storm,aurora,
+    swordClaimed:!!a.swordClaimed,storm,aurora,abyss,
     castle:a.castle&&typeof a.castle==='object'?{
       wins:clamp(a.castle.wins,0,100000),losses:clamp(a.castle.losses,0,100000),
       bestTier:clamp(a.castle.bestTier,0,3),version:1
@@ -68,7 +81,8 @@ export function grantXP(state,amount) {
 }
 export function winterMobLevel(playerLevel,kind,roll=0.5){
   const low=FROST_CREATURES[kind]?.minLevel||1;
-  const cap=FROST_CREATURES[kind]?.chapter===3?AURORA_CAP:
+  const cap=FROST_CREATURES[kind]?.chapter===4?ABYSS_CAP:
+    FROST_CREATURES[kind]?.chapter===3?AURORA_CAP:
     FROST_CREATURES[kind]?.chapter===2?STORM_CAP:CHAPTER_CAP;
   const p=Math.max(1,Math.min(cap,Math.floor(playerLevel)||1));
   const delta=Math.max(0,Math.min(1,Number(roll)||0))<.76?0:1;
@@ -77,6 +91,9 @@ export function winterMobLevel(playerLevel,kind,roll=0.5){
 export function chooseWinterMob(playerLevel,roll=0.5){
   const p=Math.max(1,Math.floor(Number(playerLevel)||1));
   const r=Math.max(0,Math.min(.99999,Number(roll)||0));
+  if(p>=38&&r>.995)return 'abyss_keeper';
+  if(p>=34&&r>.86)return 'umbral_sentinel';
+  if(p>=31&&r>.65)return 'rift_stalker';
   if(p>=28&&r>.991)return 'boreal_sovereign';
   if(p>=24&&r>.84)return 'prism_stalker';
   if(p>=21&&r>.60)return 'aurora_wisp';
@@ -100,8 +117,9 @@ export function trialWaves(level=1){
 export function winterKillXP(kind,level){
   const creature=FROST_CREATURES[kind];
   const base=creature?.xp||8;
-  const n=Math.max(1,Math.min(AURORA_CAP,Math.floor(Number(level)||1)));
-  const multiplier=creature?.chapter===3?1+Math.max(0,n-20)*.16:
+  const n=Math.max(1,Math.min(ABYSS_CAP,Math.floor(Number(level)||1)));
+  const multiplier=creature?.chapter===4?1+Math.max(0,n-30)*.12:
+    creature?.chapter===3?1+Math.max(0,Math.min(30,n)-20)*.16:
     creature?.chapter===2?1+Math.max(0,Math.min(20,n)-10)*.22:Math.max(1,Math.min(20,n)*.6);
   return Math.floor(base*multiplier);
 }
@@ -125,6 +143,18 @@ export function auroraWaves(level=20){
     [{kind:'prism_stalker',level:Math.min(30,Math.max(25,n+3))},
      {kind:'prism_stalker',level:Math.min(30,Math.max(25,n+2))}],
     [{kind:'boreal_sovereign',level:Math.min(30,Math.max(28,n+4))}]
+  ];
+}
+export function abyssWaves(level=30){
+  const n=Math.max(30,Math.min(ABYSS_CAP,Math.floor(level)||30));
+  return [
+    [{kind:'rift_stalker',level:Math.max(31,Math.min(36,n+1))},
+     {kind:'rift_stalker',level:Math.max(31,Math.min(36,n+1))}],
+    [{kind:'umbral_sentinel',level:Math.max(34,Math.min(38,n+2))},
+     {kind:'rift_stalker',level:Math.max(32,Math.min(38,n+1))}],
+    [{kind:'umbral_sentinel',level:Math.max(35,Math.min(40,n+3))},
+     {kind:'umbral_sentinel',level:Math.max(35,Math.min(40,n+2))}],
+    [{kind:'abyss_keeper',level:Math.max(38,Math.min(40,n+4))}]
   ];
 }
 export function trialLocation(spawn,gen){
