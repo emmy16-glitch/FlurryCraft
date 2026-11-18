@@ -3,6 +3,7 @@ import * as B from './blocks.js';
 import { Arrow } from './entities.js';
 import { winterMeleeSpacing } from './winter-survival-core.js';
 import { borealPulse } from './aurora-citadel.js';
+import { monsterMaxHealth } from './combat-progression.js';
 
 const S = 1 / 16;
 const rnd = (x, y, s) => { let h = Math.imul(x * 374761393 + y * 668265263 + s * 2147483647, 1274126177); h ^= h >>> 13; return ((h * 1274126177) >>> 0) / 4294967296; };
@@ -297,7 +298,7 @@ export class Mob {
     this.raidId=options.raidId||null;
     this.attackScale=1+(this.level-1)*(sp.chapter3?.024:sp.chapter2?.035:.055);
     this.x = x; this.y = y; this.z = z; this.vx = this.vy = this.vz = 0; this.hw = sp.hw; this.h = sp.h;
-    this.hp = Math.round(sp.hp*(1+(this.level-1)*.09));this.maxHp=this.hp; this.yaw = Math.random() * 6.28; this.dead = false; this.deadT = 0; this.hurtT = 0; this.fleeT = 0;
+    this.hp = monsterMaxHealth(sp.hp,this.level,sp.chapter3?3:sp.chapter2?2:1);this.maxHp=this.hp; this.yaw = Math.random() * 6.28; this.dead = false; this.deadT = 0; this.hurtT = 0; this.fleeT = 0;
     this.walk = 0; this.amp = 0; this.wanderT = 1 + Math.random() * 3; this.wanderDir = this.yaw; this.moving = false;
     this.cool = 0; this.pulseClock=5; this.pulseCharging=0; this.fuse = -1; this.shootT = 1 + Math.random() * 2; this.fireT = 0; this.soundT = 3 + Math.random() * 8; this.age = 0; this.strafe = Math.random() < 0.5 ? 1 : -1;
     const m = sp.iceNative?(sp.chapter3?auroraCreature(kind):sp.chapter2?stormCreature(kind):winterCreature(kind)):kind === 'zombie' || kind === 'skeleton' ? humanoid(kind) : kind === 'creeper' ? creeper() : kind === 'spider' ? spider() : quad(kind);
