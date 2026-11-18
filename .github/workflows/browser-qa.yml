@@ -36,6 +36,9 @@ jobs:
           else
             npx playwright install chromium
           fi
+          # Playwright uses its own small ffmpeg binary to record videos
+          # even when Chrome itself is provided by the GitHub runner.
+          npx playwright install ffmpeg
       - name: Launch a real WebGL game on desktop and touch landscape
         run: node scripts/browser-qa.mjs
       - name: Keep real game screenshots and browser recordings
