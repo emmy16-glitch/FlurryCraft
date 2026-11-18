@@ -80,6 +80,46 @@ async function smoke(label,options){
     await page.locator('#fcExpeditionTracker').waitFor({state:'visible',timeout:10000});
     if(!(await page.locator('#fcExpeditionTracker').innerText()).includes('Frost Patrol'))
       throw new Error('Accepted expedition missing from in-world tracker');
+    // Visit the real Lofi model in this disposable QA world and open its
+    // contextual dialogue. Temporarily move the player for interaction QA,
+    // restore position afterwards, and never forge kills, XP or rewards.
+    const npcSnapshot=await page.evaluate(()=>{
+      const p=window.game.player,npc=window.game.flurry.getLofiPosition();
+      if(!npc)throw Error('Lofi did not spawn beside the starter shack');
+      const saved={x:p.x,y:p.y,z:p.z,vx:p.vx,vy:p.vy,vz:p.vz,
+        onGround:p.onGround,health:p.health,yaw:p.yaw,pitch:p.pitch};
+      p.x=npc.x+1.6;p.z=npc.z+1.5;p.y=npc.y+.1;
+      p.vx=p.vy=p.vz=0;
+      return saved;
+    });
+    await page.locator('#fcTalkLofi').waitFor({state:'visible',timeout:12000});
+    if(options.isMobile)await page.locator('#fcTalkLofi').click({timeout:10000});
+    else await page.keyboard.press('f');
+    await page.getByText('Lofi the Yeti · Expedition Captain').waitFor({
+      state:'visible',timeout:10000
+    });
+    if(!(await page.locator('#flurryModal .fc-lofi-dialogue').innerText()).includes('Frost Patrol'))
+      throw new Error('Lofi does not react to accepted quest progress');
+    await page.getByRole('button',{name:'Open Expedition Board'}).click({timeout:10000});
+    await page.getByText('LOCAL GAME POINTS — NOT CRYPTO').waitFor({
+      state:'visible',timeout:10000
+    });
+    await page.locator('#flurryModal .fc-dialog-close').click({timeout:10000});
+    await page.evaluate(saved=>{
+      Object.assign(window.game.player,saved);
+    },npcSnapshot);
+    const afterLofi=await page.evaluate(()=>{
+      const s=window.game.rewards.serialize();
+      return {active:s.expedition.active,claimed:s.expedition.claimed.length,
+        points:s.points};
+    });
+    if(afterLofi.active!=='frost-patrol'||afterLofi.claimed!==0||afterLofi.points!==0)
+      throw new Error('Talking with Lofi fabricated mission claims: '+JSON.stringify(afterLofi));
+    if(!(await page.evaluate(()=>window.game.flurry.guideToLofi())))
+      throw new Error('World map cannot follow Lofi');
+    await page.waitForFunction(()=>document.querySelector('#fcMiniMap .fc-mini-label')?.
+      textContent.includes('Lofi the Yeti'),{timeout:10000});
+    console.log(label+' Lofi NPC dialogue, quest safety and minimap navigation passed');
     // Actual player movement: keyboard on desktop and captured touch joystick
     // in the landscape emulation. No coordinate teleporting or fake XP.
     const position=()=>page.evaluate(()=>({x:window.game.player.x,z:window.game.player.z}));
