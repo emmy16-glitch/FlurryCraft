@@ -46,6 +46,16 @@ The address above is a proposed URL and works ONLY after Pages has been configur
 
 All saved creations currently live in browser storage. A hash proves only that two normalized blueprint files have identical geometry. It does not establish copyright, authorship, ownership, exclusivity, or resale value.
 
+## Reliability, Walrus storage and CLAY Hackathon tech
+
+**November 18 stabilization:** worlds now get validated before loading, and small local world saves have best-effort rolling backups. If a primary world save is damaged, the game can recover a valid previous backup without deleting the damaged original. Existing buildings, progression and inventory stay local to your browser.
+
+**Walrus Testnet public blueprint sharing:** Open **My Builds → More options → Walrus Testnet Share** on any building to opt in to public decentralized storage of its canonical voxel data (24 KB limit). The game returns a SHA-256 verification receipt and 43-character Walrus blob ID. In **My Builds → Storage & Backup**, enter a blob ID to download and validate that public blueprint. This is **not** NFT minting, private cloud save or a guarantee of permanent storage; Walrus Testnet publisher/aggregator availability and Android CORS have not been tested live.
+
+**Sui wallet prelaunch:** Sui Marketplace now offers a **read-only Testnet wallet check** and connection while the package ID is unset. This cannot sign mint/list/buy/cancel transactions until the Move contract is independently published, verified and configured. The app uses Sui v2 transaction coin intents for wallet compatibility, and validates escrow, ABI and NFT sizes. A separate CI workflow builds and checks the Testnet wallet module without secrets.
+
+**CLAY Hackathon:** FlurryCraft follows the Lofi the Yeti mini-game track; the organizer highlights the **Sui Stack** (including Sui and Walrus). Liquidity trading through DeepBook is not relevant to a snow-building game. See [Sui Stack and organizer checklist](docs/CLAY_SUI_STACK_READINESS.md).
+
 ## Sui Testnet (not live yet)
 
 The codebase includes a Move 2024 contract and a wallet-aware browser UI for experimental Testnet minting, listing, buying, cancellation and verifying ownership. **No contract package ID has been published or configured**, and no onchain sale has happened. The official Sui SDK bundle builds in GitHub Actions, but the Move contract still requires a real Sui CLI build, review and Testnet deployment. See [docs/SUI_TESTNET.md](docs/SUI_TESTNET.md).
