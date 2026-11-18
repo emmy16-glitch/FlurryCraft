@@ -54,10 +54,10 @@ export function healthAfterLevelUp(health,oldLevel,newLevel){
 // Otherwise a Level 28 boss incorrectly receives 27 early-game HP bonuses.
 export function monsterMaxHealth(baseHp,level,chapter=1){
   const base=Number.isFinite(baseHp)?Math.max(1,baseHp):1;
-  const tier=chapter===3?3:chapter===2?2:1;
-  const start=tier===3?21:tier===2?11:1;
-  const cap=tier===3?30:tier===2?20:10;
-  const step=tier===3?.06:tier===2?.07:.05;
+  const tier=chapter===4?4:chapter===3?3:chapter===2?2:1;
+  const start=tier===4?31:tier===3?21:tier===2?11:1;
+  const cap=tier===4?40:tier===3?30:tier===2?20:10;
+  const step=tier===4?.055:tier===3?.06:tier===2?.07:.05;
   const lv=Number.isFinite(level)?Math.max(start,Math.min(cap,Math.floor(level))):start;
   return Math.round(base*(1+(lv-start)*step));
 }
