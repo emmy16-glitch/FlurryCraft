@@ -49,7 +49,10 @@ export function createRewardsState(raw,adventure,now=Date.now()){
   const total=rewardTotals(adventure),r=dictionary(raw),day=utcDay(now),week=utcWeek(now);
   const valid=r.version===REWARD_SCHEMA;
   const priorClaimed=dictionary(valid?r.claimed:null),claimed=Object.create(null);
-  for(const [id,flag] of Object.entries(priorClaimed).slice(-300)){
+  // Retain permanent milestones and only the current day/week claim IDs.
+  // This prevents re-claiming old milestones after hundreds of daily missions.
+  for(const [id,flag] of Object.entries(priorClaimed).slice(-4000)){
+    if(!(id.startsWith('once:')||id.startsWith('daily:'+day+':')||id.startsWith('weekly:'+week+':')))continue;
     if(/^(?:once:[a-z0-9-]+|daily:\d{4}-\d{2}-\d{2}:[a-z0-9-]+|weekly:\d{4}-\d{2}-\d{2}:[a-z0-9-]+)$/.test(id) &&flag===true)
       claimed[id]=true;
   }
