@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {initAdventure} from '../js/adventure.js';
 import {xpToNext} from '../js/adventure-core.js';
+import {playerMaxHealth} from '../js/combat-progression.js';
 
 class Element {
  constructor(tag='div'){
@@ -45,7 +46,8 @@ function createHarness(){
  const inventory=new Map(),notifications=[],panel=new Element('section');
  const game={
   state:'play',paused:false,world,difficulty:1,
-  player:{x:0.5,y:43,z:0.5,spawn:{x:0.5,z:0.5,y:43},creative:false,dead:false,
+  player:{x:0.5,y:43,z:0.5,spawn:{x:0.5,z:0.5,y:43},creative:false,dead:false,health:24,hunger:20,
+   get maxHealth(){return playerMaxHealth(game.adventure?.level||1);},
    countItem(id){return inventory.get(id)||0;},
    canAccept(){return true;},
    addItem(id,n){inventory.set(id,(inventory.get(id)||0)+n);return 0;},
@@ -260,7 +262,7 @@ test('Survival healing consumes two Frost Shards, shows real HP and enforces coo
   h.adventure.update(.016);
   const vitals=h.document.getElementById('fcSurvivalVitals');
   assert.equal(vitals.style.display,'block');
-  assert.match(vitals.renderedText,/7 \/ 20/);
+  assert.match(vitals.renderedText,/7 \/ 24/);
   const heal=vitals.findButton('HEAL');
   assert.ok(heal);
   heal.listeners.click({preventDefault(){},stopPropagation(){}});
@@ -611,5 +613,41 @@ test('Reloading while an Aurora battle is active safely removes monsters without
   assert.equal(h.adventure.isDungeonActive(),false);
   assert.ok(enemies.every(m=>m.dead),'abandoned dungeon monsters cleaned on load');
   assert.equal(h.adventure.serialize().aurora.clears,0);
+ }finally{h.restore();}
+});
+
+test('level milestone grants a permanent higher HP cap and immediately credits the difference',()=>{
+ const h=createHarness();try{
+  const oldMax=playerMaxHealth(4),newMax=playerMaxHealth(5);
+  assert.equal(oldMax,24);assert.equal(newMax,26);
+  h.game.player.health=11;
+  h.adventure.load({level:4,xp:xpToNext(4)-1});
+  h.adventure.resetWorld(false);
+  h.adventure.monsterDefeated({kind:'frostling',level:2,sp:{iceNative:true}},true);
+  assert.equal(h.adventure.level,5);
+  assert.equal(h.game.player.maxHealth,26);
+  assert.equal(h.game.player.health,13,'the 2-HP upgrade must not fully heal existing injuries');
+  h.adventure.update(.2);
+  const hud=h.document.getElementById('fcSurvivalVitals');
+  assert.match(hud.renderedText,/13 \/ 26/);
+  assert.ok(h.notifications.some(x=>x.includes('Max Health increased')));
+  assert.match(h.panel.renderedText,/^\s*$/,'the level-up must not force-open a menu');
+ }finally{h.restore();}
+});
+
+test('high-level player can heal beyond the old 20 HP ceiling without exceeding their new cap',()=>{
+ const h=createHarness();try{
+  h.adventure.load({level:30});h.adventure.resetWorld(false);
+  assert.equal(h.game.player.maxHealth,36);
+  h.game.player.health=30;h.inventory.set(h.B.FROST_SHARD,4);
+  h.adventure.update(.2);
+  const vitals=h.document.getElementById('fcSurvivalVitals');
+  assert.match(vitals.renderedText,/30 \/ 36/);
+  vitals.findButton('HEAL').listeners.click({stopPropagation(){},preventDefault(){}});
+  assert.equal(h.game.player.health,36);
+  assert.equal(h.inventory.get(h.B.FROST_SHARD),2);
+  h.adventure.update(12.1);
+  assert.equal(h.document.getElementById('fcSurvivalVitals').findButton('HEAL'),null);
+  assert.match(h.document.getElementById('fcSurvivalVitals').renderedText,/Health full/);
  }finally{h.restore();}
 });
