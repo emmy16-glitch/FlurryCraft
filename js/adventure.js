@@ -7,11 +7,14 @@ from './adventure-core.js';
 import { DUNGEON_VERSION,ROOM_NAMES,ROOM_OFFSETS,chamberPosition,dungeonEntrance,
  withinDungeonEntry,enteredChamber,generateFrostDungeon } from './frost-dungeon.js';
 import { aimedCreature,actionForTarget } from './combat-hud-core.js';
+import { survivalVitals,checkFrostRecovery,recoveredHealth,
+  FROST_RECOVERY_COST,FROST_RECOVERY_COOLDOWN } from './winter-survival-core.js';
 
 export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explorer,isInterfaceBusy=()=>false}) {
   let progress=safeAdventure(),world=null,denPending=false,buildPlan=[],buildIndex=0;
   let trial=null,nextRun=0,levelNoticeTime=0,lastTargetStamp='',lastTouchMode='';
   let entryLabel='',lastDungeonStatus='';
+  let recoveryCooldown=0,vitalsTick=0,lastVitals='';
   const make=(tag,text,parent=panel)=>{
     const n=document.createElement(tag);if(text!==undefined)n.textContent=text;
     parent.appendChild(n);return n;
@@ -25,7 +28,7 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
     '#fcAdventurePill:focus-visible{outline:2px solid #b0f6ff;outline-offset:2px}',
     '#fcAdventurePill .fc-xp-meter{width:50px;height:3px;background:#355a71;border-radius:3px;overflow:hidden}',
     '#fcAdventurePill .fc-xp-fill{width:0;height:100%;background:#91eaf6;transition:width .18s ease}',
-    '#fcEnemyHealth{position:fixed;z-index:18;top:calc(50% - 105px);left:50%;transform:translateX(-50%);width:min(224px,47vw);padding:8px 11px 9px;background:#0b2d41e8;border:1px solid #50859d;border-radius:12px;box-shadow:0 5px 20px #001b2970;backdrop-filter:blur(7px);pointer-events:none;color:#edfbff}',
+    '#fcEnemyHealth{position:fixed;z-index:18;top:54px;left:50%;transform:translateX(-50%);width:min(224px,47vw);padding:8px 11px 9px;background:#0b2d41e8;border:1px solid #50859d;border-radius:12px;box-shadow:0 5px 20px #001b2970;backdrop-filter:blur(7px);pointer-events:none;color:#edfbff}',
     '#fcEnemyHealth[hidden],#fcLevelNotice[hidden]{display:none!important}',
     '#fcEnemyHealth .fc-enemy-header{display:flex;align-items:baseline;justify-content:space-between;gap:8px;font:750 12px/1.3 system-ui}',
     '#fcEnemyHealth .fc-enemy-lv{font:700 10px system-ui;color:#a8cfe2;white-space:nowrap}',
@@ -34,7 +37,15 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
     '#fcEnemyHealth.boss{border-color:#b69a67}#fcEnemyHealth.boss .fc-enemy-fill{background:#edcb8a}',
     '#fcEnemyHealth .fc-enemy-count{margin-top:4px;text-align:right;font:600 10px system-ui;color:#a6c6d5}',
     '#fcEnemyHealth.is-hit{border-color:#a7f1f9;box-shadow:0 0 0 2px #8aebff33,0 4px 20px #001b2b75}',
-    '#fcDungeonEntry{position:fixed;z-index:27;top:112px;left:12px;display:none;min-height:43px;max-width:min(200px,46vw);padding:9px 13px;background:#88dce9;border:1px solid #bdf8ff;border-radius:12px;color:#092f42;font:800 12px system-ui;box-shadow:0 5px 20px #001b2b86;cursor:pointer;touch-action:manipulation}',
+    '#fcSurvivalVitals{position:fixed;z-index:27;top:100px;left:12px;display:none;width:184px;max-width:38vw;padding:8px 10px;border:1px solid #467d90;border-radius:11px;background:#0b2e42e9;color:#eafaff;backdrop-filter:blur(7px);pointer-events:auto;box-shadow:0 4px 14px #00182565}',
+    '#fcSurvivalVitals .fc-vital-row{display:flex;align-items:center;justify-content:space-between;gap:8px;font:800 11px/1.4 system-ui}',
+    '#fcSurvivalVitals .fc-vital-food{font:600 9px/1 system-ui;color:#aed1df}',
+    '#fcSurvivalVitals .fc-hp-track{height:5px;margin-top:5px;overflow:hidden;border-radius:4px;background:#244c60}',
+    '#fcSurvivalVitals .fc-hp-fill{height:100%;width:100%;background:#73d7cf;transition:width .2s linear}',
+    '#fcSurvivalVitals.critical{border-color:#fb9a9a}#fcSurvivalVitals.critical .fc-hp-fill{background:#ff8585}',
+    '#fcSurvivalVitals .fc-heal{display:block;width:100%;margin-top:6px;padding:5px 8px;border:1px solid #91dae5;border-radius:7px;background:#20566b;color:#e0f9ff;font:800 10px system-ui;touch-action:manipulation;cursor:pointer}',
+    '#fcSurvivalVitals .fc-heal.ready{background:#9ae9ee;color:#063247;border-color:#c7fbff}',
+    '#fcDungeonEntry{position:fixed;z-index:27;top:179px;left:12px;display:none;min-height:43px;max-width:min(200px,46vw);padding:9px 13px;background:#88dce9;border:1px solid #bdf8ff;border-radius:12px;color:#092f42;font:800 12px system-ui;box-shadow:0 5px 20px #001b2b86;cursor:pointer;touch-action:manipulation}',
     '#fcDungeonEntry:focus-visible{outline:2px solid #e8ffff;outline-offset:2px}',
     '#fcDungeonStatus{position:fixed;z-index:25;top:12px;left:50%;transform:translateX(-50%);display:none;max-width:45vw;min-width:140px;padding:7px 12px;background:#0b3348df;border:1px solid #5087a0;border-radius:12px;color:#e8fbff;text-align:center;font:750 11px system-ui;pointer-events:none;backdrop-filter:blur(7px)}',
     '#fcLevelNotice{position:fixed;z-index:32;left:50%;top:72px;transform:translateX(-50%);min-width:164px;max-width:min(255px,60vw);padding:12px 19px;border:1px solid #a4ebf3;border-radius:15px;background:linear-gradient(160deg,#256581f5,#0a324be9);color:#f4feff;box-shadow:0 12px 32px #001b2b9c;text-align:center;pointer-events:none;animation:fcLevelEnter .3s ease-out}',
@@ -60,7 +71,7 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
     '#flurryModal .fc-adventure-card button{width:100%;min-height:42px;border-radius:10px;margin:8px 0 1px;background:#8de8f3;color:#09364c;font:800 12px system-ui}',
     '#flurryModal .fc-adventure-card button:disabled{opacity:.5}',
     '#flurryModal .fc-adventure-card button.muted{background:#225773;color:#e5f7ff}',
-    '@media(max-height:520px){#fcAdventurePill{top:50px;left:7px;padding:5px 8px}.fc-adventure-card{padding:9px!important}#fcEnemyHealth{top:calc(50% - 84px);padding:6px 9px;width:min(206px,44vw)}#fcLevelNotice{top:52px;padding:8px 14px}#fcLevelNotice span{font-size:18px}#fcDungeonEntry{top:93px;left:7px;max-width:42vw;min-height:38px;padding:6px 9px;font-size:11px}#fcDungeonStatus{top:7px;padding:5px 9px}}'
+    '@media(max-height:520px){#fcAdventurePill{top:50px;left:7px;padding:5px 8px}.fc-adventure-card{padding:9px!important}#fcEnemyHealth{top:52px;padding:6px 9px;width:min(190px,40vw)}#fcSurvivalVitals{top:87px;left:7px;max-width:33vw;padding:6px 8px}#fcSurvivalVitals .fc-heal{padding:4px 6px}#fcLevelNotice{top:52px;padding:8px 14px}#fcLevelNotice span{font-size:18px}#fcDungeonEntry{top:165px;left:7px;max-width:42vw;min-height:38px;padding:6px 9px;font-size:11px}#fcDungeonStatus{top:7px;padding:5px 9px}}'
   ].join('\n');
   const pill=make('button',undefined,document.body);pill.id='fcAdventurePill';
   pill.type='button';pill.setAttribute('aria-label','Open your level and adventure progress');
@@ -70,6 +81,16 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
   const bar=make('div',undefined,pill);bar.className='fc-xp-meter';
   const barFill=make('div',undefined,bar);barFill.className='fc-xp-fill';
   const activeLabel=make('span','',pill);
+  const vitals=make('div',undefined,document.body);vitals.id='fcSurvivalVitals';
+  const vitalsRow=make('div',undefined,vitals);vitalsRow.className='fc-vital-row';
+  const healthText=make('strong','♥ 20 / 20',vitalsRow);
+  const hungerText=make('span','Food 20 / 20',vitalsRow);hungerText.className='fc-vital-food';
+  const healthTrack=make('div',undefined,vitals);healthTrack.className='fc-hp-track';
+  const healthFill=make('div',undefined,healthTrack);healthFill.className='fc-hp-fill';
+  const healButton=make('button','✦ Heal · 2 shards',vitals);
+  healButton.type='button';healButton.className='fc-heal';
+  healButton.addEventListener('pointerdown',e=>e.stopPropagation());
+  healButton.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();tryFrostRecovery();});
   const enemyHUD=make('div',undefined,document.body);enemyHUD.id='fcEnemyHealth';
   enemyHUD.hidden=true;enemyHUD.setAttribute('role','status');
   const enemyHeader=make('div',undefined,enemyHUD);enemyHeader.className='fc-enemy-header';
@@ -98,14 +119,14 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
   function load(raw){progress=safeAdventure(raw);world=game.world;trial=null;denPending=false;
     buildPlan=[];buildIndex=0;nextRun++;levelNoticeTime=0;hitTimer=0;levelNotice.hidden=true;
     enemyHUD.hidden=true;entryButton.style.display='none';dungeonStatus.style.display='none';
-    lastTargetStamp='';refreshPill();}
+    lastTargetStamp='';recoveryCooldown=0;vitalsTick=0;lastVitals='';vitals.style.display='none';refreshPill();}
   function resetWorld(isNew){
     world=game.world;
     if(isNew&&!game.player.creative&&!progress.den){
       progress.den=trialLocation(game.player.spawn,world.gen);
       if(progress.den)buildRuins(false);
     }
-    refreshPill();
+    refreshPill();refreshVitals();
   }
   function refreshPill(){
     pillLevel.textContent='LV '+progress.level;
@@ -114,6 +135,39 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
     else activeLabel.textContent='';
     pill.setAttribute('aria-label','Level '+progress.level+', '+progress.xp+
       ' of '+needed()+' XP. Open Winter Adventure');
+  }
+  function refreshVitals(){
+    const p=game.player;
+    if(!p)return;
+    const v=survivalVitals(p),shards=Number(p.countItem?.(B.FROST_SHARD)||0);
+    const eligible=checkFrostRecovery(p,shards,recoveryCooldown);
+    const signature=[v.healthLabel,v.hungerLabel,v.critical,shards,Math.ceil(recoveryCooldown)].join('|');
+    if(signature===lastVitals)return;
+    lastVitals=signature;
+    healthText.textContent='♥ '+v.healthLabel;
+    hungerText.textContent='Food '+v.hungerLabel;
+    healthFill.style.width=v.percent+'%';
+    vitals.classList.toggle('critical',v.critical);
+    vitals.setAttribute('aria-label','Health '+v.healthLabel+', food '+v.hungerLabel);
+    healButton.classList.toggle('ready',eligible.ok);
+    healButton.textContent=eligible.ok?'✦ HEAL · +6 HP':
+      p.health>=20?'✦ Health full':
+      recoveryCooldown>0?'✦ Heal in '+Math.ceil(recoveryCooldown)+'s':
+      '✦ Heal · 2 shards';
+    healButton.title=eligible.ok?'Spend 2 Frost Shards to restore 6 HP':eligible.reason;
+    healButton.setAttribute('aria-label',eligible.ok?'Heal for 2 Frost Shards':eligible.reason);
+  }
+  function tryFrostRecovery(){
+    const p=game.player;
+    const check=checkFrostRecovery(p,Number(p?.countItem?.(B.FROST_SHARD)||0),recoveryCooldown);
+    if(!check.ok){notify(game,check.reason);return false;}
+    for(let i=0;i<FROST_RECOVERY_COST;i++)p.takeItem(B.FROST_SHARD);
+    const before=p.health;
+    p.health=recoveredHealth(before);
+    recoveryCooldown=FROST_RECOVERY_COOLDOWN;
+    lastVitals='';refreshVitals();
+    notify(game,'Recovered '+Math.round((p.health-before)*10)/10+' HP · 2 Frost Shards used');
+    return true;
   }
   function levelUp(previous){
     if(progress.level<=previous)return;
@@ -261,6 +315,19 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
     const activity=make('div',undefined,hero);activity.className='fc-level-stats';
     make('span',progress.kills+' creatures defeated',activity);
     make('span',progress.clears+' dungeon clears',activity);
+    if(!game.player.creative){
+      const recovery=make('section',undefined,panel);recovery.className='fc-adventure-card';
+      make('h3','Survival · Recover Health',recovery);
+      const vit=survivalVitals(game.player);
+      make('p','Health '+vit.healthLabel+' · Food '+vit.hungerLabel+
+        ' · Frost Shards '+game.player.countItem(B.FROST_SHARD),recovery);
+      make('p','Spend 2 Frost Shards to recover up to 6 HP. 12-second cooldown. You can also heal from the in-game health panel.',recovery);
+      const status=checkFrostRecovery(game.player,game.player.countItem(B.FROST_SHARD),recoveryCooldown);
+      const recoveryAction=button(status.ok?'Recover 6 HP · 2 Frost Shards':status.reason,()=>{
+        if(tryFrostRecovery())open();
+      },recovery);
+      recoveryAction.disabled=!status.ok;
+    }
     const starterId=B.toolId?.(3,0);
     if(!game.player.creative&&!progress.swordClaimed&&
        Number.isInteger(starterId)&&game.player.countItem(starterId)===0){
@@ -328,35 +395,6 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
     make('summary','Future chapters · Levels 11–100',details);
     make('p','More ice regions, larger dungeons and castle tiers are planned. Only the first winter chapter is playable in this release.',details);
   }
-  function syncAimUI(visible){
-    const info=visible?aimedCreature(game.player.mobTarget):null;
-    enemyHUD.hidden=!info;
-    if(info){
-      const stamp=info.name+'|'+info.level+'|'+Math.ceil(info.health)+'|'+Math.ceil(info.maxHp)+'|'+info.boss;
-      if(lastTargetStamp!==stamp){
-        enemyName.textContent=info.name;
-        enemyLevel.textContent=info.level?'LV '+info.level:'';
-        enemyFill.style.width=info.percent+'%';
-        enemyCount.textContent=Math.ceil(info.health)+' / '+Math.ceil(info.maxHp)+' HP';
-        enemyHUD.classList.toggle('boss',info.boss);
-        lastTargetStamp=stamp;
-      }
-    }else lastTargetStamp='';
-    if(game.touchMode){
-      const control=document.getElementById('tbBreak');
-      if(control){
-        const mode=visible?actionForTarget(game.player.mobTarget):'mine';
-        if(mode!==lastTouchMode){
-          control.dataset.action=mode;
-          control.dataset.label=mode==='attack'?'ATTACK':'MINE';
-          control.textContent=mode==='attack'?'⚔':'⚒';
-          control.setAttribute('aria-label',mode==='attack'?'Hold to attack target':'Hold to mine block');
-          control.title=mode==='attack'?'Hold to attack':'Hold to mine';
-          lastTouchMode=mode;
-        }
-      }
-    }
-  }
   function hitFeedback(mob,damage){
     if(!mob||!game.player||game.player.mobTarget!==mob)return;
     enemyHUD.classList.add('is-hit');
@@ -367,7 +405,7 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
   let hitTimer=0;
   function syncAimUI(visible){
     const info=visible?aimedCreature(game.player.mobTarget):null;
-    enemyHUD.hidden=!info;
+    enemyHUD.hidden=!info||levelNoticeTime>0;
     if(info){
       const stamp=info.name+'|'+info.level+'|'+Math.ceil(info.health)+'|'+Math.ceil(info.maxHp)+'|'+info.boss;
       if(lastTargetStamp!==stamp){
@@ -398,6 +436,12 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
     const play=game.state==='play'&&!game.paused&&!game.player.dead&&!isInterfaceBusy();
     const unobstructed=play&&!game.ui.isOpen;
     pill.style.display=unobstructed&&!game.player.creative?'flex':'none';
+    vitals.style.display=unobstructed&&!game.player.creative?'block':'none';
+    if(play){
+      recoveryCooldown=Math.max(0,recoveryCooldown-dt);
+      vitalsTick-=dt;
+      if(vitalsTick<=0){refreshVitals();vitalsTick=.18;}
+    }
     syncAimUI(unobstructed);
     if(hitTimer>0){
       hitTimer-=dt;
