@@ -204,6 +204,16 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
     notify(game,'Recovered '+Math.round((p.health-before)*10)/10+' HP · 2 Frost Shards used');
     return true;
   }
+  // Expedition XP is awarded only via the local Rewards Hub after a completed,
+  // one-time contract claim. No wallet, payout or transferable currency.
+  function awardExpeditionXP(amount){
+    if(game.state!=='play'||game.player?.dead||game.player?.creative) return false;
+    if(!Number.isInteger(amount)||amount<=0||amount>500)return false;
+    const old=progress.level;
+    progress=grantXP(progress,amount);
+    refreshPill();levelUp(old);
+    return true;
+  }
   function levelUp(previous){
     if(progress.level<=previous)return;
     const previousMax=playerMaxHealth(previous),newMax=playerMaxHealth(progress.level);
@@ -1117,7 +1127,7 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
   refreshPill();
   return {serialize,load,resetWorld,open,update,mobLevel,roamingKind,
     siegeWardTarget,siegeWardHit,isSiegeActive:()=>!!siege,isDungeonActive:()=>!!trial,
-    monsterDefeated,hitFeedback,trackBlock,isShielded,markStarterSword(){progress.swordClaimed=true;},
+    monsterDefeated,hitFeedback,trackBlock,isShielded,awardExpeditionXP,markStarterSword(){progress.swordClaimed=true;},
     get level(){return progress.level;},
     get den(){return progress.den;}};
 }

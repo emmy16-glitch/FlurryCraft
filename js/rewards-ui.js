@@ -1,7 +1,8 @@
 // The Rewards Hub displays local sandbox mission points; never real currency.
 // No wallet signature, payout request, or server call is made by this module.
 import {createRewardsState,rewardCards,collectLocalPoints,recordRewardPlacement,
-  requestCryptoPayout,CRYPTO_REWARDS_ENABLED} from './rewards-core.js';
+  requestCryptoPayout,CRYPTO_REWARDS_ENABLED,acceptExpeditionMission,
+  collectExpeditionMission} from './rewards-core.js';
 
 export function initRewardsHub({game,panel,openDialog,notify,onOpenMarketplace}){
   let state=createRewardsState(null,null);
@@ -22,10 +23,41 @@ export function initRewardsHub({game,panel,openDialog,notify,onOpenMarketplace})
     '#flurryModal .fc-reward-card button,#flurryModal .fc-reward-action{min-height:39px;border-radius:9px;background:#8be5f2;color:#063346;font:850 12px system-ui;padding:8px 12px;margin-top:7px;width:100%}',
     '#flurryModal .fc-reward-card button:disabled,#flurryModal .fc-reward-action:disabled{opacity:.6;background:#355c71;color:#d0e6ed}',
     '#flurryModal .fc-reward-safety{font:600 11px/1.5 system-ui;color:#f1d8b2;padding:11px;border:1px solid #987b4a;border-radius:12px;background:#3c352b}',
+    '#flurryModal .fc-expedition-card{border:1px solid #79cddd;background:#123b50;border-radius:13px;padding:12px;margin:8px 0 13px}',
+    '#flurryModal .fc-expedition-meter{height:7px;overflow:hidden;background:#24465b;border-radius:8px;margin-top:10px}',
+    '#flurryModal .fc-expedition-fill{height:100%;background:#78e6ed;transition:width .2s;width:0}',
+    '#fcExpeditionTracker{display:none;position:fixed;z-index:27;right:10px;top:77px;width:min(190px,29vw);padding:7px 10px;border:1px solid #77bed1;border-radius:10px;background:#0b3046ee;color:#dbf7ff;font:700 10px/1.4 system-ui;text-align:left;box-shadow:0 4px 14px #00182777;cursor:pointer;touch-action:manipulation}',
+    '#fcExpeditionTracker strong{display:block;color:#92e5f6;font-size:10px}',
+    '#fcExpeditionTracker.ready{border-color:#b3f5d0;color:#b8ffe5}',
+    '@media(max-height:520px){#fcExpeditionTracker{right:5px;top:55px;width:min(155px,27vw);font-size:9px;padding:5px 7px}}',
   ].join('\n');
+  const tracker=el('button',undefined,document.body);
+  tracker.type='button';tracker.id='fcExpeditionTracker';
+  tracker.setAttribute('aria-label','Open current Expedition mission in Rewards Hub');
+  tracker.addEventListener('pointerdown',e=>e.stopPropagation());
+  tracker.addEventListener('click',e=>{e.stopPropagation();open();});
+  let hudTick=0,hudText='';
   const adventure=()=>game.adventure?.serialize?.()||{};
+  function update(dt=0){
+    hudTick-=Number.isFinite(dt)?dt:0;
+    if(hudTick>0)return;
+    hudTick=.3;
+    const eligible=game.state==='play'&&!game.paused&&!game.ui?.isOpen&&
+      !game.player?.dead&&!game.player?.creative&&!game.tourActive&&
+      document.getElementById('flurryModal')?.style?.display!=='flex';
+    if(!eligible){tracker.style.display='none';return;}
+    const view=rewardCards(state,adventure(),false);
+    const m=view.expedition.mission;
+    if(!m||!m.active){tracker.style.display='none';return;}
+    const label='EXPEDITION '+m.index+'/'+view.expedition.total+' · '+m.title+
+      ' · '+m.progress+'/'+m.target+(m.ready?' · CLAIM REWARD':'');
+    if(hudText!==label){hudText=label;tracker.textContent=label;}
+    tracker.classList.toggle('ready',m.ready);
+    tracker.style.display='block';
+  }
   function load(raw){
     state=createRewardsState(raw,adventure());
+    hudTick=0;update();
   }
   function serialize(){
     state=createRewardsState(state,adventure());
@@ -34,6 +66,7 @@ export function initRewardsHub({game,panel,openDialog,notify,onOpenMarketplace})
   function recordPlacement(){
     if(game.state!=='play'||game.player?.creative)return;
     state=recordRewardPlacement(state,adventure());
+    hudTick=0;
   }
   const section=(title)=>{const h=el('h3',title);h.className='fc-reward-label';};
   const message=text=>{const p=el('p',text);p.className='fc-reward-intro';return p;};
@@ -49,6 +82,47 @@ export function initRewardsHub({game,panel,openDialog,notify,onOpenMarketplace})
     el('strong','LOCAL GAME POINTS — NOT CRYPTO',safe);
     el('div','Points cannot be withdrawn, exchanged for SUI or converted into real money. Browser progress is not independently verified. Sui Testnet coins also have no intended monetary value.',safe);
     if(view.sandbox)message('Creative Mode is for free building. Mission point collection is available in Survival Mode only.');
+    section('Expedition Board · story contracts');
+    const expedition=view.expedition;
+    const ec=el('div',undefined);ec.className='fc-expedition-card';
+    if(expedition.done){
+      el('div','✓ All four winter expeditions completed',ec).className='fc-reward-title';
+      el('p','You finished the full contract path in this saved world. Explore higher-level chapters and weekly missions!',ec).className='fc-reward-intro';
+    }else{
+      const m=expedition.mission;
+      el('div','Contract '+m.index+' of '+expedition.total+' · '+m.title,ec).className='fc-reward-title';
+      el('p',m.detail,ec).className='fc-reward-intro';
+      const status=m.active?m.progress+' / '+m.target+(m.ready?' · Ready to claim':''):
+        'Accept this contract to begin tracking new progress.';
+      el('div',status,ec).className='fc-reward-sub';
+      el('div','Reward: +'+m.points+' local Flurry Points and +'+m.xp+' Adventure XP',ec).className='fc-reward-sub';
+      const meter=el('div',undefined,ec);meter.className='fc-expedition-meter';
+      const fill=el('div',undefined,meter);fill.className='fc-expedition-fill';
+      fill.style.width=(m.progress/m.target*100)+'%';
+      const label=m.active?(m.ready?'✓ Claim Expedition Reward':'Mission in progress'):
+        'Accept Expedition';
+      const btn=el('button',label,ec);btn.type='button';
+      btn.disabled=!!view.sandbox||(m.active&&!m.ready);
+      btn.addEventListener('click',()=>{
+        btn.disabled=true; // ignore double taps until ledger is updated
+        try{
+          if(!m.active){
+            state=acceptExpeditionMission(state,adventure(),m.id,!!game.player?.creative);
+            notify(game,'Mission accepted: '+m.title);
+          }else{
+            const claimed=collectExpeditionMission(state,adventure(),m.id,!!game.player?.creative);
+            if(!game.adventure?.awardExpeditionXP?.(claimed.xp))
+              throw new Error('Adventure XP could not be awarded; retry in Survival.');
+            state=claimed.state;
+            notify(game,m.title+' complete! +'+claimed.points+' Flurry Points · +'+claimed.xp+' XP');
+          }
+          const saved=game.saveRewards?.();
+          if(saved===false)notify(game,'Mission changed but save failed. Export a world backup.');
+          hudTick=0;update();open();
+        }catch(error){notify(game,error.message);btn.disabled=false;}
+      });
+    }
+    message('Expedition progress only counts after accepting each contract in Survival. Claims are one-time and saved per world.');
     const renderGroup=(heading,cards)=>{
       section(heading);
       for(const card of cards){
@@ -89,5 +163,5 @@ export function initRewardsHub({game,panel,openDialog,notify,onOpenMarketplace})
     }
     message('NFT sale proceeds, if any, are separate on-chain payments. No NFT sale or wallet balance is inferred from local points.');
   }
-  return {open,load,serialize,recordPlacement,get points(){return state.points;}};
+  return {open,load,serialize,recordPlacement,update,get points(){return state.points;}};
 }

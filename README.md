@@ -4,6 +4,20 @@ Browser-first, free-to-play voxel sandbox for Android, iPhone and desktop. Flurr
 
 Built on the MIT-licensed [Yet Another VoxelCraft](https://github.com/GoldwinXS/YetAnotherVoxelCraft) engine by GoldwinXS, with a local bundled Three.js r160. Original attribution is preserved in UPSTREAM_LICENSE.txt.
 
+## 🧭 Expedition Board — complete missions, earn XP
+
+Survival players have four sequential expedition contracts in **Menu →
+Rewards Hub**. Accept a mission, progress from real winter creature
+defeats, player-placed blocks or dungeon clears, then claim **local Flurry
+Points and Adventure XP** once. A compact clickable in-world tracker
+shows the active contract. Progress is world-scoped and ignores previous
+actions from before the player accepts a contract. Daily/weekly milestones
+remain available.
+
+**Local Flurry Points are not cryptocurrency** and cannot be withdrawn or
+converted to SUI. See [Expedition Board gameplay rules](docs/EXPEDITION_BOARD.md).
+Desktop: **G** guards with a sword; **N** opens the Blocks catalog.
+
 ## ⚔ Sword Guard & Perfect Parry
 
 Survival sword combat now has a **front-facing defensive stance**: hold **G**
