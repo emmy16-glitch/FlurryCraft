@@ -7,7 +7,7 @@ from './adventure-core.js';
 import { DUNGEON_VERSION,ROOM_NAMES,ROOM_OFFSETS,chamberPosition,dungeonEntrance,
  withinDungeonEntry,enteredChamber,generateFrostDungeon } from './frost-dungeon.js';
 import { aimedCreature,actionForTarget } from './combat-hud-core.js';
-import { playerAttackBonus } from './combat-progression.js';
+import { playerAttackBonus,playerMaxHealth,healthAfterLevelUp } from './combat-progression.js';
 import { AURORA_VERSION,AURORA_UNLOCK_LEVEL,AURORA_ROOM_NAMES,AURORA_ROOM_OFFSETS,
   AURORA_FOOTPRINT,AURORA_REWARDS,auroraRoom,nearAuroraGate,inAuroraRoom,
   findAuroraSite,generateAuroraCitadel } from './aurora-citadel.js';
@@ -181,7 +181,7 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
     vitals.setAttribute('aria-label','Health '+v.healthLabel+', food '+v.hungerLabel);
     healButton.classList.toggle('ready',eligible.ok);
     healButton.textContent=eligible.ok?'✦ HEAL · +6 HP':
-      p.health>=20?'✦ Health full':
+      p.health>=(p.maxHealth??playerMaxHealth(progress.level))?'✦ Health full':
       recoveryCooldown>0?'✦ Heal in '+Math.ceil(recoveryCooldown)+'s':
       '✦ Heal · 2 shards';
     healButton.title=eligible.ok?'Spend 2 Frost Shards to restore 6 HP':eligible.reason;
@@ -193,7 +193,7 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
     if(!check.ok){notify(game,check.reason);return false;}
     for(let i=0;i<FROST_RECOVERY_COST;i++)p.takeItem(B.FROST_SHARD);
     const before=p.health;
-    p.health=recoveredHealth(before);
+    p.health=recoveredHealth(before,p.maxHealth??playerMaxHealth(progress.level));
     recoveryCooldown=FROST_RECOVERY_COOLDOWN;
     lastVitals='';refreshVitals();
     notify(game,'Recovered '+Math.round((p.health-before)*10)/10+' HP · 2 Frost Shards used');
@@ -201,6 +201,13 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
   }
   function levelUp(previous){
     if(progress.level<=previous)return;
+    const previousMax=playerMaxHealth(previous),newMax=playerMaxHealth(progress.level);
+    const p=game.player;
+    if(!p.creative&&Number.isFinite(p.health)&&p.health>0&&newMax>previousMax){
+      p.health=healthAfterLevelUp(p.health,previous,progress.level);
+      lastVitals='';refreshVitals();
+      notify(game,'Max Health increased! '+previousMax+' → '+newMax+' HP');
+    }
     levelNoticeNumber.textContent='Level '+progress.level;
     levelNoticeTime=2.9;levelNotice.hidden=false;
     game.sound?.play?.('levelup',{vol:.6});
@@ -675,6 +682,7 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
     xp.className='fc-level-xp';
     const activity=make('div',undefined,hero);activity.className='fc-level-stats';
     make('span',progress.kills+' creatures defeated',activity);
+    make('span',playerMaxHealth(progress.level)+' max HP',activity);
     make('span','+'+playerAttackBonus(progress.level).toFixed(2).replace(/0+$/,'').replace(/\.$/,'')+' melee power',activity);
     make('span',progress.clears+' Frost Ruins clears',activity);
     make('span',progress.storm.clears+' Stormspire clears',activity);
