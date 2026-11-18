@@ -21,6 +21,8 @@ export function walrusTestnetURL(blobId){
 export function walrusBlueprintReceipt(input){
   if(!input||input.format!=='flurrycraft-walrus-blueprint-v1')
     throw new Error('Not a FlurryCraft Walrus blueprint receipt.');
+  if(input.network!==undefined&&input.network!=='testnet')
+    throw new Error('Walrus receipt is not for Testnet.');
   const blobId=validateWalrusBlobId(input.blobId);
   const digest=String(input.digest||'').toLowerCase();
   if(!/^[a-f0-9]{64}$/.test(digest))throw new Error('Invalid Walrus receipt SHA-256 digest.');
