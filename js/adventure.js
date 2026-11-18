@@ -141,7 +141,7 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
       storm:{...progress.storm,site:progress.storm.site?{...progress.storm.site}:null},
       aurora:{...progress.aurora,site:progress.aurora.site?{...progress.aurora.site}:null}};
   }
-  function load(raw){stopSiege(null,false);wardCooldowns.clear();wardFireAcc=0;progress=safeAdventure(raw);world=game.world;trial=null;denPending=false;stormPending=false;auroraPending=false;
+  function load(raw){stopSiege(null,false);stopTrial(null);wardCooldowns.clear();wardFireAcc=0;progress=safeAdventure(raw);world=game.world;trial=null;denPending=false;stormPending=false;auroraPending=false;
     buildPlan=[];buildIndex=0;stormBuildPlan=[];stormBuildIndex=0;
     auroraBuildPlan=[];auroraBuildIndex=0;nextRun++;levelNoticeTime=0;hitTimer=0;levelNotice.hidden=true;
     enemyHUD.hidden=true;entryButton.style.display='none';dungeonStatus.style.display='none';
