@@ -693,6 +693,7 @@ function frame(now) {
     const lightv = game.lightAt(player.x, player.y + 1.5, player.z);
     if (hand.mesh) {
       if (hand.bow) { hand.mesh.position.set(0.48 + bobx, -0.36 + bob - (1 - hand.equip) * 0.6 - sw * 0.12, -0.75); hand.mesh.rotation.set(0.05, -0.55, 0.1); }
+      else if (player.guarding && hand.tool) { hand.mesh.position.set(0.27+bobx,-0.23+bob,-0.56); hand.mesh.rotation.set(0.7,-0.48,0.68); }
       else if (hand.isBlock) { hand.mesh.position.set(0.5 + bobx, -0.42 + bob - (1 - hand.equip) * 0.6 - sw * 0.18, -0.85 - sw * 0.25); hand.mesh.rotation.set(0.15 + sw * 0.5, -0.6 - sw * 0.35, 0); }
       else { hand.mesh.position.set(0.5 + bobx, -0.4 + bob - (1 - hand.equip) * 0.6 - sw * 0.14, -0.8 - sw * 0.2); hand.mesh.rotation.set(0.1 - sw * 0.9, hand.tool ? -1.15 : -0.9, hand.tool ? -0.35 + sw * 0.4 : -0.1); }
       if (player.drawT > 0) { const dw = Math.min(1, player.drawT); hand.mesh.position.x -= dw * 0.1; hand.mesh.position.z += dw * 0.12; hand.mesh.rotation.z += dw * 0.15; hand.mesh.position.x += Math.sin(game.time * 40) * 0.002 * dw; }
