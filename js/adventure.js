@@ -2,7 +2,7 @@
 // winter-specific enemy rewards and real protective Winter Ward blocks.
 // Future chapters can reuse the 1–100 rules without cluttering gameplay.
 import { xpToNext,safeAdventure,grantXP,trialLocation,ruinBlocks,
-  FROST_CREATURES,winterMobLevel,trialWaves,stormspireWaves,withinWard,chooseWinterMob }
+  FROST_CREATURES,winterMobLevel,winterKillXP,trialWaves,stormspireWaves,withinWard,chooseWinterMob }
 from './adventure-core.js';
 import { DUNGEON_VERSION,ROOM_NAMES,ROOM_OFFSETS,chamberPosition,dungeonEntrance,
  withinDungeonEntry,enteredChamber,generateFrostDungeon } from './frost-dungeon.js';
@@ -205,7 +205,7 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
     if(!mob.sp.iceNative||!world||game.state!=='play')return;
     if(byPlayer&&!game.player.creative){
       progress.kills++;
-      const result=grantXP(progress,(FROST_CREATURES[mob.kind]?.xp||8)*Math.max(1,mob.level*.6));
+      const result=grantXP(progress,winterKillXP(mob.kind,mob.level));
       const old=progress.level;
       progress=result;
       levelUp(old);
