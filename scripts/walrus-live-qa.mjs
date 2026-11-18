@@ -27,7 +27,7 @@ async function preflight(){
   const methods=response.headers.get('access-control-allow-methods')||'';
   const headers=response.headers.get('access-control-allow-headers')||'';
   const valid=response.ok&&(allow==='*'||allow==='https://emmy16-glitch.github.io')&&
-    /PUT/i.test(methods)&&(/content-type/i.test(headers)||headers==='*');
+    (/PUT/i.test(methods)||methods.trim()==='*')&&(/content-type/i.test(headers)||headers.trim()==='*');
   console.log('Walrus publisher browser CORS preflight: '+JSON.stringify({
     status:response.status,allow,methods,headers,valid
   }));
