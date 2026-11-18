@@ -146,6 +146,16 @@ body.touch #hotbar{bottom:6px;width:min(84vw,440px)!important;}
 #menu .wi span{font:400 10px/1.4 system-ui;color:#b6ceda}
 #menu .wb{border:0;border-radius:8px;background:#68d6ee;color:#082e42;font:800 12px system-ui;padding:9px 13px;touch-action:manipulation}
 #menu .wb.del{background:#344f60;color:#dbe9f1;border:0;padding:8px 12px}
+#menu .wb.backup{background:#2d5972;color:#d3faff;padding:8px 10px}
+#menu .fc-world-recovery{display:flex;flex-wrap:wrap;align-items:center;gap:7px;margin:3px 0 9px}
+#menu .fc-world-recovery button{border:1px solid #4f9db7;background:#163f56;border-radius:8px;
+ color:#bdefff;font:750 11px system-ui;padding:7px 10px;cursor:pointer;touch-action:manipulation}
+#menu .fc-world-recovery button:focus-visible,#menu .wb:focus-visible{outline:3px solid #bbf7ff;outline-offset:2px}
+#menu .fc-world-recovery small{color:#aac6d6;font:500 10px/1.4 system-ui;flex:1;min-width:120px}
+@media(max-width:550px){#menu .wrow{gap:4px;padding:6px}
+ #menu .wb{padding:7px;font-size:11px}#menu .wb.backup{padding:7px}
+ #menu .wi b{font-size:12px}#menu .wi span{font-size:9px}}
+
 #menu .btn{font:800 15px system-ui;letter-spacing:0;text-shadow:none;box-shadow:none;padding:12px;margin:8px 0;border-radius:12px;border:1px solid #61859b;background:#24506b;touch-action:manipulation}
 #menu .fc-start{background:linear-gradient(105deg,#a3efff,#53d4ed);color:#042c40;border:1px solid #cbf7ff;box-shadow:0 4px 20px #47dfff36;font-weight:900}
 #menu #flurryMenuButton{background:#234b64;color:#ddf5ff;border:1px solid #41758f}
