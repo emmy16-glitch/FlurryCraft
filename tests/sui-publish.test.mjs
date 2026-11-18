@@ -6,7 +6,7 @@ import {PUBLISH_FORMAT,MAX_PUBLISH_BYTES,validatePublishManifest}
 const sample=()=>({
   format:PUBLISH_FORMAT,network:'testnet',
   packageName:'flurrycraft',sourceRevision:'a'.repeat(40),
-  modules:['A'.repeat(32)+'=='],dependencies:['0x2','0x1'],
+  modules:['A'.repeat(30)+'=='],dependencies:['0x2','0x1'],
   digest:Array(32).fill(0x42),
 });
 test('CI bytecode manifest is valid only for FlurryCraft Testnet',()=>{
