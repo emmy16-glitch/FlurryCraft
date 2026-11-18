@@ -11,7 +11,7 @@ export function graphicsPixelRatios(mode,touch=false,deviceDpr=1){
   const available=Math.min(physical,touch?1.5:1.9);
   const lower=Math.min(available,touch?.82:.85);
   const upper=Math.min(available,touch?1.45:1.85);
-  const balanced=Math.min(upper,touch?1.2:1.5);
+  const balanced=Math.min(upper,touch?1.25:1.7);
   const performance=Math.min(upper,touch?.92:1);
   const initial=selected==='crisp'?upper:selected==='performance'?performance:balanced;
   return {mode:selected,lower,upper,initial,physical};
