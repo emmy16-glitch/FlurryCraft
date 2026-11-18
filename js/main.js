@@ -405,7 +405,7 @@ function trySpawnHostile() {
     const roll=Math.random();
     const kind=game.adventure&&roll<.9?game.adventure.roamingKind():
       (roll<.935?'zombie':roll<.96?'skeleton':roll<.98?'creeper':'spider');
-    if(!['frostling','snow_prowler','glacier_guardian','storm_hound','rime_knight','blizzard_titan','aurora_wisp','prism_stalker','boreal_sovereign'].includes(kind)&&
+    if(!['frostling','snow_prowler','glacier_guardian','storm_hound','rime_knight','blizzard_titan','aurora_wisp','prism_stalker','boreal_sovereign','rift_stalker','umbral_sentinel','abyss_keeper'].includes(kind)&&
       Math.max(sk,bk*.9)>.22)continue;
     game.mobs.push(new Mob(game,kind,x+.5,found+.05,z+.5));return;
   }
