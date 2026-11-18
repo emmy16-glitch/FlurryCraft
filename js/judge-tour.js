@@ -59,13 +59,20 @@ export function initJudgeTour({game,openAdventure,openBlocks,openRewards,openStu
       step.id==='battle'?'Open Adventure':step.id==='rewards'?'Open Rewards':'Choose blocks';
     $('fc-tour-next').textContent=index===JUDGE_TOUR_STEPS.length-1?'Finish':'Next →';
   }
-  function close(){active=false;root.hidden=true;lastVisible=false;}
+  function close(){active=false;root.hidden=true;lastVisible=false;
+    // Re-enter mouse capture only after the player clicks the game again.
+    // The guide must never trap camera movement or force a hidden pointer.
+  }
   function update(){
     const show=active&&game.state==='play'&&!game.paused&&!game.player?.dead&&
       !game.ui?.isOpen&&!isDialogOpen();
     if(show!==lastVisible){root.hidden=!show;lastVisible=show;}
   }
-  function start(){if(game.state!=='play')return false;active=true;index=0;draw();update();return true;}
+  function start(){if(game.state!=='play')return false;
+    // Desktop gameplay captures the pointer. Release it before showing
+    // clickable tour buttons, otherwise clicks are intercepted by canvas.
+    game.releasePointer?.();
+    active=true;index=0;draw();update();return true;}
   $('fc-tour-close').addEventListener('click',close);
   $('fc-tour-back').addEventListener('click',()=>{index=Math.max(0,index-1);draw();});
   $('fc-tour-next').addEventListener('click',()=>{
