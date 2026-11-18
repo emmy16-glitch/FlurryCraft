@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import * as B from './blocks.js';
 import { Arrow } from './entities.js';
 import { winterMeleeSpacing } from './winter-survival-core.js';
+import { borealPulse } from './aurora-citadel.js';
 
 const S = 1 / 16;
 const rnd = (x, y, s) => { let h = Math.imul(x * 374761393 + y * 668265263 + s * 2147483647, 1274126177); h ^= h >>> 13; return ((h * 1274126177) >>> 0) / 4294967296; };
@@ -396,22 +397,22 @@ export class Mob {
       if (canSee && dusk && dist < detect && Math.abs(dyp) < 12) {
         // Stormspire boss: a clearly warned, dodgeable pulse — never through walls.
         if((sp.stormPulse||sp.auroraPulse)&&this.trialId){
-          const enraged=sp.auroraPulse&&this.hp<=this.maxHp*.5;
-          const pulseRadius=sp.auroraPulse?(enraged?5.3:4.6):4.3;
+          const pulse=sp.auroraPulse?borealPulse(this.hp,this.maxHp):
+            {enraged:false,radius:4.3,interval:7,chargeSeconds:1.2,damage:2.5};
           if(this.pulseCharging>0){
             this.pulseCharging-=dt;
-            if(this.pulseCharging<=0&&dist<pulseRadius&&Math.abs(dyp)<3.3&&this.hasLOS(p)){
-              p.hurt((sp.auroraPulse?3.25:2.5)*g.difficulty,this.x,this.z);
+            if(this.pulseCharging<=0&&dist<pulse.radius&&Math.abs(dyp)<3.3&&this.hasLOS(p)){
+              p.hurt(pulse.damage*g.difficulty,this.x,this.z);
               if(sp.auroraPulse)g.particles?.burst?.(this.x,this.y+1.4,this.z,
                 [190,144,251],9,2);
             }
           }else{
             this.pulseClock-=dt;
             if(this.pulseClock<=0&&dist<9){
-              this.pulseClock=sp.auroraPulse?(enraged?5.5:7):7;
-              this.pulseCharging=sp.auroraPulse?(enraged?1.0:1.5):1.2;
+              this.pulseClock=pulse.interval;
+              this.pulseCharging=pulse.chargeSeconds;
               g.ui?.toast?.(sp.auroraPulse?
-                (enraged?'⚠ ENRAGED! Sovereign pulse — retreat!':
+                (pulse.enraged?'⚠ ENRAGED! Sovereign pulse — retreat!':
                   '⚠ Boreal Sovereign charging an aurora blast — back away!'):
                 '⚠ Blizzard Titan gathering a storm — move back!');
               g.sound?.play?.('fuse',{pos:this,vol:.7});
