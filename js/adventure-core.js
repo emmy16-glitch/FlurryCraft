@@ -74,6 +74,14 @@ export function trialWaves(level=1){
     [{kind:'glacier_guardian',level:Math.max(8,Math.min(10,n+3))}]
   ];
 }
+// Chapter 2 uses a gentler curve so one dungeon clear does not skip ten levels.
+export function winterKillXP(kind,level){
+  const creature=FROST_CREATURES[kind];
+  const base=creature?.xp||8;
+  const n=Math.max(1,Math.min(STORM_CAP,Math.floor(Number(level)||1)));
+  const multiplier=creature?.chapter===2?1+Math.max(0,n-10)*.22:Math.max(1,n*.6);
+  return Math.floor(base*multiplier);
+}
 export function stormspireWaves(level=10){
   const n=Math.max(10,Math.min(STORM_CAP,Math.floor(level)||10));
   return [
