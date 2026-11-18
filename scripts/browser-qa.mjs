@@ -33,6 +33,14 @@ async function smoke(label,options){
   try{
     await pageReady(page,label);
     await page.screenshot({path:out+'/'+label+'-menu.png'});
+    // Exercise real visible graphics settings before entering the world.
+    await page.locator('#fcAdvanced > summary').click({timeout:10000});
+    await page.locator('#mGraphics').selectOption('performance',{timeout:10000});
+    let graphics=await page.evaluate(()=>window.game?.graphics?.mode);
+    if(graphics!=='performance')throw new Error('Performance preset did not apply');
+    await page.locator('#mGraphics').selectOption('auto',{timeout:10000});
+    graphics=await page.evaluate(()=>window.game?.graphics?.mode);
+    if(graphics!=='auto')throw new Error('Auto graphics preset did not apply');
     await page.locator('#bJudgeDemo').click({timeout:10000});
     await page.waitForFunction(()=>window.game?.state==='play',{timeout:120000});
     // Gameplay must truly have a rendered canvas and a visible world.
@@ -54,11 +62,49 @@ async function smoke(label,options){
     await tour.waitFor({state:'visible',timeout:10000});
     await page.locator('.fc-tour-close').click({timeout:10000});
     await tour.waitFor({state:'hidden',timeout:10000});
+    // Actual player movement: keyboard on desktop and captured touch joystick
+    // in the landscape emulation. No coordinate teleporting or fake XP.
+    const position=()=>page.evaluate(()=>({x:window.game.player.x,z:window.game.player.z}));
+    const before=await position();
+    if(options.isMobile){
+      const box=await page.locator('#joyzone').boundingBox();
+      if(!box)throw new Error('Touch joystick not visible');
+      const x=box.x+Math.min(box.width*.25,85),y=box.y+Math.min(box.height*.5,80);
+      await page.mouse.move(x,y);await page.mouse.down();
+      await page.mouse.move(x,y+46,{steps:6});
+      await page.waitForTimeout(1000);await page.mouse.up();
+    }else{
+      await page.keyboard.down('s');await page.waitForTimeout(1000);
+      await page.keyboard.up('s');
+    }
+    const after=await position();
+    const travelled=Math.hypot(after.x-before.x,after.z-before.z);
+    if(travelled<.08)throw new Error('Live movement failed: '+travelled.toFixed(3)+' blocks');
+    // Browser rAF timing is a software-renderer diagnostic, not a real
+    // physical phone FPS claim. Capture a distribution, not one FPS guess.
+    const timing=await page.evaluate(()=>new Promise(resolve=>{
+      const deltas=[],started=performance.now();let previous=started;
+      const measure=now=>{
+        if(now>previous&&now-previous<250)deltas.push(now-previous);
+        previous=now;
+        if(now-started<3000){requestAnimationFrame(measure);return;}
+        deltas.sort((a,b)=>a-b);
+        const percentile=p=>deltas[Math.min(deltas.length-1,Math.floor((deltas.length-1)*p))]||0;
+        resolve({frames:deltas.length,medianMs:Math.round(percentile(.5)*10)/10,
+          p95Ms:Math.round(percentile(.95)*10)/10});
+      };
+      requestAnimationFrame(measure);
+    }));
+    console.log(label+' movement '+travelled.toFixed(2)+' blocks; rAF frame timing '+JSON.stringify(timing));
+    await page.screenshot({path:out+'/'+label+'-moving.png'});
     const result=await page.evaluate(()=>({
       state:window.game?.state,mode:window.game?.player?.creative?'creative':'survival',
       level:window.game?.adventure?.level??null,
       rendererSize:[document.querySelector('#gl')?.width,document.querySelector('#gl')?.height],
-      title:document.title
+      title:document.title,
+      graphics:window.game?.graphics?.mode,
+      gpuPixelRatio:window.game?.graphics?.ratio,
+      loadedChunks:window.game?.world?.chunks?.size
     }));
     console.log(label+' passed '+JSON.stringify(result));
     if(result.mode!=='survival')throw Error('Tour was not Survival mode');
