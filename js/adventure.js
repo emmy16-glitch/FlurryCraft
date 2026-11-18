@@ -794,6 +794,7 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
     }
   }
   function update(dt){
+    if(game.player.dead&&siege)stopSiege('You fell defending your castle · Defense lost');
     const play=game.state==='play'&&!game.paused&&!game.player.dead&&!isInterfaceBusy();
     const unobstructed=play&&!game.ui.isOpen;
     pill.style.display=unobstructed&&!game.player.creative?'flex':'none';
