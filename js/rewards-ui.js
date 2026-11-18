@@ -149,9 +149,9 @@ export function initRewardsHub({game,panel,openDialog,notify,onOpenMarketplace,
     const v=rewardCards(state,adventure(),!!game.player?.creative);
     return trialProgressText([...v.daily,...v.weekly]);
   }
-  const section=(title)=>{const h=el('h3',title);h.className='fc-reward-label';};
+  const section=(title)=>{const h=el('h3',title);h.className='fc-reward-label';return h;};
   const message=text=>{const p=el('p',text);p.className='fc-reward-intro';return p;};
-  function open(){
+  function open(focus=''){
     flushTravel();
     state=createRewardsState(state,adventure());
     const view=rewardCards(state,adventure(),!!game.player?.creative);
@@ -201,7 +201,8 @@ export function initRewardsHub({game,panel,openDialog,notify,onOpenMarketplace,
     }
     message('Expedition progress only counts after accepting each contract in Survival. Claims are one-time and saved per world.');
     const renderGroup=(heading,cards)=>{
-      section(heading);
+      const h=section(heading);
+      if(heading.startsWith('❄ Daily Winter Trials'))h.id='fcWinterTrialStart';
       for(const card of cards){
         const box=el('div',undefined);box.className='fc-reward-card';
         el('div',card.title+' · +'+card.points+' points',box).className='fc-reward-title';
@@ -242,6 +243,7 @@ export function initRewardsHub({game,panel,openDialog,notify,onOpenMarketplace,
       row.style.margin='6px 0';row.title=new Date(h.at).toISOString();
     }
     message('NFT sale proceeds, if any, are separate on-chain payments. No NFT sale or wallet balance is inferred from local points.');
+    if(focus==='trials')document.getElementById('fcWinterTrialStart')?.scrollIntoView?.({block:'start',behavior:'auto'});
   }
   return {open,load,serialize,recordPlacement,recordParry,recordTravel,winterTrials,
     update,current,acceptMission,claimMission,
