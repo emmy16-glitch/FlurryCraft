@@ -11,6 +11,7 @@ import { EditHistory } from './edit-history.js';
 import { weatherProfile,cycleWeatherMode } from './winter-weather.js';
 import { initExplorerMap } from './explorer-map.js';
 import { initAdventure } from './adventure.js';
+import { initJudgeTour } from './judge-tour.js';
 import { initRewardsHub } from './rewards-ui.js';
 import { makeSwordMesh,setItemLight } from './render.js';
 
@@ -309,6 +310,7 @@ export function initFlurry(game) {
     game.ui.dirtyInv=true;
   }
   menuSection('ADVENTURE');
+  menuItem('▶ Guided Tour',()=>judgeTour.start());
   menuItem('Winter Adventure',()=>game.adventure.open());
   menuItem('✦ Rewards Hub',()=>game.rewards.open());
   menuSection('BUILD');
@@ -424,6 +426,11 @@ export function initFlurry(game) {
     isBlocked:()=>!!previewState||!menu.hidden});
   game.adventure=initAdventure({game,B,openDialog:open,closeDialog:close,panel,notify,explorer,
     isInterfaceBusy:()=>overlay.style.display==='flex'||!menu.hidden||!!previewState});
+  const judgeTour=initJudgeTour({game,
+    openAdventure:()=>game.adventure.open(),openBlocks:()=>showBuildMenu(),
+    openRewards:()=>game.rewards.open(),openStudio:()=>creatorStudio.open(),
+    openMarketplace:()=>suiMarket.open(),
+    isDialogOpen:()=>overlay.style.display==='flex'||!menu.hidden});
   game.rewards=initRewardsHub({game,panel,openDialog:open,notify,
     onOpenMarketplace:()=>suiMarket.open()});
   // Beginners should be able to build immediately, without finding a recipe book.
@@ -913,6 +920,7 @@ export function initFlurry(game) {
     const p=game.player,w=game.world;
     toolState=null;selectionState=null;buildJob=null;progress.hidden=true;editHistory.reset(w);clearPreview();refreshToolActions();
     explorer.reset();
+    judgeTour.close();
     game.adventure.resetWorld(isNew);
     equipStarterBlocks();
     // New survival players should be able to defeat their first Frostling
@@ -976,6 +984,7 @@ export function initFlurry(game) {
     placementGhost.visible=true;
   }
   function update(dt) {
+    judgeTour.update();
     game.adventure.update(dt);
     explorer.update(dt);
     const isPlaying=game.state==='play' && !game.paused;
@@ -1087,7 +1096,7 @@ export function initFlurry(game) {
   all.style.pointerEvents='auto';
   all.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();showBuildMenu();});
   hotbar.appendChild(all);
-  game.flurry={update,onWorldReady,countPlayerPlacement,recordChange,isApplyingEdit:()=>editHistory.applying,buildInProgress:()=>!!buildJob,isThird:()=>third,daylightLocked:()=>brightWorld,openBlockLibrary:showBuildMenu,showSmartBuilder,undoEdit:undoSmartBuild,redoEdit:redoLastEdit};
+  game.flurry={update,onWorldReady,countPlayerPlacement,recordChange,isApplyingEdit:()=>editHistory.applying,buildInProgress:()=>!!buildJob,isThird:()=>third,daylightLocked:()=>brightWorld,openBlockLibrary:showBuildMenu,openCreatorStudio:()=>creatorStudio.open(),openMarketplace:()=>suiMarket.open(),startJudgeTour:()=>judgeTour.start(),showSmartBuilder,undoEdit:undoSmartBuild,redoEdit:redoLastEdit};
   document.addEventListener('keydown', e=>{
     if(e.target && /INPUT|TEXTAREA/.test(e.target.tagName))return;
     if(e.code==='Escape' && overlay.style.display==='flex'){close();e.stopImmediatePropagation();return;}
