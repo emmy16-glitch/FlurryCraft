@@ -1,5 +1,6 @@
 // FlurryCraft Rewards Hub: OFFLINE GAME POINTS ONLY.
 import {safeExpedition,expeditionCard,acceptExpedition,recordExpeditionPlacement,finishExpedition} from './expedition-core.js';
+import {addTrialDistance} from './winter-trials.js';
 // Browser saves can be modified. Nothing in this module authorizes or pays SUI.
 export const REWARD_SCHEMA=1;
 export const CRYPTO_REWARDS_ENABLED=false;
@@ -20,13 +21,18 @@ export const DAILY_MISSIONS=Object.freeze([
   {id:'daily-monsters',title:'Defeat 3 monsters',kind:'kills',target:3,points:20},
   {id:'daily-build',title:'Place 10 blocks',kind:'blocks',target:10,points:25},
   {id:'daily-dungeon',title:'Clear a dungeon',kind:'clears',target:1,points:75},
+  {id:'daily-parry',title:'Perfect Parry 2 incoming attacks',kind:'parries',target:2,points:45},
+  {id:'daily-travel',title:'Explore 120 blocks on foot',kind:'travel',target:120,points:40},
 ]);
 export const WEEKLY_MISSIONS=Object.freeze([
   {id:'weekly-monsters',title:'Defeat 20 monsters',kind:'kills',target:20,points:150},
   {id:'weekly-build',title:'Place 60 blocks',kind:'blocks',target:60,points:120},
   {id:'weekly-dungeons',title:'Clear 2 dungeons',kind:'clears',target:2,points:200},
+  {id:'weekly-parry',title:'Perfect Parry 12 incoming attacks',kind:'parries',target:12,points:190},
+  {id:'weekly-travel',title:'Explore 850 blocks on foot',kind:'travel',target:850,points:180},
 ]);
 const num=(v,max=1000000)=>Number.isFinite(v)?Math.min(max,Math.max(0,Math.floor(v))):0;
+const distanceNumber=v=>Number.isFinite(v)?Math.min(2400,Math.max(0,Math.round(v*1000)/1000)):0;
 const dictionary=v=>v&&typeof v==='object'&&!Array.isArray(v)?v:{};
 const utcDay=now=>new Date(now).toISOString().slice(0,10);
 const utcWeek=now=>{const date=new Date(now);date.setUTCHours(0,0,0,0);
@@ -68,12 +74,19 @@ export function createRewardsState(raw,adventure,now=Date.now()){
     weekBase:baseline(oldWeek?r.weekBase:total,total),
     dailyBlocks:oldDay?num(r.dailyBlocks,500):0,
     weeklyBlocks:oldWeek?num(r.weeklyBlocks,2000):0,
+    // Compatible optional ledger fields: old saves start each new trial at 0.
+    dailyParries:oldDay?num(r.dailyParries,100):0,
+    weeklyParries:oldWeek?num(r.weeklyParries,500):0,
+    dailyTravel:oldDay?distanceNumber(r.dailyTravel):0,
+    weeklyTravel:oldWeek?distanceNumber(r.weeklyTravel):0,
     expedition:safeExpedition(valid?r.expedition:null,total)};
 }
 export function rewardCards(state,adventure,creative=false,now=Date.now()){
   const s=createRewardsState(state,adventure,now),totals=rewardTotals(adventure);
   const progress=(m)=>{
     if(m.kind==='blocks')return m.id.startsWith('daily')?s.dailyBlocks:s.weeklyBlocks;
+    if(m.kind==='parries')return m.id.startsWith('daily')?s.dailyParries:s.weeklyParries;
+    if(m.kind==='travel')return Math.floor(m.id.startsWith('daily')?s.dailyTravel:s.weeklyTravel);
     if(m.kind==='kills'||m.kind==='clears'){
       const base=m.id.startsWith('daily')?s.dayBase:s.weekBase;
       return Math.max(0,totals[m.kind]-base[m.kind]);
@@ -98,6 +111,22 @@ export function recordRewardPlacement(state,adventure,now=Date.now()){
   s.dailyBlocks=Math.min(500,s.dailyBlocks+1);
   s.weeklyBlocks=Math.min(2000,s.weeklyBlocks+1);
   s.expedition=recordExpeditionPlacement(s.expedition,rewardTotals(adventure));
+  return s;
+}
+// Only call after real Perfect Parry mitigation in Player.hurt; environmental,
+ // rear, unguarded and invulnerable hits never reach this recorder.
+export function recordRewardParry(state,adventure,now=Date.now()){
+  const s=createRewardsState(state,adventure,now);
+  s.dailyParries=Math.min(100,s.dailyParries+1);
+  s.weeklyParries=Math.min(500,s.weeklyParries+1);
+  return s;
+}
+// Called with small accumulated, physics-validated on-foot movement segments.
+// Not an anti-cheat system: all browser progress is locally editable.
+export function recordRewardTravel(state,adventure,distance,now=Date.now()){
+  const s=createRewardsState(state,adventure,now);
+  s.dailyTravel=addTrialDistance(s.dailyTravel,distance);
+  s.weeklyTravel=addTrialDistance(s.weeklyTravel,distance);
   return s;
 }
 export function collectLocalPoints(state,adventure,key,creative=false,now=Date.now()){
