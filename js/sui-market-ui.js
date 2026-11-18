@@ -2,11 +2,12 @@
 // Marketplace is disabled until an onchain ABI-verified package is configured.
 import { SUI_PACKAGE_ID } from './sui-config.js';
 import { packageId, canonicalBytes, toMist } from './sui-market-core.js';
+import { validatePublishManifest } from './sui-publish-core.js';
 import { drawBlueprintCard, blueprintSummary } from './creator-studio.js';
 
 export function initSuiMarketUI({game,panel,openDialog,closeDialog,notify,startPreview}) {
   const pkg=packageId(SUI_PACKAGE_ID);
-  let sdkPromise=null,mintTarget=null,lastDigest=null,tab='explore',busy=false,generation=0,readonlyOpen=false;
+  let sdkPromise=null,mintTarget=null,lastDigest=null,tab='explore',busy=false,generation=0,readonlyOpen=false,publishDraft=null,publishedReceipt=null;
   const make=(tag,text,parent=panel)=>{
     const el=document.createElement(tag);if(text!==undefined)el.textContent=String(text);
     parent.appendChild(el);return el;
@@ -265,6 +266,64 @@ export function initSuiMarketUI({game,panel,openDialog,closeDialog,notify,startP
         }catch(e){
           if(isCurrent(token))status.textContent='Wallet inspection unavailable: '+errorText(e);
         }
+      }
+      const deployment=make('details');deployment.className='fc-market-more';
+      const summary=make('summary','Developer · Publish Sui Testnet Contract',deployment);
+      summary.title='One-time public Testnet transaction requiring your own wallet approval';
+      make('p','This is an optional, one-time public blockchain deployment. It requires free Testnet SUI for gas and a separate wallet signature. Do not enter or share wallet recovery phrases.',deployment);
+      make('p','Publishing cannot be undone. The resulting UpgradeCap remains in YOUR wallet. Deploying alone does not enable trading until the published source and package ID have been verified.',deployment);
+      if(publishedReceipt){
+        make('strong','Testnet publish transaction submitted',deployment);
+        const receipt=make('p','Digest: '+publishedReceipt.digest, deployment);
+        receipt.style.wordBreak='break-all';
+        make('p','Publisher: '+publishedReceipt.owner+' · source '+publishedReceipt.sourceRevision.slice(0,12),deployment);
+        const link=make('a','Inspect transaction on Sui Explorer',deployment);
+        link.href='https://suiscan.xyz/testnet/tx/'+encodeURIComponent(publishedReceipt.digest);
+        link.target='_blank';link.rel='noopener noreferrer';
+        button(deployment,'Copy transaction digest',()=>{
+          if(navigator.clipboard?.writeText)navigator.clipboard.writeText(publishedReceipt.digest)
+            .then(()=>notify(game,'Testnet transaction digest copied'))
+            .catch(()=>notify(game,'Copy unavailable'));
+          else notify(game,'Copy the digest from the receipt text');
+        },'fc-market-secondary');
+      }else if(!publishDraft){
+        button(deployment,'Check compiled Testnet contract',async()=>{
+          const status=make('p','Checking same-origin Move compiler output…',deployment);
+          try{
+            const response=await fetch('./dist/flurrycraft-publish.json',{cache:'no-store'});
+            if(!response.ok)throw new Error('The Move compiler artifact is not deployed yet. Check GitHub Actions before publishing.');
+            const raw=await response.json();
+            const verified=validatePublishManifest(raw);
+            publishDraft=verified;readonlyOpen=true;open({tab});
+          }catch(error){status.textContent='Cannot prepare Testnet publish: '+errorText(error);}
+        },'fc-market-secondary');
+      }else{
+        make('p','Compiled Move modules: '+publishDraft.modules.length+
+          ' · package: '+publishDraft.byteLength+' bytes',deployment);
+        make('p','GitHub source revision: '+publishDraft.sourceRevision, deployment);
+        make('p','Network: Sui Testnet ONLY. The deployment spends gas and is permanent on Testnet.',deployment);
+        button(deployment,'Review and sign Testnet publication',async()=>{
+          if(busy)return;
+          busy=true;
+          try{
+            const sdk=await walletModule();
+            const account=sdk.connection().address;
+            if(!account){
+              readonlyOpen=true;notify(game,'Connect your Sui Testnet wallet in the wallet inspector first.');
+              busy=false;open({tab});return;
+            }
+            const approved=typeof confirm==='function'&&confirm(
+              'PUBLISH FLURRYCRAFT ON SUI TESTNET from wallet '+account+
+              '? This spends Testnet SUI gas and writes public immutable code. Your wallet keeps the UpgradeCap. No trading is enabled until package verification. Continue to WALLET APPROVAL?');
+            if(!approved){busy=false;return;}
+            const result=await sdk.publishTestnetPackage(publishDraft);
+            publishedReceipt=result;publishDraft=null;
+            notify(game,'Sui Testnet publication confirmed. Verify package source before enabling marketplace.');
+            busy=false;open({tab});
+          }catch(error){
+            busy=false;notify(game,'Testnet publish failed: '+errorText(error));
+          }
+        },'fc-market-primary');
       }
       if(mintTarget){
         const {info}=card(panel,mintTarget.name,
