@@ -25,9 +25,10 @@ export function validateWorldSave(data){
     if(!/^-?\d+$/.test(key)||!Array.isArray(coords)||coords.length%2!==0)
       throw new Error('Malformed block edits in saved world');
     if(coords.length>50000)throw new Error('Invalid oversized chunk edit list');
-    for(let i=0;i<coords.length;i++){
-      const n=coords[i];
-      if(!Number.isInteger(n)||n<0||n>65535)
+    for(let i=0;i<coords.length;i+=2){
+      const cell=coords[i],block=coords[i+1];
+      if(!Number.isInteger(cell)||cell<0||cell>=16*16*96||
+         !Number.isInteger(block)||block<0||block>=128)
         throw new Error('Invalid block edit entry in saved world');
     }
   }
