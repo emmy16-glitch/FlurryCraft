@@ -10,6 +10,7 @@ import { initSuiMarketUI } from './sui-market-ui.js';
 import { EditHistory } from './edit-history.js';
 import { weatherProfile,cycleWeatherMode } from './winter-weather.js';
 import { initExplorerMap } from './explorer-map.js';
+import { initExplorerJournal } from './explorer-journal.js';
 import { initAdventure } from './adventure.js';
 import { initJudgeTour } from './judge-tour.js';
 import { initRewardsHub } from './rewards-ui.js';
@@ -346,6 +347,7 @@ export function initFlurry(game) {
   menuItem('Redo',()=>redoLastEdit());
   menuSection('WORLD');
   menuItem('World Map',()=>explorer.open());
+  menuItem('📖 Explorer Journal',()=>game.journal.open());
   menuItem('Switch Camera',()=>{third=!third;notify(game,third?'Third person':'First person');});
   menuItem('My Yeti',()=>showCustomizer());
   menuItem('Fly On / Off',()=>{
@@ -536,6 +538,7 @@ export function initFlurry(game) {
       });
     }
     button('Open Expedition Board',()=>game.rewards.open(),true);
+    button('📖 Explorer Journal',()=>game.journal.open(),true);
     // Lofi now offers skill and exploration objectives beyond the story chain.
     const winter=game.rewards.winterTrials();
     const trialHint=make('p');
@@ -562,6 +565,9 @@ export function initFlurry(game) {
     isBlocked:()=>!!previewState||!menu.hidden});
   game.adventure=initAdventure({game,B,openDialog:open,closeDialog:close,panel,notify,explorer,
     isInterfaceBusy:()=>overlay.style.display==='flex'||!menu.hidden||!!previewState});
+  game.journal=initExplorerJournal({game,panel,openDialog:open,notify,explorer,
+    isBusy:()=>overlay.style.display==='flex'||game.ui?.isOpen||
+      !menu.hidden||!!previewState||game.tourActive});
   const judgeTour=initJudgeTour({game,
     openAdventure:()=>game.adventure.open(),openBlocks:()=>showBuildMenu(),
     openRewards:()=>game.rewards.open(),openStudio:()=>creatorStudio.open(),
@@ -1142,6 +1148,7 @@ export function initFlurry(game) {
   function update(dt) {
     judgeTour.update();
     game.adventure.update(dt);
+    game.journal?.update?.(dt);
     game.rewards?.update?.(dt);
     explorer.update(dt);
     const isPlaying=game.state==='play' && !game.paused;
