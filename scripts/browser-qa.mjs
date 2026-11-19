@@ -157,8 +157,14 @@ async function smoke(label,options){
     await page.locator('#fcMiniMap').click({timeout:10000});
     await page.getByText('KNOWN DUNGEONS',{exact:true})
       .waitFor({state:'visible',timeout:10000});
-    await page.locator('#flurryModal .fc-map-pin.is-dungeon').first()
-      .locator('button.fc-map-pin-save').click({timeout:10000});
+    const dungeonPin=page.locator('#flurryModal .fc-map-pin.is-dungeon').first()
+      .locator('button.fc-map-pin-save');
+    console.log(label+' map layout: '+JSON.stringify({
+      pin:await dungeonPin.boundingBox(),
+      panel:await page.locator('#flurryModal .fPanel').boundingBox(),
+      overlay:await page.locator('#flurryModal').boundingBox()
+    }));
+    await dungeonPin.click({timeout:10000});
     await page.getByText('YOUR SAVED PINS',{exact:true})
       .waitFor({state:'visible',timeout:10000});
     await page.locator('#flurryModal .fc-map-pin.is-monster').first()
