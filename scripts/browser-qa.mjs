@@ -276,9 +276,13 @@ async function smoke(label,options){
       p.health=Math.min(10,p.maxHealth-7);p.guardStamina=12;p.creative=false;
       g.landmarks.update(.5);
       const before={points:g.rewards.points,xp:g.adventure.serialize().xp};
-      if(!g.landmarks.interact())throw new Error('Nearby site cannot be inspected');
+      if(document.querySelector('#fcInspectLandmark')?.style.display!=='block')
+        throw new Error('No visible touch/keyboard Inspect button at a real landmark');
       return {original,site,before};
     });
+    // Simulate the real user control: desktop F, mobile visible touch Explore.
+    if(options.isMobile)await page.locator('#fcInspectLandmark').tap({timeout:10000});
+    else await page.keyboard.press('f');
     await page.getByText(landmarkStart.site.name,{exact:false}).first()
       .waitFor({state:'visible',timeout:10000});
     const landmarkPerk=page.locator('#flurryModal .fc-landmark-benefit');
