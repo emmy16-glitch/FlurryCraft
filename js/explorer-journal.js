@@ -87,7 +87,8 @@ export function initExplorerJournal({game,panel,openDialog,notify,explorer,isBus
     el('span',totals.terrain+'/4 landscapes',numbers);
     el('span',totals.dungeons+'/4 dungeons visited',numbers);
     el('span',totals.trails+'/'+MAX_SURVEY_POINTS+' trail markers',numbers);
-    const description=el('p','Walk across real snowy terrain to record new landscapes and trail markers. Approach a built dungeon entrance to mark it visited. No wallet or crypto required.',info);
+    el('span',(game.landmarks?.visitedCount||0)+' winter landmarks',numbers);
+    const description=el('p','Walk across snowy terrain, discover trail markers, visit built dungeons and inspect real 3D winter landmarks. All discoveries stay in your world save.',info);
     description.className='fc-journal-help';
     const group=(title,kind,icon,placeholder)=>{
       const heading=el('div',title);heading.className='fc-journal-section';
@@ -106,6 +107,22 @@ export function initExplorerJournal({game,panel,openDialog,notify,explorer,isBus
     group('LANDSCAPES DISCOVERED','biome','❄','Explore snowy tundra, peaks, ice shores and frozen water to fill your journal.');
     group('DUNGEON ENTRANCES VISITED','dungeon','⌂','Travel to a known, built dungeon entrance to record a visit.');
     group('TRAIL MARKERS','survey','◇','Walk farther from previous surveyed sites to leave trail markers.');
+    const siteHeading=el('div','WINTER LANDMARKS EXPLORED');
+    siteHeading.className='fc-journal-section';
+    const sites=game.landmarks?.visited?.()||[];
+    if(!sites.length){
+      const empty=el('p','Find a glowing waystone, frost cairn or refuge in the 3D world. Inspect it to add it here.');
+      empty.className='fc-journal-locked';
+    }
+    for(const site of sites){
+      const line=el('div');line.className='fc-journal-entry';
+      const icon=el('span','✦',line);icon.className='fc-journal-icon';
+      const info=el('div',undefined,line);info.className='fc-journal-entry-main';
+      el('strong',site.name,info);
+      el('small','X '+site.x+' · Z '+site.z,info);
+      const nav=button(line,'Guide',()=>explorer.guideTo(site));
+      nav.setAttribute('aria-label','Navigate to '+site.name);
+    }
     const note=el('p','Journal discoveries are saved with this world and its backups. Your personal map pins remain independent.',panel);
     note.className='fc-journal-help';
   }
