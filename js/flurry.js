@@ -416,7 +416,10 @@ export function initFlurry(game) {
   document.body.appendChild(previewPanel);
 
   const menuButton = document.createElement('div'); menuButton.id='flurryMenuButton'; menuButton.className='btn'; menuButton.textContent='🎨 Customize your Yeti';
-  const newWorldButton=$('bNew'); if (newWorldButton) newWorldButton.insertAdjacentElement('afterend',menuButton);
+  // Keep customization available without cluttering the three-action start screen.
+  const extraOptions=$('fcMore');
+  if(extraOptions)extraOptions.appendChild(menuButton);
+  else {const newWorldButton=$('bNew');newWorldButton?.insertAdjacentElement('afterend',menuButton);}
   menuButton.addEventListener('click', () => showCustomizer());
 
   const close = () => { overlay.style.display='none'; panel.replaceChildren(); panel.classList.remove('fc-studio-wide','fc-sui-panel','fc-map-panel'); };
