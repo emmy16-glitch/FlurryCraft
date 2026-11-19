@@ -137,7 +137,7 @@ export function initExplorerMap({game,panel,openDialog,closeDialog,notify,dialog
     '.fc-map-chapter{border-style:dashed;background:#13384d}',
     '.fc-map-chapter.is-locked{opacity:.78;border-color:#526a78}',
     '.fc-map-discovery-summary{font:650 10px/1.45 system-ui;color:#9dc6d5;margin:0 0 7px;padding:7px 8px;border:1px solid #315c73;border-radius:9px;background:#10364b}',
-    '#fcNavBeacon{position:fixed;top:calc(env(safe-area-inset-top) + 110px);left:50%;right:auto;transform:translateX(-50%);z-index:24;display:flex;align-items:center;gap:7px;width:max-content;max-width:min(300px,58vw);padding:7px 9px;border:1px solid #4e96b0;border-radius:13px;color:#e9fbff;background:#0b3044ed;box-shadow:0 5px 20px #001a2a80;backdrop-filter:blur(9px);font:700 11px system-ui;pointer-events:none}',
+    '#fcNavBeacon{position:fixed;top:calc(env(safe-area-inset-top) + 110px);left:50%;right:auto;transform:translateX(-50%);z-index:24;display:flex;align-items:center;gap:7px;width:max-content;max-width:min(300px,58vw);padding:7px 9px;border:1px solid #4e96b0;border-radius:13px;color:#e9fbff;background:#0b3044ed;box-shadow:0 5px 20px #001a2a80;backdrop-filter:blur(9px);font:700 11px system-ui;pointer-events:auto}',
     '#fcNavBeacon[hidden]{display:none!important}',
     '#fcNavBeacon .fc-nav-arrow{font:900 27px/1 system-ui;color:#8ae7ef;display:block;transform-origin:50% 50%;width:26px;text-align:center}',
     '#fcNavBeacon .fc-nav-text{min-width:0;max-width:120px}',
