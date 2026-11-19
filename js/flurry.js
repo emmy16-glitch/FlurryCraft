@@ -346,7 +346,7 @@ export function initFlurry(game) {
   menuItem('Undo',()=>undoSmartBuild());
   menuItem('Redo',()=>redoLastEdit());
   menuSection('WORLD');
-  menuItem('World Map',()=>explorer.open());
+  menuItem('World Map · M',()=>explorer.open());
   menuItem('📖 Explorer Journal',()=>game.journal.open());
   menuItem('Switch Camera',()=>{third=!third;notify(game,third?'Third person':'First person');});
   menuItem('My Yeti',()=>showCustomizer());
@@ -1295,6 +1295,12 @@ export function initFlurry(game) {
       e.preventDefault();redoLastEdit();return;
     }
     if(game.state!=='play'||game.ui.isOpen||game.paused)return;
+    // Desktop navigation remains available while the pointer is captured.
+    // Mobile players keep using the visible minimap touch target.
+    if(e.code==='KeyM'&&!e.repeat&&overlay.style.display!=='flex'&&
+      menu.hidden&&!previewState&&!game.tourActive){
+      e.preventDefault();explorer.open();return;
+    }
     if(e.code==='KeyV'){third=!third;notify(game,third?'Third-person camera':'First-person camera');}
     if(e.code==='KeyB')showBlueprint();
     if(e.code==='KeyEscape' && previewState)clearPreview();
