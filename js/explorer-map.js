@@ -121,7 +121,7 @@ export function initExplorerMap({game,panel,openDialog,closeDialog,notify,dialog
     '#flurryModal .fc-map-pin button.fc-map-pin-save{background:transparent;color:#bfeff8;border:1px solid #47768e}',
     '.fc-map-pin.is-monster{border-color:#a36770}.fc-map-pin.is-dungeon{border-color:#a98d5a}.fc-map-pin.is-discovery{border-color:#60a8c1}.fc-map-pin.is-landmark{border-color:#65b6c8}',
     '.fc-map-pin.is-cave{border-color:#82c9e2}.fc-map-pin.is-crypt{border-color:#a994d2}.fc-map-pin.is-treasure{border-color:#d8b56c}.fc-map-pin.is-territory{border-color:#c47782}',
-    '.fc-map-filterbar{position:sticky;top:0;z-index:12;display:flex;flex:none;gap:5px;overflow-x:auto;padding:6px 1px 8px;background:#102e43;border-bottom:1px solid #315d72;scrollbar-width:thin;pointer-events:auto;overscroll-behavior-x:contain}',
+    '.fc-map-filterbar{position:sticky;top:0;z-index:12;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));flex:none;gap:5px;overflow:visible;padding:6px 1px 8px;background:#102e43;border-bottom:1px solid #315d72;pointer-events:auto}',
     '#flurryModal .fc-map-filterbar button{position:relative;z-index:8;flex:none;min-height:31px;margin:0;padding:6px 9px;border:1px solid #46758b;border-radius:9px;background:#1a435a;color:#c7e8f1;font:750 10px system-ui;pointer-events:auto;touch-action:manipulation}',
     '#flurryModal .fc-map-filterbar button[aria-pressed="true"]{background:#8ce4f0;color:#0a3549;border-color:#baf4fc}',
     '.fc-map-filter-count{display:inline-grid;place-items:center;min-width:16px;height:16px;margin-left:3px;padding:0 3px;border-radius:8px;background:#0b3045;color:#d5f5fc;font:850 9px system-ui}',
