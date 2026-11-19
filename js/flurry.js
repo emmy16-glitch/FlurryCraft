@@ -290,7 +290,7 @@ export function initFlurry(game) {
   }
   let creatorStudio,suiMarket,explorer;
   action('⌂ My Builds',()=>creatorStudio.open());
-  let brightWorld=read('flurrycraft_bright_world_v1',true)!==false;
+  const brightWorld=true; // Temporary always-day setting for all existing and new worlds.
   let winterMode=game.weather.setMode(read('flurrycraft_winter_weather_v1','snowfall'));
   let questVisible=read('fc_quest_visible_v1',false)===true;
   const menuToggle=action('☰ Menu',()=>setMoreMenu(menu.hidden));
@@ -313,11 +313,8 @@ export function initFlurry(game) {
     menuToggle.classList.toggle('is-open',open);
   }
   function toggleDay(){
-    brightWorld=!brightWorld;
-    save('flurrycraft_bright_world_v1',brightWorld);
-    if(brightWorld)game.env.tod=.25;
-    dayButton.textContent=brightWorld?'Daylight: On':'Daylight: Off';
-    notify(game,brightWorld?'Daylight on':'Day/night cycle on');
+    game.env.tod=.25;
+    notify(game,'☀ Always daytime for now · night cycle is disabled');
   }
   function rescue(){
     if(game.state!=='play'||!game.world)return;
@@ -356,7 +353,7 @@ export function initFlurry(game) {
     if(p.flying)p.vy=0;
     notify(game,p.flying?'Flying on':'Flying off');
   });
-  const dayButton=menuItem(brightWorld?'Daylight: On':'Daylight: Off',toggleDay);
+  const dayButton=menuItem('☀ Always Daytime',toggleDay);
   const weatherButton=menuItem('Weather: '+weatherProfile(winterMode).label,()=>{
     winterMode=game.weather.setMode(cycleWeatherMode(winterMode));
     save('flurrycraft_winter_weather_v1',winterMode);
@@ -1084,7 +1081,7 @@ export function initFlurry(game) {
         game.ui.dirtyInv=true;
       }
     }
-    if (p.creative && brightWorld) game.env.tod=0.25;
+    game.env.tod=0.25; // Apply to restored Survival and Creative saves alike.
     // Existing survival worlds used to start with an empty hotbar. Show
     // the building picker the first time a returning player opens one.
     if (!read('flurrycraft_builder_help_seen_v2',false) && p.inv.slice(0,9).every(s=>!s)) {
