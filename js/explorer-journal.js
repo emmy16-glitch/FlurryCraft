@@ -88,6 +88,7 @@ export function initExplorerJournal({game,panel,openDialog,notify,explorer,isBus
     el('span',totals.dungeons+'/4 dungeons visited',numbers);
     el('span',totals.trails+'/'+MAX_SURVEY_POINTS+' trail markers',numbers);
     el('span',(game.landmarks?.visitedCount||0)+' winter landmarks',numbers);
+    el('span',(game.exploration?.stats?.().total||0)+' hidden places found',numbers);
     const description=el('p','Walk across snowy terrain, discover trail markers, visit built dungeons and inspect real 3D winter landmarks. All discoveries stay in your world save.',info);
     description.className='fc-journal-help';
     const group=(title,kind,icon,placeholder)=>{
@@ -123,7 +124,26 @@ export function initExplorerJournal({game,panel,openDialog,notify,explorer,isBus
       const nav=button(line,'Guide',()=>explorer.guideTo(site));
       nav.setAttribute('aria-label','Navigate to '+site.name);
     }
-    const note=el('p','Journal discoveries are saved with this world and its backups. Your personal map pins remain independent.',panel);
+    const hidden=game.exploration?.mapPlaces?.()||[];
+    const discoveryGroups=[
+      ['CAVES FOUND','cave','◒'],['HIDDEN DUNGEONS','crypt','▣'],
+      ['TREASURE LOCATIONS','treasure','✧'],['MONSTER TERRITORIES','territory','⚠']
+    ];
+    for(const [heading,kind,icon] of discoveryGroups){
+      const entries=hidden.filter(v=>v.kind===kind);
+      if(!entries.length)continue;
+      const section=el('div',heading);section.className='fc-journal-section';
+      for(const entry of entries){
+        const line=el('div');line.className='fc-journal-entry';
+        const badge=el('span',icon,line);badge.className='fc-journal-icon';
+        const main=el('div',undefined,line);main.className='fc-journal-entry-main';
+        el('strong',entry.name,main);
+        el('small',(entry.detail||'Discovered')+' · X '+entry.x+' · Z '+entry.z,main);
+        const go=button(line,'Guide',()=>explorer.guideTo(entry));
+        go.setAttribute('aria-label','Navigate to '+entry.name);
+      }
+    }
+    const note=el('p','Hidden places are revealed only after real exploration. Discoveries are saved with this world and its backups; personal map pins remain independent.',panel);
     note.className='fc-journal-help';
   }
   return {load,serialize,update,scan,open,mapPlaces,stats,
