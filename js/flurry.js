@@ -12,6 +12,7 @@ import { weatherProfile,cycleWeatherMode } from './winter-weather.js';
 import { initExplorerMap } from './explorer-map.js';
 import { initExplorerJournal } from './explorer-journal.js';
 import { initWinterLandmarks } from './winter-landmarks.js';
+import { initWorldExploration } from './world-exploration.js';
 import { initAdventure } from './adventure.js';
 import { initJudgeTour } from './judge-tour.js';
 import { initRewardsHub } from './rewards-ui.js';
@@ -431,6 +432,9 @@ export function initFlurry(game) {
   const button = (title, fn, muted=false) => {const el=make('button',title); if(muted)el.className='muted'; el.addEventListener('click',fn); return el;};
   const open = title => {
     setMoreMenu(false);
+    // Release the gameplay pointer lock before opening a modal. Otherwise
+    // browser hit-testing can land on the backdrop instead of its buttons.
+    try{if(document.pointerLockElement)document.exitPointerLock();}catch{}
     // Cancel captured gestures and their timers, not only boolean input flags.
     game.resetTouchControls?.();
     if(game.touch){
@@ -572,6 +576,7 @@ export function initFlurry(game) {
   game.landmarks=initWinterLandmarks({game,panel,openDialog:open,closeDialog:close,
     notify,isBusy:()=>overlay.style.display==='flex'||!menu.hidden||
       !!previewState||game.tourActive});
+  game.exploration=initWorldExploration({game,notify});
   const judgeTour=initJudgeTour({game,
     openAdventure:()=>game.adventure.open(),openBlocks:()=>showBuildMenu(),
     openRewards:()=>game.rewards.open(),openStudio:()=>creatorStudio.open(),
@@ -1154,6 +1159,7 @@ export function initFlurry(game) {
     game.adventure.update(dt);
     game.journal?.update?.(dt);
     game.landmarks?.update?.(dt);
+    game.exploration?.update?.(dt);
     game.rewards?.update?.(dt);
     explorer.update(dt);
     const isPlaying=game.state==='play' && !game.paused;

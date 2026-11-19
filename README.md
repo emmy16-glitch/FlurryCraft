@@ -4,6 +4,18 @@ Browser-first, free-to-play voxel sandbox for Android, iPhone and desktop. Flurr
 
 Built on the MIT-licensed [Yet Another VoxelCraft](https://github.com/GoldwinXS/YetAnotherVoxelCraft) engine by GoldwinXS, with a local bundled Three.js r160. Original attribution is preserved in UPSTREAM_LICENSE.txt.
 
+## 🧭 World Exploration — caves, crypts, treasure and monster territories
+
+The expanded **World Map** now has fog-of-war discovery for actual
+natural cave openings, generated underground **Buried Crypts**, existing
+cabin/crypt treasure chests, and approximate territories verified from
+multiple live hostile mobs. Discovery filters include **All, Caves,
+Dungeons, Treasure, Threats and Landmarks**. Select a discovered marker
+to **Guide** to it or **Pin** it for later. Markers are saved per world
+and included in portable backups; old saves remain compatible. The
+scanner reads only loaded chunks and never generates or overwrites
+terrain. [Exploration guide](docs/WORLD_EXPLORATION.md).
+
 ## ✦ Winter Landmarks — explore living 3D places
 
 The snowy world now contains three types of **physical low-poly

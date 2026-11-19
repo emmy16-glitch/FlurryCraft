@@ -163,7 +163,8 @@ const controlOn = () => locked() || lockFail || touchMode;
 document.addEventListener('pointerlockerror', () => { lockFail = true; });
 document.addEventListener('pointerlockchange', () => {
   if (locked()) { everLocked = true; lockFail = false; }
-  if (!locked() && everLocked && game.state === 'play' && !game.tourActive && !ui.isOpen && !player.dead && performance.now() - (ui.lastToggle || 0) > 500) showPause(true);
+  const modalOpen=document.getElementById('flurryModal')?.style.display==='flex';
+  if (!locked() && everLocked && game.state === 'play' && !game.tourActive && !ui.isOpen && !modalOpen && !player.dead && performance.now() - (ui.lastToggle || 0) > 500) showPause(true);
 });
 function showPause(v) { game.paused = v; if (v) game.resetTouchControls?.(); $('pause').style.display = v ? 'flex' : 'none'; if (v) { $('pRender').value = settings.render; $('pRenderV').textContent = settings.render; } }
 document.addEventListener('mousemove', (e) => {
@@ -173,7 +174,7 @@ document.addEventListener('mousemove', (e) => {
   player.yaw -= e.movementX * s; player.pitch -= e.movementY * s; player.pitch = Math.max(-1.5533, Math.min(1.5533, player.pitch));
 });
 document.addEventListener('mousedown', (e) => {
-  const interactiveUI=game.tourActive||(e.target&&e.target.closest&&e.target.closest('#pause,#screen,#death,#touch,#flurryModal,#fcJudgeTour,#fcQuickMenu,#flurryActions,#fcAdventurePill,#fcDungeonEntry'));
+  const interactiveUI=game.tourActive||(e.target&&e.target.closest&&e.target.closest('#pause,#screen,#death,#touch,#flurryModal,#fcJudgeTour,#fcQuickMenu,#flurryActions,#fcAdventurePill,#fcDungeonEntry,#fcMiniMap,#fcNavBeacon,#fcInspectLandmark,#fcTalkLofi'));
   if (game.state === 'play' && !game.paused && !ui.isOpen && !player.dead && !locked() && !touchMode && !interactiveUI) { try { const p = canvas.requestPointerLock(); if (p && p.catch) p.catch(() => {}); } catch (err) {} }
   if (game.state !== 'play') return;
   if (game.paused || ui.isOpen || interactiveUI) return;
@@ -443,7 +444,8 @@ function saveGame() {
       player: { x: player.x, y: player.y, z: player.z, yaw: player.yaw, pitch: player.pitch, health: player.health, healthCap: player.maxHealth, hunger: player.hunger, sat: player.sat, inv: player.inv, sel: player.sel, spawn: player.spawn, flying: player.flying, armor: player.armor },
       adv: [...game.adv], adventure:game.adventure?.serialize(), rewards:game.rewards?.serialize(),
       journal:game.journal?.serialize(),
-      winterLandmarks:game.landmarks?.serialize(), played: basePlayed + game.time,
+      winterLandmarks:game.landmarks?.serialize(),
+      exploration:game.exploration?.serialize(), played: basePlayed + game.time,
     };
     saveWorldSafely(localStorage,currentId,data);
     const idx = loadIndex().filter((w) => w.id !== currentId); idx.push({ id: currentId, name: currentName, date: Date.now(), mode: settings.mode, played: Math.round(basePlayed + game.time) }); saveIndex(idx);
@@ -489,6 +491,7 @@ function startGame(cont, id) {
   // Load after assigning game.world to avoid another world's live scan state.
   game.journal?.load?.(save?.journal);
   game.landmarks?.load?.(save?.winterLandmarks);
+  game.exploration?.load?.(save?.exploration);
   // Record actual player block placements for the Lofi building quest.
   const originalSetBlock = world.setBlock.bind(world);
   world.setBlock = (x, y, z, id, record = true) => {

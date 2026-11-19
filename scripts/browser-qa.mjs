@@ -322,6 +322,122 @@ async function smoke(label,options){
       return {ok,sites:g.landmarks.sites.length};
     },landmarkStart);
     if(!reopen.ok)throw new Error('Landmark one-time use lost after a world reload');
+    // Feed the live discovery scanner temporary, explicit fixtures built from
+    // the actual chunk/mob data shapes. Restore every mutated field immediately.
+    const explorationCheck=await page.evaluate(()=>{
+      const g=window.game,p=g.player,w=g.world;
+      const chunk=w.getChunk(Math.floor(p.x/16),Math.floor(p.z/16));
+      if(!chunk)throw new Error('Player chunk not loaded for discovery test');
+      const savedPlayer={x:p.x,y:p.y,z:p.z};
+      const oldLoot=chunk.loot,oldMobs=g.mobs;
+      const index=8+(8<<4),floor=40;
+      const writes=[];
+      const set=(array,i,value)=>{writes.push([array,i,array[i]]);array[i]=value;};
+      const block=(x,y,z,id)=>set(chunk.blocks,x+(z<<4)+(y<<8),id);
+      const entrance={x:chunk.cx*16+9,z:chunk.cz*16+9};
+      try{
+        p.x=chunk.cx*16+8.5;p.z=chunk.cz*16+8.5;
+        chunk.loot=[
+          {x:entrance.x+1,y:18,z:entrance.z+1,kind:'crypt',
+            siteId:'crypt:'+chunk.cx+':'+chunk.cz,entrance,chestIndex:0,items:[]},
+          {x:entrance.x+5,y:18,z:entrance.z+5,kind:'crypt',
+            siteId:'crypt:'+chunk.cx+':'+chunk.cz,entrance,chestIndex:1,items:[]}
+        ];
+        set(chunk.hm,index,floor);
+        block(8,floor,8,1);
+        for(let y=floor+1;y<=floor+4;y++)block(8,y,8,0);
+        set(chunk.light,index+((floor+1)<<8),0xf0);
+        for(const [dx,dz] of [[1,0],[-1,0],[0,1],[0,-1]]){
+          const ni=(8+dx)+((8+dz)<<4);
+          set(chunk.hm,ni,50);block(8+dx,floor+1,8+dz,35);
+        }
+        g.mobs=[
+          {kind:'frostling',x:p.x+2,y:p.y,z:p.z+2,sp:{passive:false},dead:false,deadT:0},
+          {kind:'frostling',x:p.x+4,y:p.y,z:p.z+3,sp:{passive:false},dead:false,deadT:0}
+        ];
+        const added=g.exploration.scan();
+        const kinds=g.exploration.mapPlaces().map(v=>v.kind);
+        const ids=g.exploration.mapPlaces().map(v=>v.id);
+        if(!kinds.includes('cave')||!kinds.includes('crypt')||
+           kinds.filter(v=>v==='treasure').length<2||
+           !kinds.includes('territory'))
+          throw new Error('Missing discovery category '+JSON.stringify({kinds,ids,added}));
+        return {added:added.length,kinds,ids};
+      }finally{
+        for(let i=writes.length-1;i>=0;i--){const [array,index,value]=writes[i];array[index]=value;}
+        chunk.loot=oldLoot;g.mobs=oldMobs;Object.assign(p,savedPlayer);
+        g.saveRewards();
+      }
+    });
+    const explorationSaved=await page.evaluate(()=>{
+      const g=window.game,s=JSON.parse(localStorage.getItem('vc_world_'+g.worldId));
+      const before=g.exploration.mapPlaces().length;
+      g.exploration.load(s.exploration);
+      return {before,after:g.exploration.mapPlaces().length,
+        stats:g.exploration.stats()};
+    });
+    if(explorationSaved.after<4||explorationSaved.before!==explorationSaved.after)
+      throw new Error('Exploration discoveries did not persist '+JSON.stringify(explorationSaved));
+    await page.locator('#fcMiniMap').click({timeout:10000});
+    const mapOpenDiagnostic=await page.evaluate(()=>{
+      const modal=document.querySelector('#flurryModal'),panel=modal?.querySelector('.fPanel');
+      return {display:modal?.style.display,panelScrollTop:panel?.scrollTop,
+        panelText:panel?.innerText?.slice(0,220),
+        layouts:panel?.querySelectorAll('.fc-map-layout').length,
+        mapSide:!!panel?.querySelector('.fc-map-side')};
+    });
+    console.log(label+' exploration map open diagnostic '+JSON.stringify(mapOpenDiagnostic));
+    await page.getByText('Exploration & Places',{exact:true})
+      .waitFor({state:'visible',timeout:10000});
+    const filterHitTest=await page.evaluate(()=>{
+      const button=[...document.querySelectorAll('.fc-map-filterbar button')]
+        .find(v=>v.textContent.trim()==='Caves');
+      if(!button)return {missing:true};
+      const r=button.getBoundingClientRect(),x=r.left+r.width/2,y=r.top+r.height/2;
+      const hit=document.elementFromPoint(x,y);
+      return {rect:{x:r.x,y:r.y,width:r.width,height:r.height},
+        hit:hit?.tagName,hitId:hit?.id,hitClass:hit?.className,
+        buttonPointer:getComputedStyle(button).pointerEvents,
+        pointerLocked:!!document.pointerLockElement,gamePaused:window.game?.paused,
+        sideRect:(()=>{const v=button.closest('.fc-map-side')?.getBoundingClientRect();return v?{x:v.x,y:v.y,width:v.width,height:v.height}:null;})(),
+        panelRect:(()=>{const v=document.querySelector('#flurryModal .fPanel')?.getBoundingClientRect();return v?{x:v.x,y:v.y,width:v.width,height:v.height}:null;})()};
+    });
+    console.log(label+' map filter pointer diagnostic '+JSON.stringify(filterHitTest));
+    const tapMapFilter=async filter=>{
+      const point=await page.evaluate(name=>{
+        const button=[...document.querySelectorAll('.fc-map-filterbar button')]
+          .find(v=>v.textContent.trim()===name);
+        if(!button)throw new Error('Missing map filter '+name);
+        const r=button.getBoundingClientRect(),x=r.left+r.width/2,y=r.top+r.height/2;
+        if(document.elementFromPoint(x,y)!==button)
+          throw new Error('Map filter is covered at its actual touch point: '+name);
+        return {x,y};
+      },filter);
+      // Touch devices use a real touchscreen tap. Desktop uses the
+      // keyboard-accessible button activation because pointer-lock based
+      // browser automation can retain a captured mouse even after modal open.
+      if(options.isMobile)await page.touchscreen.tap(point.x,point.y);
+      else{
+        const control=page.locator('.fc-map-filterbar button').filter({hasText:filter});
+        await control.focus();
+        await page.keyboard.press('Enter');
+      }
+      await page.waitForFunction(name=>[...document.querySelectorAll('.fc-map-filterbar button')]
+        .some(v=>v.textContent.trim()===name&&v.getAttribute('aria-pressed')==='true'),filter,
+        {timeout:5000});
+    };
+    for(const [filter,labelText] of [
+      ['Caves','Natural Cave Mouth'],['Dungeons','Buried Crypt'],
+      ['Treasure','Crypt Treasure Chest'],['Threats','Frostling Territory']
+    ]){
+      await tapMapFilter(filter);
+      await page.getByText(labelText,{exact:true}).first().waitFor({state:'visible',timeout:10000});
+    }
+    await tapMapFilter('All');
+    if(options.isMobile)await page.locator('#flurryModal .fc-dialog-close').tap();
+    else{await page.locator('#flurryModal .fc-dialog-close').focus();
+      await page.keyboard.press('Enter');}
+    console.log(label+' cave, crypt, treasure and hostile-territory discovery filters and world-save persistence passed '+JSON.stringify(explorationSaved));
     console.log(label+' actual 3D landmark, one-time perk and persistent visit passed');
     // Browser rAF timing is a software-renderer diagnostic, not a real
     // physical phone FPS claim. Capture a distribution, not one FPS guess.

@@ -221,7 +221,10 @@ export class Gen {
         const items = [[B.COAL, 2, 6], [B.IRON_INGOT, 1, 4], [B.STICK, 2, 8], [B.APPLE, 1, 3], [B.PORK_COOKED, 1, 3], [B.STRING, 1, 3], [B.BONE, 1, 3], [B.TORCH, 3, 8], [B.ARROW, 4, 12], [B.GOLD_INGOT, 1, 3], [B.DIAMOND, 1, 1]];
         const chosen = []; const n = 4 + Math.floor(cr() * 3);
         for (let i = 0; i < n; i++) { const it = items[Math.min(items.length - 1, Math.floor(Math.pow(cr(), 1.6) * items.length))]; chosen.push({ id: it[0], n: it[1] + Math.floor(cr() * (it[2] - it[1] + 1)) }); }
-        chunk.loot.push({ x: ox + ax + W - 2, y: gy + 1, z: oz + az + D - 2, items: chosen });
+        chunk.loot.push({
+          x:ox+ax+W-2,y:gy+1,z:oz+az+D-2,items:chosen,
+          kind:'cabin',siteId:'cabin:'+chunk.cx+':'+chunk.cz
+        });
       }
     }
     // underground dungeon room with loot
@@ -243,7 +246,17 @@ export class Gen {
         for (let y = ay; y <= top; y++) bl[sx + (sz << 4) + (y << 8)] = B.WATER;
         for (let dz = -1; dz <= 1; dz++) for (let dx = -1; dx <= 1; dx++) if (dx || dz) { const px = sx + dx, pz = sz + dz; if (px >= 0 && px < 16 && pz >= 0 && pz < 16) { const th = heights[px + pz * 16]; for (let y = th; y <= Math.max(th, top) + 1 && y < CH; y++) if (y >= top) bl[px + (pz << 4) + (y << 8)] = B.STONE_BRICKS; } }
         bl[(sx + 1) + (sz << 4) + ((top + 2) << 8)] = B.TORCH; bl[(sx - 1) + (sz << 4) + ((top + 2) << 8)] = B.TORCH;
-        for (const [cx2, cz2] of [[1, 1], [5, 5]]) { const items = []; const n = 4 + Math.floor(cr() * 4); for (let i = 0; i < n; i++) { const it = rich[Math.floor(cr() * rich.length)]; items.push({ id: it[0], n: it[1] + Math.floor(cr() * (it[2] - it[1] + 1)) }); } chunk.loot.push({ x: ox + ax + cx2, y: ay, z: oz + az + cz2, items }); }
+        const cryptSiteId='crypt:'+chunk.cx+':'+chunk.cz;
+        const cryptEntrance={x:ox+sx,z:oz+sz};
+        for (const [chestIndex,[cx2,cz2]] of [[1,1],[5,5]].entries()) {
+          const items=[];const n=4+Math.floor(cr()*4);
+          for(let i=0;i<n;i++){
+            const it=rich[Math.floor(cr()*rich.length)];
+            items.push({id:it[0],n:it[1]+Math.floor(cr()*(it[2]-it[1]+1))});
+          }
+          chunk.loot.push({x:ox+ax+cx2,y:ay,z:oz+az+cz2,items,
+            kind:'crypt',siteId:cryptSiteId,entrance:cryptEntrance,chestIndex});
+        }
       }
     }
     // passive mob spawn points
