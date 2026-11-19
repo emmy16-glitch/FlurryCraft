@@ -369,7 +369,7 @@ function renderWorlds() {
   const latest=list[0],continueButton=$('bContinue');
   continueButton.disabled=!latest;
   $('fcContinueInfo').textContent=latest
-    ?'Continue your '+(latest.mode==='c'?'Creative':'Survival')+' game · '+(latest.name||'Saved World')
+    ?'Resume your latest '+(latest.mode==='c'?'Creative':'Survival')+' game'
     :'Start your first world with New Game.';
   $('fcSaveCount').textContent=list.length?'('+list.length+' saved)':'';
   if (!list.length) { el.innerHTML = '<div class="hint">No saved games yet.</div>'; return; }
