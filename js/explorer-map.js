@@ -69,7 +69,7 @@ export function initExplorerMap({game,panel,openDialog,closeDialog,notify,dialog
     '#flurryModal .fPanel.fc-map-panel{width:min(760px,96vw);height:calc(100dvh - 24px);max-height:calc(100dvh - 24px);overflow:hidden;display:flex;flex-direction:column}',
     '#flurryModal .fc-map-layout{flex:1;min-height:0;overflow:hidden}',
     '#flurryModal .fc-map-layout>section{min-height:0;overflow-y:auto;overscroll-behavior:contain}',
-    '#flurryModal .fc-map-layout .fc-map-side{max-height:none;overflow-y:auto}',
+    '#flurryModal .fc-map-layout .fc-map-side{position:relative;z-index:10;max-height:none;overflow-y:auto;pointer-events:auto}',
     '.fc-map-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(180px,.72fr);gap:14px;align-items:start}',
     '.fc-map-toolbar{display:flex;align-items:center;justify-content:space-between;gap:6px;margin:0 0 7px}',
     '#flurryModal .fc-map-toolbar button{min-width:36px;min-height:36px;margin:0;padding:7px 12px;background:#254f65;border:1px solid #4d7d92;border-radius:10px}',
