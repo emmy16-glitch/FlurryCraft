@@ -273,7 +273,7 @@ export function initExplorerMap({game,panel,openDialog,closeDialog,notify,dialog
       const b=directionTo(game.player.x,game.player.z,active.x,active.z,game.player.yaw);
       const turn=Math.abs(b.angle)>2.5?'Behind':b.angle<-.22?'Right':b.angle>.22?'Left':'Ahead';
       const arrow=turn==='Right'?'→':turn==='Left'?'←':turn==='Behind'?'↓':'↑';
-      miniLabel.textContent=arrow+' '+b.distance+' blocks';
+      miniLabel.textContent=active.name+' · '+arrow+' '+b.distance+'b';
       miniLabel.title='Guiding to '+active.name+' · '+turn;
       miniLabel.dataset.guiding='true';
       mini.setAttribute('aria-label','Open map. Guiding to '+active.name+', '+b.distance+' blocks away, '+turn);
