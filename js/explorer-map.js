@@ -322,7 +322,10 @@ export function initExplorerMap({game,panel,openDialog,closeDialog,notify,dialog
   function openMap(){
     if(game.state!=='play'||!game.world){notify(game,'Enter your world first.');return;}
     ensureWorld();mapOpened=true;
-    openDialog('World Map');panel.classList.add('fc-map-panel');
+    openDialog('World Map');
+    // The shared dialog panel may retain scroll from a long journal/adventure
+    // screen. Start the map at its title and first filter row every time.
+    panel.scrollTop=0;panel.classList.add('fc-map-panel');
     const layout=$('div',undefined,panel);layout.className='fc-map-layout';
     const left=$('section',undefined,layout);
     const toolbar=$('div',undefined,left);toolbar.className='fc-map-toolbar';
