@@ -155,7 +155,8 @@ async function smoke(label,options){
       g.mobs.push(mob);
       window.__mapSmokeMob=mob;
     });
-    await page.locator('#fcMiniMap').click({timeout:10000});
+    if(options.isMobile)await page.locator('#fcMiniMap').tap({timeout:10000});
+    else await page.keyboard.press('m');
     await page.getByText('KNOWN DUNGEONS',{exact:true})
       .waitFor({state:'visible',timeout:10000});
     const dungeonPin=page.locator('#flurryModal .fc-map-pin.is-dungeon')
@@ -178,7 +179,10 @@ async function smoke(label,options){
     // touch landscape exercises the real visible close button.
     if(options.isMobile)
       await page.locator('#flurryModal .fc-dialog-close').tap({timeout:10000});
-    else await page.keyboard.press('Escape');
+    else{
+      await page.locator('#flurryModal .fc-dialog-close').focus();
+      await page.keyboard.press('Enter');
+    }
     await page.evaluate(()=>{
       const g=window.game,m=window.__mapSmokeMob;
       if(m){const i=g.mobs.indexOf(m);if(i>=0)g.mobs.splice(i,1);m.remove();}
@@ -236,7 +240,8 @@ async function smoke(label,options){
       await page.locator('#flurryModal .fc-dialog-close').focus();
       await page.keyboard.press('Enter');
     }
-    await page.locator('#fcMiniMap').click({timeout:10000});
+    if(options.isMobile)await page.locator('#fcMiniMap').tap({timeout:10000});
+    else await page.keyboard.press('m');
     const diaryMap=await page.evaluate(()=>({
       stats:window.game.journal?.stats?.(),paused:window.game.paused,state:window.game.state,
       pins:window.game.journal?.mapPlaces?.()?.length,
