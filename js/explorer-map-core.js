@@ -5,7 +5,7 @@ export const MAP_STEPS=Object.freeze([2,4,7,12]);
 export const MAX_PLACES=8;
 const clamp=(n,a,b)=>Math.min(b,Math.max(a,n));
 const finiteSite=value=>value&&[value.x,value.y,value.z].every(Number.isFinite)&&
-  Math.abs(value.x)<1000000&&Math.abs(value.z)<1000000?
+  Math.abs(value.x)<1000000&&Math.abs(value.z)<1000000&&value.y>=2&&value.y<=96?
   {x:Math.floor(value.x),y:Math.floor(value.y),z:Math.floor(value.z)}:null;
 
 // The chapter map mirrors the same level + previous-chapter-clear gates used
