@@ -681,7 +681,9 @@ export function initExplorerMap({game,panel,openDialog,closeDialog,notify,dialog
           const group=$('div','WINTER LANDMARKS · VISITED',list);group.className='fc-map-group';
           for(const item of visitedSites)addRow(item.name,item,'✧','discovery');
         }
-        const visited=journalPins();
+        const knownSites=[...dungeonPins(),...sites,...visitedSites];
+        const visited=journalPins().filter(item=>!knownSites.some(site=>
+          site.id===item.id||Math.hypot(site.x-item.x,site.z-item.z)<=8));
         if(visited.length){
           const group=$('div','FIELD JOURNAL · VISITED PLACES',list);group.className='fc-map-group';
           for(const item of visited)addRow(item.name,item,'◇','discovery');
