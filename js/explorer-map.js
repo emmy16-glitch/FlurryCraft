@@ -12,6 +12,8 @@ export function initExplorerMap({game,panel,openDialog,closeDialog,notify,dialog
   let mapRefreshTick=0,refreshOpenMap=null;
   const dungeonPins=()=>discoveredDungeons(game.adventure?.serialize?.());
   const journalPins=()=>game.journal?.mapPlaces?.()||[];
+  const nearbyLandmarks=()=>game.landmarks?.nearby?.()||[];
+  const visitedLandmarks=()=>game.landmarks?.visited?.()||[];
   const monsterPins=()=>nearbyMonsterMarkers(game.mobs,game.player);
   const MINI_SIZE=120, MINI_SAMPLES=48, MINI_STEP=2, MINI_RADIUS=MINI_SAMPLES*4;
   let miniTerrain=null,miniCenter=null,miniTimer=0,miniJob=0,miniDrawing=null;
@@ -101,7 +103,7 @@ export function initExplorerMap({game,panel,openDialog,closeDialog,notify,dialog
     '.fc-map-legend .fc-dungeon-dot{color:#ffd48a}.fc-map-legend .fc-monster-dot{color:#ff989d}.fc-map-legend .fc-pin-dot{color:#c5f6e5}',
     '.fc-map-group{font:850 10px system-ui;letter-spacing:.11em;color:#a5ddeb;margin:12px 0 6px}',
     '#flurryModal .fc-map-pin button.fc-map-pin-save{background:transparent;color:#bfeff8;border:1px solid #47768e}',
-    '.fc-map-pin.is-monster{border-color:#a36770}.fc-map-pin.is-dungeon{border-color:#a98d5a}.fc-map-pin.is-discovery{border-color:#60a8c1}',
+    '.fc-map-pin.is-monster{border-color:#a36770}.fc-map-pin.is-dungeon{border-color:#a98d5a}.fc-map-pin.is-discovery{border-color:#60a8c1}.fc-map-pin.is-landmark{border-color:#65b6c8}',
     '#fcNavBeacon{position:fixed;top:65px;right:12px;z-index:24;display:flex;align-items:center;gap:7px;width:max-content;max-width:min(250px,48vw);padding:7px 8px;border:1px solid #4e96b0;border-radius:13px;color:#e9fbff;background:#0b3044e8;box-shadow:0 5px 20px #001a2a80;backdrop-filter:blur(9px);font:700 11px system-ui;pointer-events:auto}',
     '#fcNavBeacon[hidden]{display:none!important}',
     '#fcNavBeacon .fc-nav-arrow{font:900 27px/1 system-ui;color:#8ae7ef;display:block;transform-origin:50% 50%;width:26px;text-align:center}',
@@ -196,6 +198,13 @@ export function initExplorerMap({game,panel,openDialog,closeDialog,notify,dialog
         miniCtx.beginPath();miniCtx.arc(p.x,p.y,2.4,0,Math.PI*2);miniCtx.fill();
       }
     }
+    // Deterministic visible winter sites (not discovered/claimed until inspected).
+    for(const marker of nearbyLandmarks()){
+      const p=coord(marker.x,marker.z);
+      if(p.x>4&&p.x<side-4&&p.y>4&&p.y<side-4){
+        miniCtx.fillStyle='#8ceeff';miniCtx.fillRect(p.x-2.5,p.y-2.5,5,5);
+      }
+    }
     // Only currently loaded nearby monsters, capped at twelve per draw.
     for(const marker of monsterPins()){
       const p=coord(marker.x,marker.z);
@@ -273,7 +282,7 @@ export function initExplorerMap({game,panel,openDialog,closeDialog,notify,dialog
       ctx.moveTo(0,-9);ctx.lineTo(5,6);ctx.lineTo(0,3);ctx.lineTo(-5,6);ctx.closePath();ctx.fill();
     }else{
       ctx.fillStyle='#0d3247';ctx.beginPath();ctx.arc(p.x,p.y,8.6,0,Math.PI*2);ctx.fill();
-      ctx.fillStyle=type==='discovery'?'#9bf5f5':type==='monster'?'#f98890':type==='dungeon'?'#ffdf8d':type==='selected'?'#ffd68b':type==='home'?'#9ef8ce':type==='spawn'?'#c0deff':'#ffe4ab';
+      ctx.fillStyle=type==='landmark'?'#74ecff':type==='discovery'?'#9bf5f5':type==='monster'?'#f98890':type==='dungeon'?'#ffdf8d':type==='selected'?'#ffd68b':type==='home'?'#9ef8ce':type==='spawn'?'#c0deff':'#ffe4ab';
       ctx.beginPath();ctx.arc(p.x,p.y,5.5,0,Math.PI*2);ctx.fill();
       ctx.fillStyle='#0c3348';ctx.beginPath();ctx.arc(p.x,p.y,2,0,Math.PI*2);ctx.fill();
     }
@@ -312,7 +321,7 @@ export function initExplorerMap({game,panel,openDialog,closeDialog,notify,dialog
     canvas.setAttribute('role','img');canvas.setAttribute('aria-label','Interactive winter terrain map. Tap to mark a place.');
     const wait=$('div','Loading map',frame);wait.className='fc-map-wait';
     const legend=$('p',undefined,left);legend.className='fc-map-legend';
-    legend.textContent='■ Dungeons    ● Monsters    ◇ Discoveries    ◆ Saved pins';
+    legend.textContent='■ Dungeons    ✦ Landmarks    ● Monsters    ◇ Discoveries    ◆ Pins';
     const caption=$('div',undefined,left);caption.className='fc-map-caption';
     const coordinates=$('span','',caption);const scale=$('span','',caption);
     const side=$('section',undefined,layout);side.className='fc-map-side';
@@ -361,6 +370,10 @@ export function initExplorerMap({game,panel,openDialog,closeDialog,notify,dialog
         drawMarker(ctx,marker.x,marker.z,center,n,size,marker.name,'dungeon');
       for(const marker of journalPins())
         drawMarker(ctx,marker.x,marker.z,center,n,size,'','discovery');
+      for(const marker of visitedLandmarks())
+        drawMarker(ctx,marker.x,marker.z,center,n,size,'','discovery');
+      for(const marker of nearbyLandmarks())
+        drawMarker(ctx,marker.x,marker.z,center,n,size,marker.name,'landmark');
       for(const marker of monsterPins())
         drawMarker(ctx,marker.x,marker.z,center,n,size,'','monster');
       const me=pos();
@@ -415,14 +428,14 @@ export function initExplorerMap({game,panel,openDialog,closeDialog,notify,dialog
       list.replaceChildren();
       const addRow=(name,where,icon,kind)=>{
         const row=$('div',undefined,list);
-        row.className='fc-map-pin'+(kind==='monster'?' is-monster':kind==='dungeon'?' is-dungeon':kind==='discovery'?' is-discovery':'');
+        row.className='fc-map-pin'+(kind==='monster'?' is-monster':kind==='dungeon'?' is-dungeon':kind==='discovery'?' is-discovery':kind==='landmark'?' is-landmark':'');
         const symbol=$('span',icon,row);symbol.className='fc-map-pin-icon';
         const main=$('div',undefined,row);main.className='fc-map-pin-main';
         $('strong',name,main);
         $('small',(where.detail?where.detail+' · ':'')+'X '+where.x+' · Z '+where.z,main);
         const go=button(row,'Guide',()=>startNavigation(where));
         go.setAttribute('aria-label','Navigate to '+name);
-        if(kind==='monster'||kind==='dungeon'){
+        if(kind==='monster'||kind==='dungeon'||kind==='landmark'){
           const pin=button(row,'Pin',()=>{
             if(places.marks.length>=MAX_PLACES){
               notify(game,'Maximum of '+MAX_PLACES+' saved pins');return;
@@ -462,6 +475,18 @@ export function initExplorerMap({game,panel,openDialog,closeDialog,notify,dialog
         const sp=game.player.spawn;
         addRow('Spawn',{id:'spawn',name:'Spawn',x:Math.round(sp.x),z:Math.round(sp.z)},'◇','spawn');
       }
+      const sites=nearbyLandmarks();
+      if(sites.length){
+        const landmarkHeading=$('div','WINTER LANDMARKS · NEARBY',list);
+        landmarkHeading.className='fc-map-group';
+        for(const item of sites)addRow(item.name,item,'✦','landmark');
+      }
+      const visitedSites=visitedLandmarks().filter(site=>!sites.some(s=>s.id===site.id));
+      if(visitedSites.length){
+        const history=$('div','WINTER LANDMARKS · VISITED',list);
+        history.className='fc-map-group';
+        for(const site of visitedSites)addRow(site.name,site,'✧','discovery');
+      }
       const visited=journalPins();
       if(visited.length){
         const journalHeading=$('div','FIELD JOURNAL · VISITED PLACES',list);
@@ -487,7 +512,7 @@ export function initExplorerMap({game,panel,openDialog,closeDialog,notify,dialog
       const px=(e.clientX-rect.left)*canvas.width/rect.width;
       const py=(e.clientY-rect.top)*canvas.height/rect.height;
       if(px<0||py<0||px>canvas.width||py>canvas.height)return;
-      const hit=mapMarkerAt([...monsterPins(),...dungeonPins(),...places.marks,...journalPins()],
+      const hit=mapMarkerAt([...monsterPins(),...dungeonPins(),...nearbyLandmarks(),...visitedLandmarks(),...places.marks,...journalPins()],
         px,py,center,step(),canvas.width);
       selected=hit?{x:hit.x,z:hit.z}:mapToWorld(px,py,center.x,center.z,step(),canvas.width);
       // Tapping a known marker navigates to its current/last-seen coordinates.

@@ -4,6 +4,22 @@ Browser-first, free-to-play voxel sandbox for Android, iPhone and desktop. Flurr
 
 Built on the MIT-licensed [Yet Another VoxelCraft](https://github.com/GoldwinXS/YetAnotherVoxelCraft) engine by GoldwinXS, with a local bundled Three.js r160. Original attribution is preserved in UPSTREAM_LICENSE.txt.
 
+## ✦ Winter Landmarks — explore living 3D places
+
+The snowy world now contains three types of **physical low-poly
+landmarks**: a warm **Wayfarer Refuge**, glowing **Aurora Waystone**,
+and mysterious **Frost Cairn**. Their positions are deterministic
+from actual terrain and the world's seed; nothing overwrites
+player-built blocks. Approach one and press **F**, or tap **Explore**
+on mobile, to hear its story and record it in the Field Journal.
+
+Each location offers a single optional **one-time Survival benefit**:
+limited healing, guard stamina recovery or a Frost Shard. The map
+can guide you to nearby or previously visited sites. Discoveries
+and used benefits persist with the existing per-world saves and
+backups. There are **no cryptocurrency payouts or external token
+claims**. [See guide and test checklist](docs/WINTER_LANDMARKS.md).
+
 ## 📖 Explorer’s Field Journal — real places worth discovering
 
 Discover **Snowy Tundra, Snowy Peaks, Frozen Sea and Ice Shore** by
