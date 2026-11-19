@@ -33,10 +33,10 @@ export function initRewardsHub({game,panel,openDialog,notify,onOpenMarketplace,
     '#flurryModal .fc-expedition-meter{height:7px;overflow:hidden;background:#24465b;border-radius:8px;margin-top:10px}',
     '#flurryModal .fc-expedition-fill{height:100%;background:#78e6ed;transition:width .2s;width:0}',
     '#fcExpeditionTracker{display:none;position:fixed;z-index:27;right:10px;top:74px;width:min(210px,29vw);padding:8px 10px;border:1px solid #77bed1;border-radius:10px;background:#0b3046ee;color:#dbf7ff;font:700 10px/1.4 system-ui;text-align:left;box-shadow:0 4px 14px #00182777;cursor:pointer;touch-action:manipulation}',
-    '#fcExpeditionTracker strong{display:block;color:#a8eff8;font:850 10px/1.35 system-ui}
+    '#fcExpeditionTracker strong{display:block;color:#a8eff8;font:850 10px/1.35 system-ui}',
     '#fcExpeditionTracker small{display:block;color:#c6e3ec;font:650 9px/1.35 system-ui;margin-top:3px}',
     '#fcExpeditionTracker .fc-expedition-hud-meter{height:4px;margin-top:6px;background:#244d61;border-radius:5px;overflow:hidden}',
-    '#fcExpeditionTracker .fc-expedition-hud-meter i{display:block;height:100%;background:#8be5f2;width:0}'',
+    '#fcExpeditionTracker .fc-expedition-hud-meter i{display:block;height:100%;background:#8be5f2;width:0}',
     '#fcExpeditionTracker.ready{border-color:#b3f5d0;color:#b8ffe5}',
     '@media(max-height:520px){#fcExpeditionTracker{right:5px;top:6px;width:min(178px,27vw);font-size:9px;padding:5px 7px}#fcExpeditionTracker small{font-size:8px}#fcExpeditionTracker .fc-expedition-hud-meter{margin-top:4px}}',
   ].join('\n');
