@@ -428,6 +428,10 @@ export function initFlurry(game) {
   const button = (title, fn, muted=false) => {const el=make('button',title); if(muted)el.className='muted'; el.addEventListener('click',fn); return el;};
   const open = title => {
     setMoreMenu(false);
+    // Release desktop mouse capture before opening interactive map/dialog
+    // controls. Otherwise pointer lock routes clicks to the backdrop instead
+    // of side-panel Pin/Guide buttons, even when those buttons are visible.
+    game.releasePointer?.();
     // Cancel captured gestures and their timers, not only boolean input flags.
     game.resetTouchControls?.();
     if(game.touch){
