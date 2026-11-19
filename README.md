@@ -16,6 +16,18 @@ and included in portable backups; old saves remain compatible. The
 scanner reads only loaded chunks and never generates or overwrites
 terrain. [Exploration guide](docs/WORLD_EXPLORATION.md).
 
+## 🧭 Recording-driven map and HUD polish
+
+The World Map now keeps all six discovery filters visible together,
+filters both the list and terrain overlay, and separates the scrollable
+destination list from the filter controls. It shows the real four-chapter
+dungeon unlock path and the active accepted Expedition. Guide navigation
+shows the destination, distance and relative compass direction. The
+mobile HUD has tighter safe-area spacing and a compact mission progress
+card. The Sui marketplace clearly reports **NOT LIVE** until a verified
+Testnet package exists; no mint, listing or purchase is offered in the
+unpublished state. [Implementation notes](docs/RECORDING_UI_POLISH.md).
+
 ## ✦ Winter Landmarks — explore living 3D places
 
 The snowy world now contains three types of **physical low-poly
