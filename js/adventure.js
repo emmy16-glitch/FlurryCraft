@@ -67,7 +67,7 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
     '#fcSiegeHUD .fc-siege-row{display:flex;gap:5px;margin-top:6px}',
     '#fcSiegeHUD button{min-height:32px;padding:5px 8px;border:1px solid #7fbcd0;background:#23526a;color:#eaf9ff;border-radius:8px;font:750 10px system-ui;touch-action:manipulation}',
     '#fcSiegeHUD button:disabled{opacity:.52}',
-    '@media(max-height:520px){#fcSiegeHUD{top:171px;left:7px;max-width:35vw;padding:6px 8px}#fcSiegeHUD button{min-height:27px;padding:4px}}',
+    '@media(max-height:520px){#fcSiegeHUD{top:215px;left:7px;max-width:35vw;padding:6px 8px}#fcSiegeHUD button{min-height:27px;padding:4px}}',
     '#fcDungeonEntry{position:fixed;z-index:27;top:179px;left:12px;display:none;min-height:43px;max-width:min(200px,46vw);padding:9px 13px;background:#88dce9;border:1px solid #bdf8ff;border-radius:12px;color:#092f42;font:800 12px system-ui;box-shadow:0 5px 20px #001b2b86;cursor:pointer;touch-action:manipulation}',
     '#fcDungeonEntry:focus-visible{outline:2px solid #e8ffff;outline-offset:2px}',
     '#fcDungeonStatus{position:fixed;z-index:25;top:12px;left:50%;transform:translateX(-50%);display:none;max-width:45vw;min-width:140px;padding:7px 12px;background:#0b3348df;border:1px solid #5087a0;border-radius:12px;color:#e8fbff;text-align:center;font:750 11px system-ui;pointer-events:none;backdrop-filter:blur(7px)}',
@@ -94,7 +94,7 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
     '#flurryModal .fc-adventure-card button{width:100%;min-height:42px;border-radius:10px;margin:8px 0 1px;background:#8de8f3;color:#09364c;font:800 12px system-ui}',
     '#flurryModal .fc-adventure-card button:disabled{opacity:.5}',
     '#flurryModal .fc-adventure-card button.muted{background:#225773;color:#e5f7ff}',
-    '@media(max-height:520px){#fcAdventurePill{top:46px;left:7px;padding:5px 8px;min-height:27px}#fcAdventurePill .fc-xp-meter{width:36px}.fc-adventure-card{padding:9px!important}#fcEnemyHealth{top:48px;padding:6px 9px;width:min(190px,40vw)}#fcSurvivalVitals{top:82px;left:7px;width:min(158px,30vw);max-width:33vw;padding:6px 8px}#fcSurvivalVitals .fc-heal{padding:4px 6px}#fcLevelNotice{top:52px;padding:8px 14px}#fcLevelNotice span{font-size:18px}#fcDungeonEntry{top:155px;left:7px;max-width:39vw;min-height:36px;padding:6px 9px;font-size:10px}#fcDungeonStatus{top:7px;padding:5px 9px;max-width:42vw}}'
+    '@media(max-height:520px){#fcAdventurePill{top:46px;left:7px;padding:5px 8px;min-height:27px}#fcAdventurePill .fc-xp-meter{width:36px}.fc-adventure-card{padding:9px!important}#fcEnemyHealth{top:48px;padding:6px 9px;width:min(190px,40vw)}#fcSurvivalVitals{top:82px;left:7px;width:min(158px,30vw);max-width:33vw;padding:6px 8px}#fcSurvivalVitals .fc-heal{padding:4px 6px}#fcLevelNotice{top:52px;padding:8px 14px}#fcLevelNotice span{font-size:18px}#fcDungeonEntry{top:215px;left:7px;max-width:39vw;min-height:36px;padding:6px 9px;font-size:10px}#fcDungeonStatus{top:7px;padding:5px 9px;max-width:42vw}}'
   ].join('\n');
   const pill=make('button',undefined,document.body);pill.id='fcAdventurePill';
   pill.type='button';pill.setAttribute('aria-label','Open your level and adventure progress');
