@@ -83,7 +83,7 @@ export function initExplorerMap({game,panel,openDialog,closeDialog,notify,dialog
     '#flurryModal .fPanel.fc-map-panel{width:min(760px,96vw);height:calc(100dvh - 24px);max-height:calc(100dvh - 24px);overflow:hidden;display:flex;flex-direction:column}',
     '#flurryModal .fc-map-layout{flex:1;min-height:0;overflow:hidden}',
     '#flurryModal .fc-map-layout>section{min-height:0;overflow-y:auto;overscroll-behavior:contain}',
-    '#flurryModal .fc-map-layout .fc-map-side{position:relative;z-index:10;max-height:none;overflow-y:auto;pointer-events:auto}',
+    '#flurryModal .fc-map-layout .fc-map-side{position:relative;z-index:10;max-height:none;overflow:hidden;pointer-events:auto;display:flex;flex-direction:column}',
     '.fc-map-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(180px,.72fr);gap:14px;align-items:start}',
     '.fc-map-toolbar{display:flex;align-items:center;justify-content:space-between;gap:6px;margin:0 0 7px}',
     '#flurryModal .fc-map-toolbar button{min-width:36px;min-height:36px;margin:0;padding:7px 12px;background:#254f65;border:1px solid #4d7d92;border-radius:10px}',
@@ -380,14 +380,14 @@ export function initExplorerMap({game,panel,openDialog,closeDialog,notify,dialog
     const caption=$('div',undefined,left);caption.className='fc-map-caption';
     const coordinates=$('span','',caption);const scale=$('span','',caption);
     const side=$('section',undefined,layout);side.className='fc-map-side';
+    const heading=$('h3','Exploration & Places',side);
+    const summary=$('p','',side);summary.className='fc-map-discovery-summary';
+    const filterBar=$('div',undefined,side);filterBar.className='fc-map-filterbar';
     const homeAction=button(side,'⌂ Set Home Here',()=>{
       const me=pos();
       if(!persist({...places,home:{id:'home',name:'Home',...me}}))return;
       notify(game,'Home saved');drawOverlay();refreshList();
     },'fc-map-home');
-    const heading=$('h3','Exploration & Places',side);
-    const summary=$('p','',side);summary.className='fc-map-discovery-summary';
-    const filterBar=$('div',undefined,side);filterBar.className='fc-map-filterbar';
     const filterOptions=[
       ['all','🧭 All'],['cave','◒ Caves'],['dungeon','⌂ Dungeons'],
       ['treasure','✧ Treasure'],['threat','⚠ Threats'],['landmark','✦ Landmarks']
@@ -583,6 +583,34 @@ export function initExplorerMap({game,panel,openDialog,closeDialog,notify,dialog
       const stats=game.exploration?.stats?.()||{caves:0,crypts:0,treasures:0,territories:0};
       summary.textContent='Discovered · '+stats.caves+' caves · '+stats.crypts+
         ' hidden dungeons · '+stats.treasures+' caches · '+stats.territories+' territories';
+      const expedition=expeditionSnapshot()?.mission;
+      if(mapFilter==='all'&&expedition?.active){
+        const card=$('article',undefined,list);card.className='fc-map-objective';
+        $('strong','ACTIVE EXPEDITION · '+expedition.title,card);
+        $('p',expedition.detail,card);
+        $('small','Progress '+expedition.progress+' / '+expedition.target+
+          (expedition.ready?' · Reward ready':' · Tracked after acceptance'),card);
+        const meter=$('div',undefined,card);meter.className='fc-map-objective-meter';
+        const fill=$('i',undefined,meter);
+        fill.style.width=Math.min(100,expedition.progress/expedition.target*100)+'%';
+        const actions=$('div',undefined,card);actions.className='fc-map-objective-actions';
+        if(expedition.ready){
+          button(actions,'Claim reward',()=>game.rewards?.open?.());
+        }else if(expedition.kind==='clears'){
+          button(actions,'Guide to Frost Ruins',()=>{
+            if(!game.rewards?.guideMission?.())notify(game,'Frost Ruins entrance is not available yet.');
+          });
+        }else if(expedition.kind==='kills'){
+          button(actions,'Show nearby threats',()=>{
+            mapFilter='threat';updateFilterButtons();refreshList();drawOverlay();
+          });
+        }else{
+          button(actions,'Center on me',()=>{
+            center=pos();renderTerrain();
+          });
+        }
+        button(actions,'Open Board',()=>game.rewards?.open?.(),'muted');
+      }
       const addStatusRow=(name,detail,icon,action,actionLabel='Open')=>{
         const row=$('div',undefined,list);row.className='fc-map-pin fc-map-chapter'+(action?'':' is-locked');
         const symbol=$('span',icon,row);symbol.className='fc-map-pin-icon';
