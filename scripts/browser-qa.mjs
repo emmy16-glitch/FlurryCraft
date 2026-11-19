@@ -17,7 +17,7 @@ async function pageReady(page,label){
   page.on('pageerror',error=>errors.push(label+': '+String(error?.message||error)));
   const response=await page.goto(host,{waitUntil:'domcontentloaded',timeout:20000});
   if(!response?.ok())throw new Error(label+': web site returned '+response?.status());
-  await page.locator('#bJudgeDemo').waitFor({state:'visible',timeout:10000});
+  await page.locator('#bNew').waitFor({state:'visible',timeout:10000});
   if(await page.locator('#fcJudgeTour').count()!==1){
     // The game should load its JS module even before starting a world.
     await page.waitForFunction(()=>!!window.game?.flurry,{timeout:25000});
@@ -33,6 +33,18 @@ async function smoke(label,options){
   try{
     await pageReady(page,label);
     await page.screenshot({path:out+'/'+label+'-menu.png'});
+    // First screen is intentionally simple; saves and demo are secondary.
+    if(!(await page.locator('#bContinue').isDisabled())||
+      !(await page.locator('#fcLoadPanel').isHidden())||
+      !(await page.locator('#fcNewChoices').isHidden()))
+      throw new Error('Clean start menu did not hide advanced save controls');
+    await page.locator('#bNew').click({timeout:10000});
+    await page.locator('#fcNewSurvival').waitFor({state:'visible',timeout:10000});
+    await page.locator('#fcNewCreative').waitFor({state:'visible',timeout:10000});
+    await page.locator('#fcNewBack').click({timeout:10000});
+    await page.locator('#bLoad').click({timeout:10000});
+    await page.locator('#fcLoadPanel').waitFor({state:'visible',timeout:10000});
+    await page.locator('#bLoad').click({timeout:10000});
     // Exercise real visible graphics settings before entering the world.
     await page.locator('#fcAdvanced > summary').click({timeout:10000});
     await page.locator('#mGraphics').selectOption('performance',{timeout:10000});
@@ -41,6 +53,7 @@ async function smoke(label,options){
     await page.locator('#mGraphics').selectOption('auto',{timeout:10000});
     graphics=await page.evaluate(()=>window.game?.graphics?.mode);
     if(graphics!=='auto')throw new Error('Auto graphics preset did not apply');
+    await page.locator('#fcMore > summary').click({timeout:10000});
     await page.locator('#bJudgeDemo').click({timeout:10000});
     await page.waitForFunction(()=>window.game?.state==='play',{timeout:120000});
     // Gameplay must truly have a rendered canvas and a visible world.
@@ -48,6 +61,9 @@ async function smoke(label,options){
       && document.querySelector('#gl')?.height>100,{timeout:10000});
     await page.locator('#fcJudgeTour').waitFor({state:'visible',timeout:12000});
     await page.screenshot({path:out+'/'+label+'-play.png'});
+    const daytime=await page.evaluate(()=>window.game.env.tod);
+    if(Math.abs(daytime-.25)>1e-6)
+      throw new Error('Fresh Survival demo is not set to permanent daytime: '+daytime);
     const tour=page.locator('#fcJudgeTour');
     if(!(await tour.innerText()).includes('Meet Lofi'))throw new Error('Tour first step missing');
     await page.locator('.fc-tour-next').click({timeout:10000});
@@ -130,6 +146,35 @@ async function smoke(label,options){
     await page.waitForFunction(()=>document.querySelector('#fcMiniMap .fc-mini-label')?.
       textContent.includes('Lofi the Yeti'),{timeout:10000});
     console.log(label+' Lofi NPC dialogue, quest safety and minimap navigation passed');
+    // Map must show real dungeon landmarks and a currently loaded hostile mob.
+    // The map test creature is not defeated and therefore grants zero XP/loot.
+    await page.evaluate(()=>{
+      const g=window.game,p=g.player;
+      const mob=new g.Mob(g,'frostling',p.x+4,p.y,p.z+5,{level:1});
+      g.mobs.push(mob);
+      window.__mapSmokeMob=mob;
+    });
+    await page.locator('#fcMiniMap').click({timeout:10000});
+    await page.getByText('KNOWN DUNGEONS',{exact:true})
+      .waitFor({state:'visible',timeout:10000});
+    await page.locator('#flurryModal .fc-map-pin.is-dungeon').first()
+      .locator('button.fc-map-pin-save').click({timeout:10000});
+    await page.getByText('YOUR SAVED PINS',{exact:true})
+      .waitFor({state:'visible',timeout:10000});
+    await page.locator('#flurryModal .fc-map-pin.is-monster').first()
+      .waitFor({state:'visible',timeout:10000});
+    await page.locator('#flurryModal .fc-map-pin.is-monster').first()
+      .locator('button.fc-map-pin-save').click({timeout:10000});
+    const mapPins=await page.locator('#flurryModal .fc-map-pin')
+      .filter({hasText:'sighting'}).count();
+    if(mapPins<1)throw new Error('Could not save live monster sighting as map pin');
+    await page.locator('#flurryModal .fc-dialog-close').click({timeout:10000});
+    await page.evaluate(()=>{
+      const g=window.game,m=window.__mapSmokeMob;
+      if(m){const i=g.mobs.indexOf(m);if(i>=0)g.mobs.splice(i,1);m.remove();}
+      delete window.__mapSmokeMob;
+    });
+    console.log(label+' true dungeon and live-monster map pins passed');
     // Actual player movement: keyboard on desktop and captured touch joystick
     // in the landscape emulation. No coordinate teleporting or fake XP.
     const position=()=>page.evaluate(()=>({x:window.game.player.x,z:window.game.player.z}));
@@ -266,16 +311,19 @@ async function smoke(label,options){
     }
 
     await page.screenshot({path:out+'/'+label+'-moving.png'});
-    // Lighting showcase only: time-of-day and camera angle for a REAL game
-    // screenshot, no fabricated gameplay, minted items, or awards.
+    // Simulate a legacy dark saved time. The renderer must restore daytime,
+    // regardless of the old world clock or Creative/Survival selection.
     if(!options.isMobile){
       await page.evaluate(()=>{
         const g=window.game;
-        g.env.tod=.83;g.weather.setMode('calm');
+        g.env.tod=.83;
         g.player.pitch=.37;g.player.yaw=Math.PI;
       });
       await page.waitForTimeout(700);
-      await page.screenshot({path:out+'/'+label+'-aurora-lighting.png'});
+      const locked=await page.evaluate(()=>window.game.env.tod);
+      if(Math.abs(locked-.25)>1e-6)
+        throw new Error('World fell back to night after an old save: '+locked);
+      await page.screenshot({path:out+'/'+label+'-daylight.png'});
     }
     const result=await page.evaluate(()=>({
       state:window.game?.state,mode:window.game?.player?.creative?'creative':'survival',
