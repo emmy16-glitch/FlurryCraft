@@ -157,7 +157,7 @@ async function smoke(label,options){
     });
     if(options.isMobile)await page.locator('#fcMiniMap').tap({timeout:10000});
     else await page.keyboard.press('m');
-    await page.getByText('KNOWN DUNGEONS',{exact:true})
+    await page.getByText('DUNGEON CHAPTER PROGRESSION',{exact:true})
       .waitFor({state:'visible',timeout:10000});
     const dungeonPin=page.locator('#flurryModal .fc-map-pin.is-dungeon')
       .first().locator('button.fc-map-pin-save');
@@ -389,9 +389,28 @@ async function smoke(label,options){
     console.log(label+' exploration map open diagnostic '+JSON.stringify(mapOpenDiagnostic));
     await page.getByText('Exploration & Places',{exact:true})
       .waitFor({state:'visible',timeout:10000});
+    await page.getByText('DUNGEON CHAPTER PROGRESSION',{exact:true})
+      .waitFor({state:'visible',timeout:10000});
+    await page.getByText('ACTIVE EXPEDITION · Frost Patrol',{exact:true})
+      .waitFor({state:'visible',timeout:10000});
+    const mapLayout=await page.evaluate(()=>{
+      const panel=document.querySelector('#flurryModal .fPanel');
+      const side=panel?.querySelector('.fc-map-side');
+      const bar=side?.querySelector('.fc-map-filterbar');
+      const r=bar?.getBoundingClientRect();
+      return {filterCount:bar?.querySelectorAll('button[data-filter]').length||0,
+        filterTop:r?.top,filterBottom:r?.bottom,sideTop:side?.getBoundingClientRect().top,
+        panelBottom:panel?.getBoundingClientRect().bottom,
+        allVisible:[...(bar?.querySelectorAll('button')||[])].every(b=>{
+          const q=b.getBoundingClientRect();return q.width>0&&q.height>0&&q.top>=0&&q.bottom<=innerHeight;
+        })};
+    });
+    if(mapLayout.filterCount!==6||!mapLayout.allVisible||
+       mapLayout.filterBottom>mapLayout.panelBottom)
+      throw new Error('Discovery filters are not immediately visible: '+JSON.stringify(mapLayout));
     const filterHitTest=await page.evaluate(()=>{
       const button=[...document.querySelectorAll('.fc-map-filterbar button')]
-        .find(v=>v.textContent.trim()==='Caves');
+        .find(v=>v.dataset.filter==='cave');
       if(!button)return {missing:true};
       const r=button.getBoundingClientRect(),x=r.left+r.width/2,y=r.top+r.height/2;
       const hit=document.elementFromPoint(x,y);
@@ -406,10 +425,10 @@ async function smoke(label,options){
     const tapMapFilter=async filter=>{
       const point=await page.evaluate(name=>{
         const button=[...document.querySelectorAll('.fc-map-filterbar button')]
-          .find(v=>v.textContent.trim()===name);
+          .find(v=>v.dataset.filter===name.toLowerCase());
         if(!button)throw new Error('Missing map filter '+name);
         const r=button.getBoundingClientRect(),x=r.left+r.width/2,y=r.top+r.height/2;
-        if(document.elementFromPoint(x,y)!==button)
+        if(document.elementFromPoint(x,y)?.closest('button')!==button)
           throw new Error('Map filter is covered at its actual touch point: '+name);
         return {x,y};
       },filter);
@@ -418,12 +437,12 @@ async function smoke(label,options){
       // browser automation can retain a captured mouse even after modal open.
       if(options.isMobile)await page.touchscreen.tap(point.x,point.y);
       else{
-        const control=page.locator('.fc-map-filterbar button').filter({hasText:filter});
+        const control=page.locator('.fc-map-filterbar button[data-filter="'+filter.toLowerCase()+'"]');
         await control.focus();
         await page.keyboard.press('Enter');
       }
       await page.waitForFunction(name=>[...document.querySelectorAll('.fc-map-filterbar button')]
-        .some(v=>v.textContent.trim()===name&&v.getAttribute('aria-pressed')==='true'),filter,
+        .some(v=>v.dataset.filter===name.toLowerCase()&&v.getAttribute('aria-pressed')==='true'),filter,
         {timeout:5000});
     };
     for(const [filter,labelText] of [
@@ -434,10 +453,15 @@ async function smoke(label,options){
       await page.getByText(labelText,{exact:true}).first().waitFor({state:'visible',timeout:10000});
     }
     await tapMapFilter('All');
-    if(options.isMobile)await page.locator('#flurryModal .fc-dialog-close').tap();
-    else{await page.locator('#flurryModal .fc-dialog-close').focus();
-      await page.keyboard.press('Enter');}
-    console.log(label+' cave, crypt, treasure and hostile-territory discovery filters and world-save persistence passed '+JSON.stringify(explorationSaved));
+    const guideFrost=page.getByRole('button',{name:'Navigate to Frost Ruins'});
+    if(options.isMobile)await guideFrost.tap({timeout:10000});
+    else{await guideFrost.focus();await page.keyboard.press('Enter');}
+    await page.locator('#fcNavBeacon').waitFor({state:'visible',timeout:10000});
+    const navigationText=await page.locator('#fcNavBeacon').innerText();
+    if(!navigationText.includes('Frost Ruins')||!navigationText.includes('blocks')||
+       !/(Ahead|Left|Right|Behind)/.test(navigationText))
+      throw new Error('Guide navigation omitted target, distance or direction: '+navigationText);
+    console.log(label+' map filters, chapter progression, active expedition and compass Guide passed '+JSON.stringify({mapLayout,navigationText,explorationSaved}));
     console.log(label+' actual 3D landmark, one-time perk and persistent visit passed');
     // Browser rAF timing is a software-renderer diagnostic, not a real
     // physical phone FPS claim. Capture a distribution, not one FPS guess.
