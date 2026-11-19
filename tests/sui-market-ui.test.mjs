@@ -41,9 +41,14 @@ test('unpublished Testnet package shows a calm non-trading experience',async()=>
   assert.equal(typeof ui.open,'function');
   await ui.open({blueprint:example});
   const content=panel.renderedText;
-  assert.match(content,/Testnet launch in preparation/);
+  assert.match(content,/Marketplace has not launched yet/);
+  assert.match(content,/NOT LIVE/);
+  assert.match(content,/NFT minting Disabled/);
+  assert.match(content,/Listings and purchases Disabled/);
+  assert.match(content,/Marketplace payments Unavailable/);
   assert.match(content,/Check Testnet Wallet \(read only\)/);
-  assert.match(content,/No NFT mint, listing or payment/);
+  assert.match(content,/not been published and independently verified/);
+  assert.match(content,/No real-money sales are enabled/);
   assert.match(content,/A connection never signs a transaction/);
   assert.match(content,/Frost Cottage/);
   assert.doesNotMatch(content,/Confirm Purchase|Confirm Mint|Connect Wallet/);
