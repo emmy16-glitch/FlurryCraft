@@ -259,6 +259,66 @@ async function smoke(label,options){
       await page.keyboard.press('Enter');
     }
     console.log(label+' real terrain discoveries, journal save/restore and map passed');
+    // Test an actual deterministic 3D landmark, proximity-based inspection,
+    // and a once-per-world perk on both desktop and touch emulation.
+    const landmarkStart=await page.evaluate(()=>{
+      const g=window.game,p=g.player;
+      const original={x:p.x,y:p.y,z:p.z,health:p.health,
+        guardStamina:p.guardStamina,creative:p.creative};
+      g.landmarks.update(3);
+      const site=g.landmarks.sites[0];
+      if(!site)throw new Error('No snowy 3D landmark generated near demo spawn');
+      const model=g.scene.children.find(child=>child.position&&
+        Math.abs(child.position.x-site.x-.5)<.001&&
+        Math.abs(child.position.z-site.z-.5)<.001&&child.children?.length>4);
+      if(!model)throw new Error('A map marker exists without real 3D landmark geometry');
+      p.x=site.x+.5;p.y=site.y;p.z=site.z+.5;
+      p.health=Math.min(10,p.maxHealth-7);p.guardStamina=12;p.creative=false;
+      g.landmarks.update(.5);
+      const before={points:g.rewards.points,xp:g.adventure.serialize().xp};
+      if(!g.landmarks.interact())throw new Error('Nearby site cannot be inspected');
+      return {original,site,before};
+    });
+    await page.getByText(landmarkStart.site.name,{exact:false}).first()
+      .waitFor({state:'visible',timeout:10000});
+    const landmarkPerk=page.locator('#flurryModal .fc-landmark-benefit');
+    await landmarkPerk.waitFor({state:'visible',timeout:10000});
+    if(await landmarkPerk.isDisabled())
+      throw new Error('New winter landmark perk incorrectly disabled');
+    if(options.isMobile)await landmarkPerk.tap({timeout:10000});
+    else{await landmarkPerk.focus();await page.keyboard.press('Enter');}
+    const landmarkResult=await page.evaluate(()=>{
+      const g=window.game;
+      const saved=JSON.parse(localStorage.getItem('vc_world_'+g.worldId));
+      return {visited:g.landmarks.serialize().visited.length,
+        used:g.landmarks.serialize().used.length,
+        storedVisited:saved.winterLandmarks?.visited?.length,
+        storedUsed:saved.winterLandmarks?.used?.length,
+        points:g.rewards.points,xp:g.adventure.serialize().xp};
+    });
+    if(landmarkResult.visited!==1||landmarkResult.used!==1||
+       landmarkResult.storedVisited!==1||landmarkResult.storedUsed!==1||
+       landmarkResult.points!==landmarkStart.before.points||
+       landmarkResult.xp!==landmarkStart.before.xp)
+      throw new Error('Landmark exploration not reliably saved or issued fake rewards: '+
+        JSON.stringify(landmarkResult));
+    if(!await landmarkPerk.isDisabled())
+      throw new Error('A one-time landmark perk remained claimable twice');
+    if(options.isMobile)await page.locator('#flurryModal .fc-dialog-close').tap();
+    else{await page.locator('#flurryModal .fc-dialog-close').focus();
+      await page.keyboard.press('Enter');}
+    const reopen=await page.evaluate(start=>{
+      const g=window.game,p=g.player;
+      const saved=JSON.parse(localStorage.getItem('vc_world_'+g.worldId));
+      g.landmarks.load(saved.winterLandmarks);
+      g.landmarks.update(3);
+      const ok=g.landmarks.serialize().used.includes(start.site.id);
+      Object.assign(p,start.original);
+      g.landmarks.update(3);
+      return {ok,sites:g.landmarks.sites.length};
+    },landmarkStart);
+    if(!reopen.ok)throw new Error('Landmark one-time use lost after a world reload');
+    console.log(label+' actual 3D landmark, one-time perk and persistent visit passed');
     // Browser rAF timing is a software-renderer diagnostic, not a real
     // physical phone FPS claim. Capture a distribution, not one FPS guess.
     const timing=await page.evaluate(()=>new Promise(resolve=>{
