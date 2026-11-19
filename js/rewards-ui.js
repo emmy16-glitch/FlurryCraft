@@ -38,7 +38,7 @@ export function initRewardsHub({game,panel,openDialog,notify,onOpenMarketplace,
     '#fcExpeditionTracker .fc-expedition-hud-meter{height:4px;margin-top:6px;background:#244d61;border-radius:5px;overflow:hidden}',
     '#fcExpeditionTracker .fc-expedition-hud-meter i{display:block;height:100%;background:#8be5f2;width:0}',
     '#fcExpeditionTracker.ready{border-color:#b3f5d0;color:#b8ffe5}',
-    '@media(max-height:520px){#fcExpeditionTracker{right:5px;top:6px;width:min(178px,27vw);font-size:9px;padding:5px 7px}#fcExpeditionTracker small{font-size:8px}#fcExpeditionTracker .fc-expedition-hud-meter{margin-top:4px}}',
+    '@media(max-height:520px){#fcExpeditionTracker{right:auto;left:7px;top:150px;width:min(178px,27vw);font-size:9px;padding:5px 7px}#fcExpeditionTracker small{font-size:8px}#fcExpeditionTracker .fc-expedition-hud-meter{margin-top:4px}}\n    '@media(max-width:570px) and (min-height:521px){#fcExpeditionTracker{right:8px;top:200px;width:min(210px,45vw)}}'',
   ].join('\n');
   const tracker=el('button',undefined,document.body);
   tracker.type='button';tracker.id='fcExpeditionTracker';
