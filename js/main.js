@@ -58,7 +58,7 @@ try { if (!localStorage.getItem('flurrycraft_easybuild_default_v2')) { settings.
 const game = window.game = {
   tp(x, y, z, yaw, pitch) { player.x = x; player.y = y; player.z = z; if (yaw !== undefined) player.yaw = yaw; if (pitch !== undefined) player.pitch = pitch; player.vy = 0; },
   scene, camera, sound, particles, graphics, mobs: [], items: [], projectiles: [], falling: [], world: null, player: null, ui: null,
-  env: { day: 1, tod: 0.08, dayLight: 1 }, difficulty: 1, raining: false, paused: false, state: 'menu', time: 0, settings,
+  env: { day: 1, tod: 0.25, dayLight: 1 }, difficulty: 1, raining: false, paused: false, state: 'menu', time: 0, settings,
   lightAt(x, y, z) {
     const v = this.world.getLight(Math.floor(x), Math.floor(y), Math.floor(z));
     const sk = Math.pow((v >> 4) / 15, 1.55) * this.env.dayLight, bk = Math.pow((v & 15) / 15, 1.7);
@@ -482,7 +482,7 @@ function startGame(cont, id) {
     // than resetting injuries, and never recalculate this on later saves.
     player.health=migratePlayerHealth(save.player.health,save.player.healthCap,player.maxHealth);
     player.healthCap=player.maxHealth;
-    player.inv = save.player.inv; game.env.tod = save.tod; game.adv = new Set(save.adv || []);
+    player.inv = save.player.inv; game.env.tod = 0.25; game.adv = new Set(save.adv || []);
   } else {
     const sp = world.gen.findSpawn(); player.x = sp.x; player.y = sp.y; player.z = sp.z; player.spawn = { x: sp.x, y: sp.y, z: sp.z };
     game.env.tod = 0.25; // Clear midday for a comfortable first building session.
@@ -591,6 +591,7 @@ function frame(now) {
   if (game.state === 'menu') { menuFrame(dt); return; }
   if (game.state !== 'play') { return; }
   const w = game.world;
+  game.env.tod = 0.25; // Daytime remains bright even while paused or in a dialog.
   if(settings.graphics==='auto'&&!game.paused&&graphics.measuredFPS>0&&
     now-lastAutoViewAdjust>=15000){
     const desired=nextAdaptiveViewRadius(w.radius,settings.render,
@@ -627,7 +628,7 @@ function frame(now) {
         Math.hypot(player.x-beforeTravelX,player.z-beforeTravelZ),dt);
     }
     // world time
-    game.env.tod = (game.flurry && game.flurry.daylightLocked() && player.creative) ? 0.25 : (game.env.tod + dt / 720) % 1;
+    game.env.tod = 0.25; // Temporarily lock clear daytime in Survival and Creative.
     w.processFalls();
   }
   w.maxGen = 1; w.maxMesh = 2;
