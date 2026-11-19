@@ -229,6 +229,27 @@ body.touch #hotbar{bottom:6px;width:min(84vw,440px)!important;}
 #menu select.fc-graphics-select,#pause select.fc-graphics-select{background:#1b4b63;border:1px solid #76b5c8;color:#e6faff;border-radius:8px;padding:7px 10px;min-height:37px;font:700 12px system-ui;max-width:61%;cursor:pointer}
 #menu select.fc-graphics-select:focus-visible,#pause select.fc-graphics-select:focus-visible{outline:2px solid #a5f3ff;outline-offset:2px}
 #menu .fc-judge-hint{font:600 10px/1.45 system-ui;color:#a4cfdd;margin:3px 0 9px;text-align:center}
+/* Three clear home actions. World management and optional demos stay collapsed. */
+#menu .fc-home-btn{display:flex;align-items:center;justify-content:center;gap:9px;width:100%;min-height:55px;margin:8px 0 0;padding:13px 16px;border-radius:13px;cursor:pointer;font:850 17px/1.2 system-ui;touch-action:manipulation}
+#menu .fc-home-primary{background:linear-gradient(115deg,#a1f2fc,#55cce7);border:1px solid #c9faff;color:#073548;box-shadow:0 5px 19px #55dffb28}
+#menu .fc-home-btn:disabled{opacity:.55;cursor:default;box-shadow:none}
+#menu .fc-home-secondary{background:#235c74;border:1px solid #72bdd3;color:#e7fbff}
+#menu .fc-home-muted{background:transparent;border:1px solid #497b91;color:#c9e8f2}
+#menu .fc-home-muted small{font:750 11px system-ui;color:#add5e2}
+#menu .fc-home-sub{font:550 11px/1.4 system-ui;margin:4px 1px 10px;color:#9dc6d9;text-align:center}
+#menu .fc-home-panel{margin:12px 0 8px;padding:12px;border:1px solid #3c708a;background:#0d3044;border-radius:13px}
+#menu .fc-home-panel[hidden]{display:none!important}
+#menu .fc-home-panel-title{font:850 11px system-ui;letter-spacing:.13em;color:#a8e9f8;margin:1px 0 9px}
+#menu .fc-mode-choice{display:flex;flex-direction:column;gap:5px;text-align:left;width:100%;margin:7px 0;padding:13px 14px;background:#1c536c;color:#fff;border:1px solid #528da7;border-radius:12px;cursor:pointer;touch-action:manipulation}
+#menu .fc-mode-choice strong{font:850 16px system-ui}
+#menu .fc-mode-choice span{font:550 11px/1.4 system-ui;color:#c2dfeb}
+#menu .fc-home-back{width:100%;margin-top:4px;min-height:34px;border:0;background:#164259;color:#bfeaf4;border-radius:8px;font:700 12px system-ui}
+#menu #fcLoadPanel{max-height:min(42vh,340px);overflow-y:auto}
+#menu #worldlist{max-height:220px;overflow-y:auto}
+#menu .fc-more{margin-top:12px}
+#menu .fc-more summary span{font-size:10px}
+#menu .fc-home-btn:focus-visible,#menu .fc-mode-choice:focus-visible,#menu .fc-home-back:focus-visible{outline:3px solid #c8faff;outline-offset:2px}
+@media(max-height:570px){#menu .fc-home-btn{min-height:42px;margin:5px 0 0;padding:8px 10px;font-size:14px}#menu .fc-home-sub{margin:3px 0 5px}#menu #worldlist{max-height:180px}#menu .fc-home-panel{padding:9px;margin:8px 0}}
 #menu .fc-menu-card .fc-card-heading{margin-bottom:6px}
 #pause{background:rgba(4,17,28,.75);backdrop-filter:blur(8px)}
 #pause .box{width:min(420px,94vw);min-width:0;max-height:95dvh;overflow-y:auto;border:1px solid #477c95;outline:0;border-radius:20px;background:#102e43;color:#e4f4fb;box-shadow:0 18px 56px #001b2bcc;padding:20px}
@@ -309,11 +330,30 @@ body.touch #tbInv{right:74px}
       </div>
     </div>
     <div class="box fc-menu-card">
-      <div class="fc-card-heading">YOUR WORLDS</div>
-      <div id="worldlist"></div>
-      <div class="btn fc-start" id="bNew">＋ Create Snow World</div>
-      <button type="button" id="bJudgeDemo">▶ Try Guided Adventure Demo</button>
-      <div class="fc-judge-hint">A fresh Survival world · meet Lofi, fight, build, and explore Sui/Walrus</div>
+      <div class="fc-card-heading">WELCOME BACK TO WINTER</div>
+      <button type="button" id="bContinue" class="fc-home-btn fc-home-primary" disabled>▶ Continue Game</button>
+      <p id="fcContinueInfo" class="fc-home-sub">Your latest saved game appears here.</p>
+      <button type="button" id="bNew" class="fc-home-btn fc-home-secondary">＋ New Game</button>
+      <div id="fcNewChoices" class="fc-home-panel" hidden>
+        <div class="fc-home-panel-title">CHOOSE YOUR GAME MODE</div>
+        <button type="button" id="fcNewSurvival" class="fc-mode-choice">
+          <strong>⚔ Survival</strong><span>Explore, fight monsters, complete quests and earn XP</span>
+        </button>
+        <button type="button" id="fcNewCreative" class="fc-mode-choice">
+          <strong>▦ Creative</strong><span>Build freely with unlimited blocks</span>
+        </button>
+        <button type="button" id="fcNewBack" class="fc-home-back">Back</button>
+      </div>
+      <button type="button" id="bLoad" class="fc-home-btn fc-home-muted">▣ Load Game <small id="fcSaveCount"></small></button>
+      <section id="fcLoadPanel" class="fc-home-panel" hidden aria-label="Saved worlds">
+        <div class="fc-home-panel-title">SAVED GAMES</div>
+        <div id="worldlist"></div>
+      </section>
+      <details id="fcMore" class="fc-settings fc-more">
+        <summary>More options <span>Demo &amp; character</span></summary>
+        <button type="button" id="bJudgeDemo">▶ Guided Adventure Demo</button>
+        <div class="fc-judge-hint">Start a separate Survival demo world with a guided tour.</div>
+      </details>
       <details class="fc-settings" id="fcAdvanced">
         <summary>⚙ Game settings <span>Optional</span></summary>
         <div class="fc-settings-body">

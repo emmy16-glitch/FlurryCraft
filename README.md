@@ -4,6 +4,22 @@ Browser-first, free-to-play voxel sandbox for Android, iPhone and desktop. Flurr
 
 Built on the MIT-licensed [Yet Another VoxelCraft](https://github.com/GoldwinXS/YetAnotherVoxelCraft) engine by GoldwinXS, with a local bundled Three.js r160. Original attribution is preserved in UPSTREAM_LICENSE.txt.
 
+## ☀ Always-Day World, Clean Start Menu and Live Map
+
+FlurryCraft now starts with three clear buttons: **Continue Game**,
+**New Game** (choose Survival or Creative) and **Load Game** (existing
+saved worlds and backups). Demo, customization and settings are kept under
+optional controls; all existing worlds are preserved. For comfortable
+visibility, both Survival and Creative temporarily stay at **daytime**
+even when resuming an older nighttime save.
+
+The minimap and World Map display **discovered dungeon entrances** and
+**live nearby hostile monsters** (up to twelve within 96 blocks), alongside
+your saved home and map pins. Tap the map or use **Pin** to keep a monster
+sighting or dungeon location, and guide yourself toward it. Live monster
+markers are local and temporary, not fabricated all-world tracking.
+[Full guide and QA checklist](docs/START_MENU_DAYLIGHT_MAP.md).
+
 ## ❄ Lofi's Winter Trials — sword skill and winter exploration
 
 Daily and weekly Survival challenges now reward **real Perfect Parries**
