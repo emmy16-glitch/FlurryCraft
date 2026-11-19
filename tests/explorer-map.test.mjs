@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mapToWorld,worldToMap,directionTo,markerKey,cleanPlace,sanitizePlaces,winterMapColor,MAP_CELLS,MAX_PLACES} from '../js/explorer-map-core.js';
+import {mapToWorld,worldToMap,directionTo,markerKey,cleanPlace,sanitizePlaces,winterMapColor,dungeonChapterProgress,MAP_CELLS,MAX_PLACES} from '../js/explorer-map-core.js';
 test('map projection rounds trip the same block at all zoom levels',()=>{
  for(const step of [2,4,7,12]){
   for(const [x,z] of [[0,0],[113,-79],[-283,231]]){
@@ -33,4 +33,36 @@ test('winter map colors are valid CSS and ocean differs from land',()=>{
  const ice=winterMapColor(23,5),land=winterMapColor(41,3),mountain=winterMapColor(80,4);
  for(const color of [ice,land,mountain])assert.match(color,/^#[0-9a-f]{6}$/);
  assert.notEqual(ice,land);assert.notEqual(land,mountain);
+});
+
+test('dungeon chapter map mirrors level and previous-clear unlock gates',()=>{
+ const locked=dungeonChapterProgress({level:10,clears:0});
+ assert.equal(locked[0].unlocked,true);
+ assert.equal(locked[1].unlocked,false,'Level 10 alone is not enough');
+ assert.match(locked[1].requirement,/clear Frost Ruins/);
+ const storm=dungeonChapterProgress({level:10,clears:1,
+   storm:{site:{x:40,y:50,z:-20},built:true,clears:0}});
+ assert.equal(storm[1].unlocked,true);
+ assert.equal(storm[1].built,true);
+ assert.deepEqual(storm[1].site,{x:40,y:50,z:-20});
+ assert.equal(storm[2].unlocked,false);
+ const aurora=dungeonChapterProgress({level:20,clears:1,
+   storm:{clears:1},aurora:{site:{x:80,y:55,z:90},built:true,clears:1}});
+ assert.equal(aurora[2].unlocked,true);
+ assert.equal(aurora[3].unlocked,false);
+ const abyss=dungeonChapterProgress({level:30,clears:1,
+   storm:{clears:1},aurora:{clears:1},abyss:{site:{x:-80,y:60,z:90},built:true}});
+ assert.equal(abyss[3].unlocked,true);
+ assert.equal(abyss[3].built,true);
+});
+test('chapter progress rejects malformed and fabricated coordinates',()=>{
+ const chapters=dungeonChapterProgress({level:100,clears:1,
+   storm:{site:{x:Infinity,y:50,z:0},built:true,clears:1},
+   aurora:{site:{x:5,y:100,z:8},built:true,clears:1}});
+ assert.equal(chapters[1].site,null);
+ assert.equal(chapters[1].built,false);
+ assert.equal(chapters[2].site,null);
+ assert.equal(chapters[2].built,false);
+ assert.equal(chapters[3].unlocked,true);
+ assert.equal(chapters[3].site,null);
 });

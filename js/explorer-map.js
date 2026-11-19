@@ -2,7 +2,7 @@
 // No geolocation or remote tiles. The tiny minimap renders on movement, not every frame.
 import {
  MAP_CELLS,MAP_STEPS,MAX_PLACES,mapToWorld,worldToMap,directionTo,
- markerKey,cleanPlace,sanitizePlaces,winterMapColor
+ markerKey,cleanPlace,sanitizePlaces,winterMapColor,dungeonChapterProgress
 } from './explorer-map-core.js';
 import {discoveredDungeons,nearbyMonsterMarkers,mapMarkerAt} from './map-discoveries.js';
 
@@ -15,6 +15,7 @@ export function initExplorerMap({game,panel,openDialog,closeDialog,notify,dialog
   const nearbyLandmarks=()=>game.landmarks?.nearby?.()||[];
   const visitedLandmarks=()=>game.landmarks?.visited?.()||[];
   const explorationPins=()=>game.exploration?.mapPlaces?.()||[];
+  const expeditionSnapshot=()=>game.rewards?.current?.()||null;
   let mapFilter='all';
   const monsterPins=()=>nearbyMonsterMarkers(game.mobs,game.player);
   const MINI_SIZE=120, MINI_SAMPLES=48, MINI_STEP=2, MINI_RADIUS=MINI_SAMPLES*4;
@@ -59,17 +60,30 @@ export function initExplorerMap({game,panel,openDialog,closeDialog,notify,dialog
     active=clean;
     closeDialog();mapOpened=false;refreshOpenMap=null;renderToken++;
     notify(game,'Following '+clean.name);
-    drawMini();
+    updateNavigation();drawMini();
   }
   function stopNavigation(){
     active=null;nav.hidden=true;drawMini();
+  }
+  function updateNavigation(){
+    if(!active||game.state!=='play'||game.paused||dialogOpen()||isBlocked()||game.ui?.isOpen){
+      nav.hidden=true;return;
+    }
+    const bearing=directionTo(game.player.x,game.player.z,active.x,active.z,game.player.yaw);
+    const turn=Math.abs(bearing.angle)>2.5?'Behind':
+      bearing.angle<-.22?'Right':bearing.angle>.22?'Left':'Ahead';
+    navArrow.style.transform='rotate('+bearing.angle+'rad)';
+    navTitle.textContent=active.name;
+    navDistance.textContent=bearing.distance+' blocks · '+turn;
+    nav.setAttribute('aria-label','Guiding to '+active.name+', '+bearing.distance+' blocks, '+turn);
+    nav.hidden=false;
   }
   const style=$('style');
   style.textContent=[
     '#flurryModal .fPanel.fc-map-panel{width:min(760px,96vw);height:calc(100dvh - 24px);max-height:calc(100dvh - 24px);overflow:hidden;display:flex;flex-direction:column}',
     '#flurryModal .fc-map-layout{flex:1;min-height:0;overflow:hidden}',
     '#flurryModal .fc-map-layout>section{min-height:0;overflow-y:auto;overscroll-behavior:contain}',
-    '#flurryModal .fc-map-layout .fc-map-side{position:relative;z-index:10;max-height:none;overflow-y:auto;pointer-events:auto}',
+    '#flurryModal .fc-map-layout .fc-map-side{position:relative;z-index:10;max-height:min(68dvh,560px);overflow:hidden;pointer-events:auto;display:flex;flex-direction:column}',
     '.fc-map-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(180px,.72fr);gap:14px;align-items:start}',
     '.fc-map-toolbar{display:flex;align-items:center;justify-content:space-between;gap:6px;margin:0 0 7px}',
     '#flurryModal .fc-map-toolbar button{min-width:36px;min-height:36px;margin:0;padding:7px 12px;background:#254f65;border:1px solid #4d7d92;border-radius:10px}',
@@ -80,11 +94,11 @@ export function initExplorerMap({game,panel,openDialog,closeDialog,notify,dialog
     '.fc-map-wait[hidden]{display:none!important}',
     '.fc-map-caption{display:flex;justify-content:space-between;color:#91bccc;font:600 10px system-ui;margin:6px 2px 0;gap:6px}',
     '.fc-map-side h3{font:800 13px system-ui;color:#f0faff;margin:0 0 9px;letter-spacing:0}',
-    '.fc-map-pin-list{display:flex;flex-direction:column;gap:7px;min-height:0}',
+    '.fc-map-pin-list{display:flex;flex:1;min-height:0;flex-direction:column;gap:7px;overflow-y:auto;overscroll-behavior:contain;padding:2px 3px 8px 0;scrollbar-width:thin}',
     // Keep sidebar actions inside the dialog hit area at desktop and mobile
     // sizes. Otherwise the modal backdrop catches taps on lower Pin buttons.
-    '.fc-map-side{min-height:0;max-height:min(65dvh,520px);overflow-y:auto;overscroll-behavior:contain;padding-right:5px;scrollbar-width:thin}',
-    '@media(max-height:520px){.fc-map-side{max-height:calc(85dvh - 60px)}}',
+    '.fc-map-side{display:flex;flex-direction:column;min-height:0;max-height:min(68dvh,560px);overflow:hidden;overscroll-behavior:contain;padding-right:5px;scrollbar-width:thin}',
+    '@media(max-height:520px){#flurryModal .fc-map-layout .fc-map-side{max-height:calc(100dvh - 94px)}.fc-map-frame{width:min(100%,min(280px,64dvh));margin:auto}.fc-map-toolbar{gap:4px}.fc-map-caption{font-size:9px}.fc-map-pin{padding:5px}.fc-map-filterbar{padding:4px 1px 6px}#fcNavBeacon{top:calc(env(safe-area-inset-top) + 100px);max-width:64vw}}',
     '.fc-map-pin{display:flex;align-items:center;gap:7px;background:#163e55;border:1px solid #416d83;border-radius:11px;padding:8px}',
     '.fc-map-pin-icon{width:30px;height:30px;flex:none;border-radius:8px;background:#274f64;display:grid;place-items:center;color:#d2f2fb;font:700 15px system-ui}',
     '.fc-map-pin-main{flex:1;min-width:0}',
@@ -107,11 +121,23 @@ export function initExplorerMap({game,panel,openDialog,closeDialog,notify,dialog
     '#flurryModal .fc-map-pin button.fc-map-pin-save{background:transparent;color:#bfeff8;border:1px solid #47768e}',
     '.fc-map-pin.is-monster{border-color:#a36770}.fc-map-pin.is-dungeon{border-color:#a98d5a}.fc-map-pin.is-discovery{border-color:#60a8c1}.fc-map-pin.is-landmark{border-color:#65b6c8}',
     '.fc-map-pin.is-cave{border-color:#82c9e2}.fc-map-pin.is-crypt{border-color:#a994d2}.fc-map-pin.is-treasure{border-color:#d8b56c}.fc-map-pin.is-territory{border-color:#c47782}',
-    '.fc-map-filterbar{position:relative;z-index:7;display:flex;gap:5px;overflow-x:auto;padding:3px 0 8px;scrollbar-width:thin;pointer-events:auto}',
+    '.fc-map-filterbar{position:sticky;top:0;z-index:12;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));flex:none;gap:5px;overflow:visible;padding:6px 1px 8px;background:#102e43;border-bottom:1px solid #315d72;pointer-events:auto}',
     '#flurryModal .fc-map-filterbar button{position:relative;z-index:8;flex:none;min-height:31px;margin:0;padding:6px 9px;border:1px solid #46758b;border-radius:9px;background:#1a435a;color:#c7e8f1;font:750 10px system-ui;pointer-events:auto;touch-action:manipulation}',
     '#flurryModal .fc-map-filterbar button[aria-pressed="true"]{background:#8ce4f0;color:#0a3549;border-color:#baf4fc}',
+    '.fc-map-filter-count{display:inline-grid;place-items:center;min-width:16px;height:16px;margin-left:3px;padding:0 3px;border-radius:8px;background:#0b3045;color:#d5f5fc;font:850 9px system-ui}',
+    '#flurryModal .fc-map-filterbar button[aria-pressed="true"] .fc-map-filter-count{background:#d2faff;color:#0a3549}',
+    '.fc-map-objective{flex:none;border:1px solid #6eb6ca;border-radius:12px;padding:10px;background:#123d53;margin:4px 0 8px}',
+    '.fc-map-objective strong{display:block;color:#a9f0fb;font:850 10px/1.4 system-ui;letter-spacing:.08em}',
+    '.fc-map-objective p{color:#e8f8fc;font:750 12px/1.4 system-ui;margin:5px 0}',
+    '.fc-map-objective small{display:block;color:#b1d3e0;font:600 10px/1.4 system-ui}',
+    '.fc-map-objective .fc-map-objective-meter{height:6px;background:#244b60;border-radius:5px;overflow:hidden;margin:8px 0}',
+    '.fc-map-objective .fc-map-objective-meter i{display:block;height:100%;background:#8be5f2}',
+    '.fc-map-objective .fc-map-objective-actions{display:flex;gap:6px;flex-wrap:wrap}',
+    '#flurryModal .fc-map-objective .fc-map-objective-actions button{margin:0;min-height:34px;padding:6px 9px}',
+    '.fc-map-chapter{border-style:dashed;background:#13384d}',
+    '.fc-map-chapter.is-locked{opacity:.78;border-color:#526a78}',
     '.fc-map-discovery-summary{font:650 10px/1.45 system-ui;color:#9dc6d5;margin:0 0 7px;padding:7px 8px;border:1px solid #315c73;border-radius:9px;background:#10364b}',
-    '#fcNavBeacon{position:fixed;top:65px;right:12px;z-index:24;display:flex;align-items:center;gap:7px;width:max-content;max-width:min(250px,48vw);padding:7px 8px;border:1px solid #4e96b0;border-radius:13px;color:#e9fbff;background:#0b3044e8;box-shadow:0 5px 20px #001a2a80;backdrop-filter:blur(9px);font:700 11px system-ui;pointer-events:auto}',
+    '#fcNavBeacon{position:fixed;top:calc(env(safe-area-inset-top) + 110px);left:50%;right:auto;transform:translateX(-50%);z-index:24;display:flex;align-items:center;gap:7px;width:max-content;max-width:min(300px,58vw);padding:7px 9px;border:1px solid #4e96b0;border-radius:13px;color:#e9fbff;background:#0b3044ed;box-shadow:0 5px 20px #001a2a80;backdrop-filter:blur(9px);font:700 11px system-ui;pointer-events:auto}',
     '#fcNavBeacon[hidden]{display:none!important}',
     '#fcNavBeacon .fc-nav-arrow{font:900 27px/1 system-ui;color:#8ae7ef;display:block;transform-origin:50% 50%;width:26px;text-align:center}',
     '#fcNavBeacon .fc-nav-text{min-width:0;max-width:120px}',
@@ -126,7 +152,7 @@ export function initExplorerMap({game,panel,openDialog,closeDialog,notify,dialog
     '#fcMiniMap .fc-mini-label[data-guiding="true"]{color:#a2f6d2}',
     'body.touch #fcMiniMap{top:max(76px,calc(env(safe-area-inset-top) + 72px));right:112px;width:98px}',
     '@media(max-height:520px){body.touch #fcMiniMap{top:max(73px,calc(env(safe-area-inset-top) + 68px));width:90px;right:112px}#fcMiniMap{width:98px}}',
-    '@media(max-width:570px){.fc-map-layout{grid-template-columns:1fr}.fc-map-frame{width:min(100%,340px);margin:auto}.fc-map-side{padding:4px 0}}',
+    '@media(max-width:570px){.fc-map-layout{grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr)}.fc-map-frame{width:min(100%,min(270px,32dvh));margin:auto}#flurryModal .fc-map-layout .fc-map-side{max-height:40dvh;padding:4px 0}.fc-map-pin{padding:6px}.fc-map-filterbar{margin:0 -2px;grid-template-columns:repeat(3,minmax(0,1fr))}}',
     '@media(max-height:500px){#flurryModal .fPanel.fc-map-panel{padding:9px}.fc-map-layout{gap:8px}.fc-map-frame{max-height:62dvh;width:100%;max-width:300px;margin:auto}.fc-map-side .fc-map-pin-list{max-height:170px;overflow:auto}#fcNavBeacon{top:51px;right:5px;padding:5px 6px}}'
   ].join('\n');
   document.head.appendChild(style);
@@ -245,9 +271,12 @@ export function initExplorerMap({game,panel,openDialog,closeDialog,notify,dialog
     miniCtx.font='bold 10px system-ui';miniCtx.fillStyle='#effcff';miniCtx.fillText('N',6,12);
     if(active){
       const b=directionTo(game.player.x,game.player.z,active.x,active.z,game.player.yaw);
-      miniLabel.textContent=active.name+' · '+b.distance+' blocks';
+      const turn=Math.abs(b.angle)>2.5?'Behind':b.angle<-.22?'Right':b.angle>.22?'Left':'Ahead';
+      const arrow=turn==='Right'?'→':turn==='Left'?'←':turn==='Behind'?'↓':'↑';
+      miniLabel.textContent=active.name+' · '+arrow+' '+b.distance+'b';
+      miniLabel.title='Guiding to '+active.name+' · '+turn;
       miniLabel.dataset.guiding='true';
-      mini.setAttribute('aria-label','Open map. Guiding to '+active.name+', '+b.distance+' blocks away');
+      mini.setAttribute('aria-label','Open map. Guiding to '+active.name+', '+b.distance+' blocks away, '+turn);
     }else{
       miniLabel.textContent='Map';
       miniLabel.dataset.guiding='false';
@@ -351,19 +380,19 @@ export function initExplorerMap({game,panel,openDialog,closeDialog,notify,dialog
     const caption=$('div',undefined,left);caption.className='fc-map-caption';
     const coordinates=$('span','',caption);const scale=$('span','',caption);
     const side=$('section',undefined,layout);side.className='fc-map-side';
+    const heading=$('h3','Exploration & Places',side);
+    const summary=$('p','',side);summary.className='fc-map-discovery-summary';
+    const filterBar=$('div',undefined,side);filterBar.className='fc-map-filterbar';
     const homeAction=button(side,'⌂ Set Home Here',()=>{
       const me=pos();
       if(!persist({...places,home:{id:'home',name:'Home',...me}}))return;
       notify(game,'Home saved');drawOverlay();refreshList();
     },'fc-map-home');
-    const heading=$('h3','Exploration & Places',side);
-    const summary=$('p','',side);summary.className='fc-map-discovery-summary';
-    const filterBar=$('div',undefined,side);filterBar.className='fc-map-filterbar';
     const filterOptions=[
-      ['all','All'],['cave','Caves'],['dungeon','Dungeons'],
-      ['treasure','Treasure'],['threat','Threats'],['landmark','Landmarks']
+      ['all','🧭 All'],['cave','◒ Caves'],['dungeon','⌂ Dungeons'],
+      ['treasure','✧ Treasure'],['threat','⚠ Threats'],['landmark','✦ Landmarks']
     ];
-    const filterButtons=new Map();
+    const filterButtons=new Map(),filterCountNodes=new Map();
     const list=$('div',undefined,side);list.className='fc-map-pin-list';
     function filterMatches(kind){
       if(mapFilter==='all')return true;
@@ -374,15 +403,34 @@ export function initExplorerMap({game,panel,openDialog,closeDialog,notify,dialog
       if(mapFilter==='landmark')return kind==='landmark'||kind==='discovery';
       return false;
     }
+    function filterCounts(){
+      const discoveries=explorationPins();
+      const caves=discoveries.filter(v=>v.kind==='cave').length;
+      const crypts=discoveries.filter(v=>v.kind==='crypt').length;
+      const treasures=discoveries.filter(v=>v.kind==='treasure').length;
+      const territories=discoveries.filter(v=>v.kind==='territory').length;
+      const dungeons=dungeonPins().length+crypts;
+      const threats=territories+monsterPins().length;
+      const landmarks=[...nearbyLandmarks(),...visitedLandmarks(),...journalPins()];
+      const landmarkCount=new Set(landmarks.map(v=>v.id||v.name+'@'+v.x+','+v.z)).size;
+      return {all:dungeons+caves+treasures+threats+landmarkCount+places.marks.length+1,
+        cave:caves,dungeon:dungeons,treasure:treasures,threat:threats,landmark:landmarkCount};
+    }
     function updateFilterButtons(){
-      for(const [key,button] of filterButtons)button.setAttribute('aria-pressed',String(mapFilter===key));
+      const counts=filterCounts();
+      for(const [key,b] of filterButtons){
+        b.setAttribute('aria-pressed',String(mapFilter===key));
+        const count=filterCountNodes.get(key);if(count)count.textContent=String(counts[key]||0);
+      }
     }
     for(const [key,label] of filterOptions){
       const b=button(filterBar,label,()=>{
         mapFilter=key;updateFilterButtons();refreshList();drawOverlay();
       });
+      b.dataset.filter=key;b.setAttribute('aria-label',label.replace(/^\\S+\\s/,'')+' filter');
       b.setAttribute('aria-pressed',String(mapFilter===key));
-      filterButtons.set(key,b);
+      const count=$('span','0',b);count.className='fc-map-filter-count';
+      filterCountNodes.set(key,count);filterButtons.set(key,b);
     }
     const composer=$('div',undefined,side);composer.className='fc-map-chooser';
     const pickTitle=$('strong','Destination selected',composer);
@@ -414,19 +462,21 @@ export function initExplorerMap({game,panel,openDialog,closeDialog,notify,dialog
       if(!basePixels||!canvas.isConnected)return;
       ctx.putImageData(basePixels,0,0);
       const n=step(),size=canvas.width;
-      const sp=game.player.spawn;
-      if(sp)drawMarker(ctx,sp.x,sp.z,center,n,size,'Spawn','spawn');
-      if(places.home)drawMarker(ctx,places.home.x,places.home.z,center,n,size,'Home','home');
-      for(const marker of places.marks)drawMarker(ctx,marker.x,marker.z,center,n,size,marker.name,'marker');
-      for(const marker of dungeonPins())
+      if(mapFilter==='all'){
+        const sp=game.player.spawn;
+        if(sp)drawMarker(ctx,sp.x,sp.z,center,n,size,'Spawn','spawn');
+        if(places.home)drawMarker(ctx,places.home.x,places.home.z,center,n,size,'Home','home');
+        for(const marker of places.marks)drawMarker(ctx,marker.x,marker.z,center,n,size,marker.name,'marker');
+      }
+      if(filterMatches('dungeon'))for(const marker of dungeonPins())
         drawMarker(ctx,marker.x,marker.z,center,n,size,marker.name,'dungeon');
-      for(const marker of journalPins())
-        drawMarker(ctx,marker.x,marker.z,center,n,size,'','discovery');
-      for(const marker of visitedLandmarks())
-        drawMarker(ctx,marker.x,marker.z,center,n,size,'','discovery');
-      for(const marker of nearbyLandmarks())
-        drawMarker(ctx,marker.x,marker.z,center,n,size,marker.name,'landmark');
+      if(filterMatches('landmark')){
+        for(const marker of journalPins())drawMarker(ctx,marker.x,marker.z,center,n,size,'','discovery');
+        for(const marker of visitedLandmarks())drawMarker(ctx,marker.x,marker.z,center,n,size,'','discovery');
+        for(const marker of nearbyLandmarks())drawMarker(ctx,marker.x,marker.z,center,n,size,marker.name,'landmark');
+      }
       for(const marker of explorationPins()){
+        if(!filterMatches(marker.kind))continue;
         if(marker.kind==='territory'&&marker.radius){
           const p=worldToMap(marker.x,marker.z,center.x,center.z,n,size);
           const radius=marker.radius/(MAP_CELLS*n)*size;
@@ -438,7 +488,7 @@ export function initExplorerMap({game,panel,openDialog,closeDialog,notify,dialog
         }
         drawMarker(ctx,marker.x,marker.z,center,n,size,marker.name,marker.kind);
       }
-      for(const marker of monsterPins())
+      if(filterMatches('monster'))for(const marker of monsterPins())
         drawMarker(ctx,marker.x,marker.z,center,n,size,'','monster');
       const me=pos();
       if(active){
@@ -490,6 +540,7 @@ export function initExplorerMap({game,panel,openDialog,closeDialog,notify,dialog
     function refreshList(){
       const oldScroll=list.scrollTop||0;
       list.replaceChildren();
+      updateFilterButtons();
       const addRow=(name,where,icon,kind)=>{
         if(!filterMatches(kind))return;
         const row=$('div',undefined,list);
@@ -532,11 +583,54 @@ export function initExplorerMap({game,panel,openDialog,closeDialog,notify,dialog
       const stats=game.exploration?.stats?.()||{caves:0,crypts:0,treasures:0,territories:0};
       summary.textContent='Discovered · '+stats.caves+' caves · '+stats.crypts+
         ' hidden dungeons · '+stats.treasures+' caches · '+stats.territories+' territories';
+      const expedition=expeditionSnapshot()?.mission;
+      if(mapFilter==='all'&&expedition?.active){
+        const card=$('article',undefined,list);card.className='fc-map-objective';
+        $('strong','ACTIVE EXPEDITION · '+expedition.title,card);
+        $('p',expedition.detail,card);
+        $('small','Progress '+expedition.progress+' / '+expedition.target+
+          (expedition.ready?' · Reward ready':' · Tracked after acceptance'),card);
+        const meter=$('div',undefined,card);meter.className='fc-map-objective-meter';
+        const fill=$('i',undefined,meter);
+        fill.style.width=Math.min(100,expedition.progress/expedition.target*100)+'%';
+        const actions=$('div',undefined,card);actions.className='fc-map-objective-actions';
+        if(expedition.ready){
+          button(actions,'Claim reward',()=>game.rewards?.open?.());
+        }else if(expedition.kind==='clears'){
+          button(actions,'Guide to Frost Ruins',()=>{
+            if(!game.rewards?.guideMission?.())notify(game,'Frost Ruins entrance is not available yet.');
+          });
+        }else if(expedition.kind==='kills'){
+          button(actions,'Show nearby threats',()=>{
+            mapFilter='threat';updateFilterButtons();refreshList();drawOverlay();
+          });
+        }else{
+          button(actions,'Center on me',()=>{
+            center=pos();renderTerrain();
+          });
+        }
+        button(actions,'Open Board',()=>game.rewards?.open?.(),'muted');
+      }
+      const addStatusRow=(name,detail,icon,action,actionLabel='Open')=>{
+        const row=$('div',undefined,list);row.className='fc-map-pin fc-map-chapter'+(action?'':' is-locked');
+        const symbol=$('span',icon,row);symbol.className='fc-map-pin-icon';
+        const main=$('div',undefined,row);main.className='fc-map-pin-main';
+        $('strong',name,main);$('small',detail,main);
+        if(action)button(row,actionLabel,action);
+      };
       if(mapFilter==='all'||mapFilter==='dungeon'){
-        const dungeons=dungeonPins();
-        if(dungeons.length){
-          const group=$('div','KNOWN DUNGEONS',list);group.className='fc-map-group';
-          for(const item of dungeons)addRow(item.name,item,'⌂','dungeon');
+        const chapters=dungeonChapterProgress(game.adventure?.serialize?.());
+        const pins=dungeonPins();
+        const group=$('div','DUNGEON CHAPTER PROGRESSION',list);group.className='fc-map-group';
+        const mapIds={frost:'map-frost-ruins',storm:'map-stormspire',aurora:'map-aurora',abyss:'map-abyss'};
+        for(const chapter of chapters){
+          const destination=pins.find(v=>v.id===mapIds[chapter.id]);
+          const detail=!chapter.unlocked?'Locked · '+chapter.requirement:
+            chapter.site?(chapter.built?'Built':'Site found · prepare in Winter Adventure')+' · '+chapter.clears+' clears':
+            'Unlocked · open Winter Adventure to prepare its site';
+          if(destination)addRow(chapter.name,{...destination,detail},'⌂','dungeon');
+          else addStatusRow(chapter.name,detail,chapter.unlocked?'◇':'🔒',
+            chapter.unlocked?()=>game.adventure?.open?.():null,'Adventure');
         }
         const crypts=discovery.filter(v=>v.kind==='crypt');
         if(crypts.length){
@@ -587,7 +681,9 @@ export function initExplorerMap({game,panel,openDialog,closeDialog,notify,dialog
           const group=$('div','WINTER LANDMARKS · VISITED',list);group.className='fc-map-group';
           for(const item of visitedSites)addRow(item.name,item,'✧','discovery');
         }
-        const visited=journalPins();
+        const knownSites=[...dungeonPins(),...sites,...visitedSites];
+        const visited=journalPins().filter(item=>!knownSites.some(site=>
+          site.id===item.id||site.name===item.name||Math.hypot(site.x-item.x,site.z-item.z)<=8));
         if(visited.length){
           const group=$('div','FIELD JOURNAL · VISITED PLACES',list);group.className='fc-map-group';
           for(const item of visited)addRow(item.name,item,'◇','discovery');
@@ -617,8 +713,14 @@ export function initExplorerMap({game,panel,openDialog,closeDialog,notify,dialog
       const px=(e.clientX-rect.left)*canvas.width/rect.width;
       const py=(e.clientY-rect.top)*canvas.height/rect.height;
       if(px<0||py<0||px>canvas.width||py>canvas.height)return;
-      const hit=mapMarkerAt([...monsterPins(),...dungeonPins(),...nearbyLandmarks(),...visitedLandmarks(),...explorationPins(),...places.marks,...journalPins()],
-        px,py,center,step(),canvas.width);
+      const candidates=[
+        ...(filterMatches('monster')?monsterPins():[]),
+        ...(filterMatches('dungeon')?dungeonPins():[]),
+        ...(filterMatches('landmark')?[...nearbyLandmarks(),...visitedLandmarks(),...journalPins()]:[]),
+        ...explorationPins().filter(v=>filterMatches(v.kind)),
+        ...(mapFilter==='all'?places.marks:[])
+      ];
+      const hit=mapMarkerAt(candidates,px,py,center,step(),canvas.width);
       selected=hit?{x:hit.x,z:hit.z}:mapToWorld(px,py,center.x,center.z,step(),canvas.width);
       // Tapping a known marker navigates to its current/last-seen coordinates.
       active=cleanPlace({id:'destination',name:hit?.name||'Destination',...selected});
@@ -645,7 +747,7 @@ export function initExplorerMap({game,panel,openDialog,closeDialog,notify,dialog
     // inventory, fullscreen menus or blueprint placement controls.
     const visible=playing&&!game.ui?.isOpen&&!dialogOpen()&&!isBlocked();
     mini.style.display=visible?'flex':'none';
-    nav.hidden=true; // Direction and distance now live inside the minimap.
+    updateNavigation();
     if(!playing)return;
     if(mapOpened&&dialogOpen()&&panel.classList.contains('fc-map-panel')){
       mapRefreshTick-=dt;

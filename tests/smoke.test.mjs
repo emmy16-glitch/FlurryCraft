@@ -82,7 +82,10 @@ test('custom game systems are connected', () => {
   assert.match(flurry,/function setMoreMenu/);
   assert.match(readFileSync('js/creator-studio-ui.js','utf8'),/fc-studio-card-more/);
   assert.match(readFileSync('js/creator-studio-ui.js','utf8'),/fc-studio-tabs/);
-  assert.match(readFileSync('js/sui-market-ui.js','utf8'),/Testnet launch in preparation/);
+  assert.match(readFileSync('js/sui-market-ui.js','utf8'),/Marketplace has not launched yet/);
+  assert.match(readFileSync('js/sui-market-ui.js','utf8'),/NOT LIVE/);
+  assert.match(readFileSync('js/sui-market-ui.js','utf8'),/Listings and purchases/);
+  assert.match(readFileSync('js/sui-market-ui.js','utf8'),/Marketplace payments/);
   assert.match(readFileSync('js/sui-market-ui.js','utf8'),/Building Preview/);
   assert.match(readFileSync('js/sui-market-ui.js','utf8'),/Review NFT Mint/);
   assert.match(readFileSync('js/sui-market-ui.js','utf8'),/Review Listing/);
