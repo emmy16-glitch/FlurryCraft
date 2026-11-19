@@ -234,6 +234,15 @@ async function smoke(label,options){
     if(options.isMobile)await page.locator('#flurryModal .fc-dialog-close').tap();
     else await page.keyboard.press('Escape');
     await page.locator('#fcMiniMap').click({timeout:10000});
+    const diaryMap=await page.evaluate(()=>({
+      stats:window.game.journal?.stats?.(),
+      pins:window.game.journal?.mapPlaces?.()?.length,
+      dialog:document.querySelector('#flurryModal')?.style.display,
+      title:document.querySelector('#flurryModal h2')?.textContent,
+      headings:[...document.querySelectorAll('#flurryModal .fc-map-group')].map(x=>x.textContent),
+      mapPinCount:document.querySelectorAll('#flurryModal .fc-map-pin.is-discovery').length
+    }));
+    console.log(label+' field journal map status '+JSON.stringify(diaryMap));
     await page.getByText('FIELD JOURNAL · VISITED PLACES')
       .waitFor({state:'visible',timeout:10000});
     if(options.isMobile)await page.locator('#flurryModal .fc-dialog-close').tap();
