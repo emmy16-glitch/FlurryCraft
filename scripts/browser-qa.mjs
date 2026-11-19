@@ -177,7 +177,12 @@ async function smoke(label,options){
         top:top?.tagName,topClass:top?.className};
     });
     console.log(label+' map inside layout '+JSON.stringify(mapLayout));
-    await dungeonPin.click({timeout:10000});
+    // Real mouse/touch pointer path (no programmatic element.click):
+    // important for testing the fixed map hit area with the fullscreen dialog.
+    const pinBounds=await dungeonPin.boundingBox();
+    if(!pinBounds)throw Error('Dungeon Pin is off-screen');
+    await page.mouse.click(pinBounds.x+pinBounds.width/2,
+      pinBounds.y+pinBounds.height/2);
     await page.getByText('YOUR SAVED PINS',{exact:true})
       .waitFor({state:'visible',timeout:10000});
     await page.locator('#flurryModal .fc-map-pin.is-monster').first()
