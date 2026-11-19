@@ -499,9 +499,10 @@ async function smoke(label,options){
        !hudLayout.expedition||!hudLayout.trackerMeter||
        hudLayout.level.bottom>hudLayout.vitals.top+2)
       throw new Error('Responsive survival HUD is missing or overlapping: '+JSON.stringify(hudLayout));
-    if(hudLayout.minimap.right>hudLayout.expedition.left&&
-       hudLayout.minimap.bottom>hudLayout.expedition.top&&
-       hudLayout.minimap.top<hudLayout.expedition.bottom)
+    if(hudLayout.minimap.left<hudLayout.expedition.right&&
+       hudLayout.minimap.right>hudLayout.expedition.left&&
+       hudLayout.minimap.top<hudLayout.expedition.bottom&&
+       hudLayout.minimap.bottom>hudLayout.expedition.top)
       throw new Error('Minimap overlaps the Expedition tracker: '+JSON.stringify(hudLayout));
     // Verify the marketplace reports the actual disabled state. No buy/mint
     // button may appear while SUI_PACKAGE_ID is intentionally empty.
