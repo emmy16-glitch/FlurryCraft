@@ -33,7 +33,9 @@ Journal separately records an actual visit when the player stands within
 20 blocks of a **built** entrance. A discovered-but-unbuilt Stormspire
 Keep or another chapter location is **not** counted as visited.
 
-The map only lists discovered locations from this same save. The minimap
+On desktop, press **M** to open the full World Map even when the mouse is
+captured by the game; on phones, tap the minimap.
+\nThe map only lists discovered locations from this same save. The minimap
 adds small markers for visited places, and the World Map has a separate
 **Field Journal · Visited Places** group with Guide actions.
 
