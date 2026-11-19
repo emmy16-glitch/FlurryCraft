@@ -46,7 +46,7 @@ test('unpublished Testnet package shows a calm non-trading experience',async()=>
   assert.match(content,/NFT minting Disabled/);
   assert.match(content,/Listings and purchases Disabled/);
   assert.match(content,/Marketplace payments Unavailable/);
-  assert.match(content,/Check Testnet Wallet \(read only\)/);
+  assert.match(content,/Check Testnet connection \(read only\)/);
   assert.match(content,/not been published and independently verified/);
   assert.match(content,/No real-money sales are enabled/);
   assert.match(content,/it does not sign or submit a transaction/);
