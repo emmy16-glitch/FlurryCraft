@@ -470,6 +470,20 @@ async function smoke(label,options){
       throw new Error('Guide navigation omitted target, distance or direction: '+navigationText);
     console.log(label+' map filters, chapter progression, active expedition and compass Guide passed '+JSON.stringify({mapLayout,navigationText,explorationSaved}));
     console.log(label+' actual 3D landmark, one-time perk and persistent visit passed');
+    // End the guided demo before checking the post-tutorial mission HUD.
+    // The live game intentionally suppresses the tracker during the tutorial.
+    await page.evaluate(()=>{
+      window.game.tourActive=false;
+      window.game.rewards?.update?.(1);
+    });
+    await page.waitForFunction(()=>{
+      const visible=id=>{
+        const e=document.querySelector(id),r=e?.getBoundingClientRect();
+        return !!e&&getComputedStyle(e).display!=='none'&&r?.width>0&&r?.height>0;
+      };
+      return visible('#fcAdventurePill')&&visible('#fcSurvivalVitals')&&
+        visible('#fcMiniMap')&&visible('#fcExpeditionTracker');
+    },null,{timeout:10000});
     // HUD hierarchy must keep level/vitals readable and avoid the minimap.
     const hudLayout=await page.evaluate(()=>{
       const rect=id=>{
