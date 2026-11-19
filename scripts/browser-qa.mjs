@@ -423,9 +423,13 @@ async function smoke(label,options){
     });
     console.log(label+' map filter pointer diagnostic '+JSON.stringify(filterHitTest));
     const tapMapFilter=async filter=>{
+      const key=({All:'all',Caves:'cave',Dungeons:'dungeon',
+        Treasure:'treasure',Threats:'threat',Landmarks:'landmark'})[filter]||filter.toLowerCase();
       const point=await page.evaluate(name=>{
+        const filterKey=({All:'all',Caves:'cave',Dungeons:'dungeon',
+          Treasure:'treasure',Threats:'threat',Landmarks:'landmark'})[name]||name.toLowerCase();
         const button=[...document.querySelectorAll('.fc-map-filterbar button')]
-          .find(v=>v.dataset.filter===name.toLowerCase());
+          .find(v=>v.dataset.filter===filterKey);
         if(!button)throw new Error('Missing map filter '+name);
         const r=button.getBoundingClientRect(),x=r.left+r.width/2,y=r.top+r.height/2;
         if(document.elementFromPoint(x,y)?.closest('button')!==button)
@@ -437,13 +441,16 @@ async function smoke(label,options){
       // browser automation can retain a captured mouse even after modal open.
       if(options.isMobile)await page.touchscreen.tap(point.x,point.y);
       else{
-        const control=page.locator('.fc-map-filterbar button[data-filter="'+filter.toLowerCase()+'"]');
+        const control=page.locator('.fc-map-filterbar button[data-filter="'+key+'"]');
         await control.focus();
         await page.keyboard.press('Enter');
       }
-      await page.waitForFunction(name=>[...document.querySelectorAll('.fc-map-filterbar button')]
-        .some(v=>v.dataset.filter===name.toLowerCase()&&v.getAttribute('aria-pressed')==='true'),filter,
-        {timeout:5000});
+      await page.waitForFunction(name=>{
+        const key=({All:'all',Caves:'cave',Dungeons:'dungeon',
+          Treasure:'treasure',Threats:'threat',Landmarks:'landmark'})[name]||name.toLowerCase();
+        return [...document.querySelectorAll('.fc-map-filterbar button')]
+          .some(v=>v.dataset.filter===key&&v.getAttribute('aria-pressed')==='true');
+      },filter,{timeout:5000});
     };
     for(const [filter,labelText] of [
       ['Caves','Natural Cave Mouth'],['Dungeons','Buried Crypt'],
