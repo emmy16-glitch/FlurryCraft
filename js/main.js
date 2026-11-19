@@ -366,7 +366,13 @@ restoreInput.addEventListener('change',async()=>{
 });
 function renderWorlds() {
   const el = $('worldlist'), list = loadIndex().sort((a, b) => b.date - a.date);
-  if (!list.length) { el.innerHTML = '<div class="hint">Create your first world.</div>'; return; }
+  const latest=list[0],continueButton=$('bContinue');
+  continueButton.disabled=!latest;
+  $('fcContinueInfo').textContent=latest
+    ?'Continue your '+(latest.mode==='c'?'Creative':'Survival')+' game · '+(latest.name||'Saved World')
+    :'Start your first world with New Game.';
+  $('fcSaveCount').textContent=list.length?'('+list.length+' saved)':'';
+  if (!list.length) { el.innerHTML = '<div class="hint">No saved games yet.</div>'; return; }
   el.innerHTML = list.map(w=>{
     const id=escapeWorldText(w.id),name=escapeWorldText(w.name);
     const played=Number.isFinite(w.played)&&w.played>=0?w.played:0;
@@ -392,7 +398,31 @@ $('worldlist').addEventListener('click', (e) => {
   }
 });
 renderWorlds();
-$('bNew').onclick = () => { sound.init(); startGame(false); };
+// Start screen: three clear choices, with existing worlds retained in Load.
+function showStartPanel(which){
+  const newPanel=$('fcNewChoices'),loadPanel=$('fcLoadPanel');
+  newPanel.hidden=which!=='new';loadPanel.hidden=which!=='load';
+  $('bNew').setAttribute('aria-expanded',String(which==='new'));
+  $('bLoad').setAttribute('aria-expanded',String(which==='load'));
+  if(which==='load')renderWorlds();
+}
+$('bContinue').onclick=()=>{
+  const latest=loadIndex().sort((a,b)=>b.date-a.date)[0];
+  if(!latest)return;
+  sound.init();startGame(true,latest.id);
+};
+$('bNew').onclick=()=>showStartPanel($('fcNewChoices').hidden?'new':'');
+$('bLoad').onclick=()=>showStartPanel($('fcLoadPanel').hidden?'load':'');
+$('fcNewBack').onclick=()=>showStartPanel('');
+function createChosenWorld(mode){
+  settings.mode=mode;
+  if(mode==='s')settings.diff=1;
+  initSeg($('mMode'),mode);initSeg($('mDiff'),settings.diff);
+  saveSettings();showStartPanel('');
+  sound.init();startGame(false);
+}
+$('fcNewSurvival').onclick=()=>createChosenWorld('s');
+$('fcNewCreative').onclick=()=>createChosenWorld('c');
 let judgeDemoRequested=false;
 $('bJudgeDemo').onclick=()=>{
   // This starts a REAL Survival world, with no fabricated XP or NFT awards.
@@ -444,7 +474,7 @@ function startGame(cont, id) {
   const seedStr = $('mSeed').value.trim();
   let seed = save ? save.seed : (seedStr ? (/^-?\d+$/.test(seedStr) ? parseInt(seedStr, 10) : [...seedStr].reduce((a, c) => (Math.imul(a, 31) + c.charCodeAt(0)) | 0, 7)) : Math.floor(Math.random() * 1e9));
   if (save) { settings.mode = save.mode; settings.diff = save.diff; currentId = id; basePlayed = save.played || 0; const m = loadIndex().find((w) => w.id === id); currentName = m ? m.name : 'World'; }
-  else { basePlayed = 0; currentId = 'w' + Date.now().toString(36); const n = loadIndex().length + 1; currentName = judgeDemoRequested?'CLAY Guided Adventure':seedStr ? 'Seed ' + seedStr.slice(0, 18) : 'World ' + n; }
+  else { basePlayed = 0; currentId = 'w' + Date.now().toString(36); currentName = judgeDemoRequested?'Guided Adventure':seedStr ? 'Seed '+seedStr.slice(0,18):settings.mode==='c'?'Creative World':'Survival Adventure'; }
   game.worldId = currentId;game.worldName = currentName;
   if(game.adventure)game.adventure.load(save?.adventure);
   if(game.rewards)game.rewards.load(save?.rewards);
