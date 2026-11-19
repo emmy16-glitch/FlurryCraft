@@ -431,7 +431,7 @@ async function smoke(label,options){
       ['Treasure','Crypt Treasure Chest'],['Threats','Frostling Territory']
     ]){
       await tapMapFilter(filter);
-      await page.getByText(labelText,{exact:true}).waitFor({state:'visible',timeout:10000});
+      await page.getByText(labelText,{exact:true}).first().waitFor({state:'visible',timeout:10000});
     }
     await tapMapFilter('All');
     if(options.isMobile)await page.locator('#flurryModal .fc-dialog-close').tap();
