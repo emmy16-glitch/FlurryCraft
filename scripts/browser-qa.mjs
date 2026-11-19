@@ -460,7 +460,7 @@ async function smoke(label,options){
       await page.getByText(labelText,{exact:true}).first().waitFor({state:'visible',timeout:10000});
     }
     await tapMapFilter('All');
-    const guideFrost=page.getByRole('button',{name:'Navigate to Frost Ruins'});
+    const guideFrost=page.getByRole('button',{name:'Navigate to Frost Ruins'}).first();
     if(options.isMobile)await guideFrost.tap({timeout:10000});
     else{await guideFrost.focus();await page.keyboard.press('Enter');}
     await page.locator('#fcNavBeacon').waitFor({state:'visible',timeout:10000});
