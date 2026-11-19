@@ -8,7 +8,14 @@ test('browser HTML and bundled dependencies exist', () => {
   const html = readFileSync('index.html','utf8');
   assert.match(html, /<title>FlurryCraft/);
   assert.match(html, /id="fcClosePanel"/);
-  assert.match(html, /Create Snow World/);
+  assert.match(html, /id="bContinue"/);
+  assert.match(html, /id="bNew"/);
+  assert.match(html, /id="fcNewSurvival"/);
+  assert.match(html, /id="fcNewCreative"/);
+  assert.match(html, /id="bLoad"/);
+  assert.match(html, /id="fcLoadPanel"[^>]+hidden/);
+  assert.match(html, /id="worldlist"/);
+  assert.match(html, /id="fcMore"/);
   assert.match(html, /id="fcAdvanced"/);
   assert.match(html, /vendor\/three\.module\.min\.js/);
   assert.match(html, /js\/main\.js/);
