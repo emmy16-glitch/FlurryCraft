@@ -14,6 +14,8 @@ export function initExplorerMap({game,panel,openDialog,closeDialog,notify,dialog
   const journalPins=()=>game.journal?.mapPlaces?.()||[];
   const nearbyLandmarks=()=>game.landmarks?.nearby?.()||[];
   const visitedLandmarks=()=>game.landmarks?.visited?.()||[];
+  const explorationPins=()=>game.exploration?.mapPlaces?.()||[];
+  let mapFilter='all';
   const monsterPins=()=>nearbyMonsterMarkers(game.mobs,game.player);
   const MINI_SIZE=120, MINI_SAMPLES=48, MINI_STEP=2, MINI_RADIUS=MINI_SAMPLES*4;
   let miniTerrain=null,miniCenter=null,miniTimer=0,miniJob=0,miniDrawing=null;
@@ -104,6 +106,11 @@ export function initExplorerMap({game,panel,openDialog,closeDialog,notify,dialog
     '.fc-map-group{font:850 10px system-ui;letter-spacing:.11em;color:#a5ddeb;margin:12px 0 6px}',
     '#flurryModal .fc-map-pin button.fc-map-pin-save{background:transparent;color:#bfeff8;border:1px solid #47768e}',
     '.fc-map-pin.is-monster{border-color:#a36770}.fc-map-pin.is-dungeon{border-color:#a98d5a}.fc-map-pin.is-discovery{border-color:#60a8c1}.fc-map-pin.is-landmark{border-color:#65b6c8}',
+    '.fc-map-pin.is-cave{border-color:#82c9e2}.fc-map-pin.is-crypt{border-color:#a994d2}.fc-map-pin.is-treasure{border-color:#d8b56c}.fc-map-pin.is-territory{border-color:#c47782}',
+    '.fc-map-filterbar{display:flex;gap:5px;overflow-x:auto;padding:3px 0 8px;scrollbar-width:thin}',
+    '#flurryModal .fc-map-filterbar button{flex:none;min-height:31px;margin:0;padding:6px 9px;border:1px solid #46758b;border-radius:9px;background:#1a435a;color:#c7e8f1;font:750 10px system-ui}',
+    '#flurryModal .fc-map-filterbar button[aria-pressed="true"]{background:#8ce4f0;color:#0a3549;border-color:#baf4fc}',
+    '.fc-map-discovery-summary{font:650 10px/1.45 system-ui;color:#9dc6d5;margin:0 0 7px;padding:7px 8px;border:1px solid #315c73;border-radius:9px;background:#10364b}',
     '#fcNavBeacon{position:fixed;top:65px;right:12px;z-index:24;display:flex;align-items:center;gap:7px;width:max-content;max-width:min(250px,48vw);padding:7px 8px;border:1px solid #4e96b0;border-radius:13px;color:#e9fbff;background:#0b3044e8;box-shadow:0 5px 20px #001a2a80;backdrop-filter:blur(9px);font:700 11px system-ui;pointer-events:auto}',
     '#fcNavBeacon[hidden]{display:none!important}',
     '#fcNavBeacon .fc-nav-arrow{font:900 27px/1 system-ui;color:#8ae7ef;display:block;transform-origin:50% 50%;width:26px;text-align:center}',
@@ -205,6 +212,17 @@ export function initExplorerMap({game,panel,openDialog,closeDialog,notify,dialog
         miniCtx.fillStyle='#8ceeff';miniCtx.fillRect(p.x-2.5,p.y-2.5,5,5);
       }
     }
+    for(const marker of explorationPins()){
+      const p=coord(marker.x,marker.z);
+      if(p.x<=4||p.x>=side-4||p.y<=4||p.y>=side-4)continue;
+      miniCtx.fillStyle=marker.kind==='cave'?'#9be8ff':
+        marker.kind==='crypt'?'#c8b4f1':marker.kind==='treasure'?'#ffdc85':'#ff929c';
+      if(marker.kind==='territory'&&marker.radius){
+        miniCtx.beginPath();miniCtx.arc(p.x,p.y,Math.max(4,marker.radius/(MINI_STEP*4)),0,Math.PI*2);
+        miniCtx.strokeStyle='#ff9aa080';miniCtx.lineWidth=1;miniCtx.stroke();
+      }
+      miniCtx.beginPath();miniCtx.arc(p.x,p.y,2.8,0,Math.PI*2);miniCtx.fill();
+    }
     // Only currently loaded nearby monsters, capped at twelve per draw.
     for(const marker of monsterPins()){
       const p=coord(marker.x,marker.z);
@@ -282,7 +300,12 @@ export function initExplorerMap({game,panel,openDialog,closeDialog,notify,dialog
       ctx.moveTo(0,-9);ctx.lineTo(5,6);ctx.lineTo(0,3);ctx.lineTo(-5,6);ctx.closePath();ctx.fill();
     }else{
       ctx.fillStyle='#0d3247';ctx.beginPath();ctx.arc(p.x,p.y,8.6,0,Math.PI*2);ctx.fill();
-      ctx.fillStyle=type==='landmark'?'#74ecff':type==='discovery'?'#9bf5f5':type==='monster'?'#f98890':type==='dungeon'?'#ffdf8d':type==='selected'?'#ffd68b':type==='home'?'#9ef8ce':type==='spawn'?'#c0deff':'#ffe4ab';
+      ctx.fillStyle=type==='landmark'?'#74ecff':type==='cave'?'#91e5ff':
+        type==='crypt'?'#c8b1f0':type==='treasure'?'#ffd47d':
+        type==='territory'?'#ff929c':type==='discovery'?'#9bf5f5':
+        type==='monster'?'#f98890':type==='dungeon'?'#ffdf8d':
+        type==='selected'?'#ffd68b':type==='home'?'#9ef8ce':
+        type==='spawn'?'#c0deff':'#ffe4ab';
       ctx.beginPath();ctx.arc(p.x,p.y,5.5,0,Math.PI*2);ctx.fill();
       ctx.fillStyle='#0c3348';ctx.beginPath();ctx.arc(p.x,p.y,2,0,Math.PI*2);ctx.fill();
     }
@@ -321,7 +344,7 @@ export function initExplorerMap({game,panel,openDialog,closeDialog,notify,dialog
     canvas.setAttribute('role','img');canvas.setAttribute('aria-label','Interactive winter terrain map. Tap to mark a place.');
     const wait=$('div','Loading map',frame);wait.className='fc-map-wait';
     const legend=$('p',undefined,left);legend.className='fc-map-legend';
-    legend.textContent='■ Dungeons    ✦ Landmarks    ● Monsters    ◇ Discoveries    ◆ Pins';
+    legend.textContent='■ Dungeons  ▣ Caves  ✦ Landmarks  ✧ Treasure  ● Threats  ◆ Pins';
     const caption=$('div',undefined,left);caption.className='fc-map-caption';
     const coordinates=$('span','',caption);const scale=$('span','',caption);
     const side=$('section',undefined,layout);side.className='fc-map-side';
@@ -374,6 +397,18 @@ export function initExplorerMap({game,panel,openDialog,closeDialog,notify,dialog
         drawMarker(ctx,marker.x,marker.z,center,n,size,'','discovery');
       for(const marker of nearbyLandmarks())
         drawMarker(ctx,marker.x,marker.z,center,n,size,marker.name,'landmark');
+      for(const marker of explorationPins()){
+        if(marker.kind==='territory'&&marker.radius){
+          const p=worldToMap(marker.x,marker.z,center.x,center.z,n,size);
+          const radius=marker.radius/(MAP_CELLS*n)*size;
+          if(radius>1&&p.x>-radius&&p.y>-radius&&p.x<size+radius&&p.y<size+radius){
+            ctx.save();ctx.beginPath();ctx.arc(p.x,p.y,radius,0,Math.PI*2);
+            ctx.fillStyle='#f27e8d18';ctx.strokeStyle='#f39aa577';
+            ctx.lineWidth=1.4;ctx.fill();ctx.stroke();ctx.restore();
+          }
+        }
+        drawMarker(ctx,marker.x,marker.z,center,n,size,marker.name,marker.kind);
+      }
       for(const marker of monsterPins())
         drawMarker(ctx,marker.x,marker.z,center,n,size,'','monster');
       const me=pos();
