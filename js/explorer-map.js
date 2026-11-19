@@ -83,7 +83,7 @@ export function initExplorerMap({game,panel,openDialog,closeDialog,notify,dialog
     '#flurryModal .fPanel.fc-map-panel{width:min(760px,96vw);height:calc(100dvh - 24px);max-height:calc(100dvh - 24px);overflow:hidden;display:flex;flex-direction:column}',
     '#flurryModal .fc-map-layout{flex:1;min-height:0;overflow:hidden}',
     '#flurryModal .fc-map-layout>section{min-height:0;overflow-y:auto;overscroll-behavior:contain}',
-    '#flurryModal .fc-map-layout .fc-map-side{position:relative;z-index:10;max-height:none;overflow:hidden;pointer-events:auto;display:flex;flex-direction:column}',
+    '#flurryModal .fc-map-layout .fc-map-side{position:relative;z-index:10;max-height:min(68dvh,560px);overflow:hidden;pointer-events:auto;display:flex;flex-direction:column}',
     '.fc-map-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(180px,.72fr);gap:14px;align-items:start}',
     '.fc-map-toolbar{display:flex;align-items:center;justify-content:space-between;gap:6px;margin:0 0 7px}',
     '#flurryModal .fc-map-toolbar button{min-width:36px;min-height:36px;margin:0;padding:7px 12px;background:#254f65;border:1px solid #4d7d92;border-radius:10px}',
@@ -98,7 +98,7 @@ export function initExplorerMap({game,panel,openDialog,closeDialog,notify,dialog
     // Keep sidebar actions inside the dialog hit area at desktop and mobile
     // sizes. Otherwise the modal backdrop catches taps on lower Pin buttons.
     '.fc-map-side{display:flex;flex-direction:column;min-height:0;max-height:min(68dvh,560px);overflow:hidden;overscroll-behavior:contain;padding-right:5px;scrollbar-width:thin}',
-    '@media(max-height:520px){.fc-map-side{max-height:calc(100dvh - 94px)}.fc-map-frame{width:min(100%,min(280px,64dvh));margin:auto}.fc-map-toolbar{gap:4px}.fc-map-caption{font-size:9px}.fc-map-pin{padding:5px}.fc-map-filterbar{padding:4px 1px 6px}#fcNavBeacon{top:calc(env(safe-area-inset-top) + 100px);max-width:64vw}}',
+    '@media(max-height:520px){#flurryModal .fc-map-layout .fc-map-side{max-height:calc(100dvh - 94px)}.fc-map-frame{width:min(100%,min(280px,64dvh));margin:auto}.fc-map-toolbar{gap:4px}.fc-map-caption{font-size:9px}.fc-map-pin{padding:5px}.fc-map-filterbar{padding:4px 1px 6px}#fcNavBeacon{top:calc(env(safe-area-inset-top) + 100px);max-width:64vw}}',
     '.fc-map-pin{display:flex;align-items:center;gap:7px;background:#163e55;border:1px solid #416d83;border-radius:11px;padding:8px}',
     '.fc-map-pin-icon{width:30px;height:30px;flex:none;border-radius:8px;background:#274f64;display:grid;place-items:center;color:#d2f2fb;font:700 15px system-ui}',
     '.fc-map-pin-main{flex:1;min-width:0}',
@@ -152,7 +152,7 @@ export function initExplorerMap({game,panel,openDialog,closeDialog,notify,dialog
     '#fcMiniMap .fc-mini-label[data-guiding="true"]{color:#a2f6d2}',
     'body.touch #fcMiniMap{top:max(76px,calc(env(safe-area-inset-top) + 72px));right:112px;width:98px}',
     '@media(max-height:520px){body.touch #fcMiniMap{top:max(73px,calc(env(safe-area-inset-top) + 68px));width:90px;right:112px}#fcMiniMap{width:98px}}',
-    '@media(max-width:570px){.fc-map-layout{grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr)}.fc-map-frame{width:min(100%,min(270px,32dvh));margin:auto}.fc-map-side{max-height:40dvh;padding:4px 0}.fc-map-pin{padding:6px}.fc-map-filterbar{margin:0 -2px}}',
+    '@media(max-width:570px){.fc-map-layout{grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr)}.fc-map-frame{width:min(100%,min(270px,32dvh));margin:auto}#flurryModal .fc-map-layout .fc-map-side{max-height:40dvh;padding:4px 0}.fc-map-pin{padding:6px}.fc-map-filterbar{margin:0 -2px;grid-template-columns:repeat(3,minmax(0,1fr))}}',
     '@media(max-height:500px){#flurryModal .fPanel.fc-map-panel{padding:9px}.fc-map-layout{gap:8px}.fc-map-frame{max-height:62dvh;width:100%;max-width:300px;margin:auto}.fc-map-side .fc-map-pin-list{max-height:170px;overflow:auto}#fcNavBeacon{top:51px;right:5px;padding:5px 6px}}'
   ].join('\n');
   document.head.appendChild(style);
