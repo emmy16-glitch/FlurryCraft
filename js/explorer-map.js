@@ -218,7 +218,7 @@ export function initExplorerMap({game,panel,openDialog,closeDialog,notify,dialog
       miniCtx.fillStyle=marker.kind==='cave'?'#9be8ff':
         marker.kind==='crypt'?'#c8b4f1':marker.kind==='treasure'?'#ffdc85':'#ff929c';
       if(marker.kind==='territory'&&marker.radius){
-        miniCtx.beginPath();miniCtx.arc(p.x,p.y,Math.max(4,marker.radius/(MINI_STEP*4)),0,Math.PI*2);
+        miniCtx.beginPath();miniCtx.arc(p.x,p.y,Math.max(4,marker.radius/(MINI_STEP*MAP_CELLS)*side),0,Math.PI*2);
         miniCtx.strokeStyle='#ff9aa080';miniCtx.lineWidth=1;miniCtx.stroke();
       }
       miniCtx.beginPath();miniCtx.arc(p.x,p.y,2.8,0,Math.PI*2);miniCtx.fill();
@@ -614,7 +614,7 @@ export function initExplorerMap({game,panel,openDialog,closeDialog,notify,dialog
       const px=(e.clientX-rect.left)*canvas.width/rect.width;
       const py=(e.clientY-rect.top)*canvas.height/rect.height;
       if(px<0||py<0||px>canvas.width||py>canvas.height)return;
-      const hit=mapMarkerAt([...monsterPins(),...dungeonPins(),...nearbyLandmarks(),...visitedLandmarks(),...places.marks,...journalPins()],
+      const hit=mapMarkerAt([...monsterPins(),...dungeonPins(),...nearbyLandmarks(),...visitedLandmarks(),...explorationPins(),...places.marks,...journalPins()],
         px,py,center,step(),canvas.width);
       selected=hit?{x:hit.x,z:hit.z}:mapToWorld(px,py,center.x,center.z,step(),canvas.width);
       // Tapping a known marker navigates to its current/last-seen coordinates.
