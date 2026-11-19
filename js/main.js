@@ -174,7 +174,7 @@ document.addEventListener('mousemove', (e) => {
   player.yaw -= e.movementX * s; player.pitch -= e.movementY * s; player.pitch = Math.max(-1.5533, Math.min(1.5533, player.pitch));
 });
 document.addEventListener('mousedown', (e) => {
-  const interactiveUI=game.tourActive||(e.target&&e.target.closest&&e.target.closest('#pause,#screen,#death,#touch,#flurryModal,#fcJudgeTour,#fcQuickMenu,#flurryActions,#fcAdventurePill,#fcDungeonEntry'));
+  const interactiveUI=game.tourActive||(e.target&&e.target.closest&&e.target.closest('#pause,#screen,#death,#touch,#flurryModal,#fcJudgeTour,#fcQuickMenu,#flurryActions,#fcAdventurePill,#fcDungeonEntry,#fcMiniMap,#fcNavBeacon,#fcInspectLandmark,#fcTalkLofi'));
   if (game.state === 'play' && !game.paused && !ui.isOpen && !player.dead && !locked() && !touchMode && !interactiveUI) { try { const p = canvas.requestPointerLock(); if (p && p.catch) p.catch(() => {}); } catch (err) {} }
   if (game.state !== 'play') return;
   if (game.paused || ui.isOpen || interactiveUI) return;
