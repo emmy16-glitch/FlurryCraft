@@ -398,6 +398,7 @@ async function smoke(label,options){
       return {rect:{x:r.x,y:r.y,width:r.width,height:r.height},
         hit:hit?.tagName,hitId:hit?.id,hitClass:hit?.className,
         buttonPointer:getComputedStyle(button).pointerEvents,
+        pointerLocked:!!document.pointerLockElement,gamePaused:window.game?.paused,
         sideRect:(()=>{const v=button.closest('.fc-map-side')?.getBoundingClientRect();return v?{x:v.x,y:v.y,width:v.width,height:v.height}:null;})(),
         panelRect:(()=>{const v=document.querySelector('#flurryModal .fPanel')?.getBoundingClientRect();return v?{x:v.x,y:v.y,width:v.width,height:v.height}:null;})()};
     });
@@ -412,11 +413,15 @@ async function smoke(label,options){
           throw new Error('Map filter is covered at its actual touch point: '+name);
         return {x,y};
       },filter);
-      // Click the measured, visible hit target directly. Locator.click() auto-
-      // scrolls nested map panels and can move a valid target under the sticky
-      // modal header; physical pointer/touch coordinates avoid that artefact.
+      // Touch devices use a real touchscreen tap. Desktop uses the
+      // keyboard-accessible button activation because pointer-lock based
+      // browser automation can retain a captured mouse even after modal open.
       if(options.isMobile)await page.touchscreen.tap(point.x,point.y);
-      else await page.mouse.click(point.x,point.y);
+      else{
+        const control=page.locator('.fc-map-filterbar button').filter({hasText:filter});
+        await control.focus();
+        await page.keyboard.press('Enter');
+      }
       await page.waitForFunction(name=>[...document.querySelectorAll('.fc-map-filterbar button')]
         .some(v=>v.textContent.trim()===name&&v.getAttribute('aria-pressed')==='true'),filter,
         {timeout:5000});
