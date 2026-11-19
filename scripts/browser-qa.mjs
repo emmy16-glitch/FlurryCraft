@@ -173,7 +173,11 @@ async function smoke(label,options){
     const mapPins=await page.locator('#flurryModal .fc-map-pin')
       .filter({hasText:'sighting'}).count();
     if(mapPins<1)throw new Error('Could not save live monster sighting as map pin');
-    await page.locator('#flurryModal .fc-dialog-close').click({timeout:10000});
+    // Desktop can dismiss the map through Escape even with mouse capture;
+    // touch landscape exercises the real visible close button.
+    if(options.isMobile)
+      await page.locator('#flurryModal .fc-dialog-close').tap({timeout:10000});
+    else await page.keyboard.press('Escape');
     await page.evaluate(()=>{
       const g=window.game,m=window.__mapSmokeMob;
       if(m){const i=g.mobs.indexOf(m);if(i>=0)g.mobs.splice(i,1);m.remove();}
