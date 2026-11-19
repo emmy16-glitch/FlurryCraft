@@ -164,6 +164,19 @@ async function smoke(label,options){
       panel:await page.locator('#flurryModal .fPanel').boundingBox(),
       overlay:await page.locator('#flurryModal').boundingBox()
     }));
+    const mapLayout=await page.evaluate(()=>{
+      const b=document.querySelector('.fc-map-pin.is-dungeon .fc-map-pin-save');
+      const side=document.querySelector('#flurryModal .fc-map-side');
+      const layout=document.querySelector('#flurryModal .fc-map-layout');
+      const rect=el=>{const x=el?.getBoundingClientRect();return x?{
+        x:x.x,y:x.y,right:x.right,bottom:x.bottom}:null;};
+      const box=rect(b);
+      const top=box?document.elementFromPoint((box.x+box.right)/2,
+        (box.y+box.bottom)/2):null;
+      return {button:box,side:rect(side),layout:rect(layout),
+        top:top?.tagName,topClass:top?.className};
+    });
+    console.log(label+' map inside layout '+JSON.stringify(mapLayout));
     await dungeonPin.click({timeout:10000});
     await page.getByText('YOUR SAVED PINS',{exact:true})
       .waitFor({state:'visible',timeout:10000});
