@@ -442,7 +442,8 @@ function saveGame() {
       seed: game.world.seed, mode: settings.mode, diff: settings.diff, tod: game.env.tod, edits, containers: ui.serialize(),
       player: { x: player.x, y: player.y, z: player.z, yaw: player.yaw, pitch: player.pitch, health: player.health, healthCap: player.maxHealth, hunger: player.hunger, sat: player.sat, inv: player.inv, sel: player.sel, spawn: player.spawn, flying: player.flying, armor: player.armor },
       adv: [...game.adv], adventure:game.adventure?.serialize(), rewards:game.rewards?.serialize(),
-      journal:game.journal?.serialize(), played: basePlayed + game.time,
+      journal:game.journal?.serialize(),
+      winterLandmarks:game.landmarks?.serialize(), played: basePlayed + game.time,
     };
     saveWorldSafely(localStorage,currentId,data);
     const idx = loadIndex().filter((w) => w.id !== currentId); idx.push({ id: currentId, name: currentName, date: Date.now(), mode: settings.mode, played: Math.round(basePlayed + game.time) }); saveIndex(idx);
@@ -487,6 +488,7 @@ function startGame(cont, id) {
   // Optional discovery data stays with this world and portable backup.
   // Load after assigning game.world to avoid another world's live scan state.
   game.journal?.load?.(save?.journal);
+  game.landmarks?.load?.(save?.winterLandmarks);
   // Record actual player block placements for the Lofi building quest.
   const originalSetBlock = world.setBlock.bind(world);
   world.setBlock = (x, y, z, id, record = true) => {
