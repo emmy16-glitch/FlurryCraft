@@ -11,6 +11,7 @@ import { EditHistory } from './edit-history.js';
 import { weatherProfile,cycleWeatherMode } from './winter-weather.js';
 import { initExplorerMap } from './explorer-map.js';
 import { initExplorerJournal } from './explorer-journal.js';
+import { initWinterLandmarks } from './winter-landmarks.js';
 import { initAdventure } from './adventure.js';
 import { initJudgeTour } from './judge-tour.js';
 import { initRewardsHub } from './rewards-ui.js';
@@ -568,6 +569,9 @@ export function initFlurry(game) {
   game.journal=initExplorerJournal({game,panel,openDialog:open,notify,explorer,
     isBusy:()=>overlay.style.display==='flex'||game.ui?.isOpen||
       !menu.hidden||!!previewState||game.tourActive});
+  game.landmarks=initWinterLandmarks({game,panel,openDialog:open,closeDialog:close,
+    notify,isBusy:()=>overlay.style.display==='flex'||!menu.hidden||
+      !!previewState||game.tourActive});
   const judgeTour=initJudgeTour({game,
     openAdventure:()=>game.adventure.open(),openBlocks:()=>showBuildMenu(),
     openRewards:()=>game.rewards.open(),openStudio:()=>creatorStudio.open(),
@@ -1149,6 +1153,7 @@ export function initFlurry(game) {
     judgeTour.update();
     game.adventure.update(dt);
     game.journal?.update?.(dt);
+    game.landmarks?.update?.(dt);
     game.rewards?.update?.(dt);
     explorer.update(dt);
     const isPlaying=game.state==='play' && !game.paused;
@@ -1307,8 +1312,12 @@ export function initFlurry(game) {
     // G is reserved for Sword Guard; N opens the building catalog.
     if(e.code==='KeyN')showBuildMenu();
     if(e.code==='KeyF'&&!e.repeat&&menu.hidden&&overlay.style.display!=='flex'&&
-      !previewState&&!game.tourActive&&nearLofi(game.player,npcPosition)){
-      e.preventDefault();openLofiDialogue();
+      !previewState&&!game.tourActive){
+      e.preventDefault();
+      // Lofi remains first priority near his shack; elsewhere F opens the
+      // nearest genuine winter landmark, if the player is standing beside it.
+      if(nearLofi(game.player,npcPosition))openLofiDialogue();
+      else game.landmarks?.interact?.();
     }
   });
 }
