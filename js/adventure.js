@@ -62,6 +62,7 @@ export function initAdventure({game,B,openDialog,closeDialog,panel,notify,explor
     '#fcSurvivalVitals.critical{border-color:#fb9a9a}#fcSurvivalVitals.critical .fc-hp-fill{background:#ff8585}',
     '#fcSurvivalVitals .fc-heal{display:block;width:100%;margin-top:6px;padding:5px 8px;border:1px solid #91dae5;border-radius:7px;background:#20566b;color:#e0f9ff;font:800 10px system-ui;touch-action:manipulation;cursor:pointer}',
     '#fcSurvivalVitals .fc-heal.ready{background:#9ae9ee;color:#063247;border-color:#c7fbff}',
+    '#fcSurvivalVitals .fc-heal[hidden]{display:none!important}',
     '#fcSiegeHUD{position:fixed;z-index:28;left:12px;top:185px;max-width:min(248px,40vw);border:1px solid #79d1e9;border-radius:12px;padding:8px 11px;background:#0a3046ed;color:#f1fdff;font:750 11px/1.4 system-ui;display:none;pointer-events:auto;box-shadow:0 8px 22px #001d2e88}',
     '#fcSiegeHUD .fc-siege-row{display:flex;gap:5px;margin-top:6px}',
     '#fcSiegeHUD button{min-height:32px;padding:5px 8px;border:1px solid #7fbcd0;background:#23526a;color:#eaf9ff;border-radius:8px;font:750 10px system-ui;touch-action:manipulation}',
