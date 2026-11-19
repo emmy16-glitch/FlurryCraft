@@ -124,7 +124,8 @@ test('custom game systems are connected', () => {
   assert.match(readFileSync('js/blocks.js','utf8'),/FROST_BRICK = 79/);
   assert.match(main,/adventure:game\.adventure/);
   assert.match(main,/game\.adventure\?\.trackBlock/);
-  assert.match(flurry,/menuItem\('World Map'/);
+  assert.match(flurry,/menuItem\('World Map(?: · M)?'/);
+  assert.match(flurry,/e\.code==='KeyM'/);
   assert.match(flurry,/explorer\.reset\(\)/);
   assert.match(readFileSync('js/explorer-map.js','utf8'),/function initExplorerMap/);
   assert.match(readFileSync('js/explorer-map.js','utf8'),/renderTerrain/);
