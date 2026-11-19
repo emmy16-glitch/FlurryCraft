@@ -157,56 +157,19 @@ async function smoke(label,options){
     await page.locator('#fcMiniMap').click({timeout:10000});
     await page.getByText('KNOWN DUNGEONS',{exact:true})
       .waitFor({state:'visible',timeout:10000});
-    const dungeonPin=page.locator('#flurryModal .fc-map-pin.is-dungeon').first()
-      .locator('button.fc-map-pin-save');
-    console.log(label+' map layout: '+JSON.stringify({
-      pin:await dungeonPin.boundingBox(),
-      panel:await page.locator('#flurryModal .fPanel').boundingBox(),
-      overlay:await page.locator('#flurryModal').boundingBox()
-    }));
-    const mapLayout=await page.evaluate(()=>{
-      const b=document.querySelector('.fc-map-pin.is-dungeon .fc-map-pin-save');
-      const side=document.querySelector('#flurryModal .fc-map-side');
-      const layout=document.querySelector('#flurryModal .fc-map-layout');
-      const rect=el=>{const x=el?.getBoundingClientRect();return x?{
-        x:x.x,y:x.y,right:x.right,bottom:x.bottom}:null;};
-      const box=rect(b);
-      const top=box?document.elementFromPoint((box.x+box.right)/2,
-        (box.y+box.bottom)/2):null;
-      return {button:box,side:rect(side),layout:rect(layout),
-        top:top?.tagName,topClass:top?.className};
-    });
-    console.log(label+' map inside layout '+JSON.stringify(mapLayout));
-    // Real mouse/touch pointer path (no programmatic element.click):
-    // important for testing the fixed map hit area with the fullscreen dialog.
-    const pinBounds=await dungeonPin.boundingBox();
-    if(!pinBounds)throw Error('Dungeon Pin is off-screen');
-    await page.mouse.move(pinBounds.x+pinBounds.width/2,
-      pinBounds.y+pinBounds.height/2);
-    const pointerCheck=await page.evaluate(()=>{
-      const r=document.querySelector('.fc-map-pin.is-dungeon .fc-map-pin-save')
-        .getBoundingClientRect();
-      const t=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);
-      return {hoverTarget:t?.className||t?.id||t?.tagName,
-        pointerLocked:!!document.pointerLockElement,
-        modal:document.querySelector('#flurryModal').style.display};
-    });
-    console.log(label+' map pointer after mouse move '+JSON.stringify(pointerCheck));
-    await page.mouse.click(pinBounds.x+pinBounds.width/2,
-      pinBounds.y+pinBounds.height/2);
-    const afterClick=await page.evaluate(()=>({
-      modal:document.querySelector('#flurryModal').style.display,
-      pinList:!!document.querySelector('#flurryModal .fc-map-group'),
-      savedPins:!!Array.from(document.querySelectorAll('#flurryModal .fc-map-group'))
-        .find(e=>e.textContent==='YOUR SAVED PINS')
-    }));
-    console.log(label+' map after click '+JSON.stringify(afterClick));
+    const dungeonPin=page.locator('#flurryModal .fc-map-pin.is-dungeon')
+      .first().locator('button.fc-map-pin-save');
+    // Desktop supports keyboard navigation; mobile uses a genuine touch tap.
+    if(options.isMobile)await dungeonPin.tap({timeout:10000});
+    else {await dungeonPin.focus();await page.keyboard.press('Enter');}
     await page.getByText('YOUR SAVED PINS',{exact:true})
       .waitFor({state:'visible',timeout:10000});
     await page.locator('#flurryModal .fc-map-pin.is-monster').first()
       .waitFor({state:'visible',timeout:10000});
-    await page.locator('#flurryModal .fc-map-pin.is-monster').first()
-      .locator('button.fc-map-pin-save').click({timeout:10000});
+    const monsterPin=page.locator('#flurryModal .fc-map-pin.is-monster')
+      .first().locator('button.fc-map-pin-save');
+    if(options.isMobile)await monsterPin.tap({timeout:10000});
+    else {await monsterPin.focus();await page.keyboard.press('Enter');}
     const mapPins=await page.locator('#flurryModal .fc-map-pin')
       .filter({hasText:'sighting'}).count();
     if(mapPins<1)throw new Error('Could not save live monster sighting as map pin');
