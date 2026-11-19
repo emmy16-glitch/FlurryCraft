@@ -394,18 +394,33 @@ async function smoke(label,options){
         panelRect:(()=>{const v=document.querySelector('#flurryModal .fPanel')?.getBoundingClientRect();return v?{x:v.x,y:v.y,width:v.width,height:v.height}:null;})()};
     });
     console.log(label+' map filter pointer diagnostic '+JSON.stringify(filterHitTest));
+    const tapMapFilter=async filter=>{
+      const point=await page.evaluate(name=>{
+        const button=[...document.querySelectorAll('.fc-map-filterbar button')]
+          .find(v=>v.textContent.trim()===name);
+        if(!button)throw new Error('Missing map filter '+name);
+        const r=button.getBoundingClientRect(),x=r.left+r.width/2,y=r.top+r.height/2;
+        if(document.elementFromPoint(x,y)!==button)
+          throw new Error('Map filter is covered at its actual touch point: '+name);
+        return {x,y};
+      },filter);
+      // Click the measured, visible hit target directly. Locator.click() auto-
+      // scrolls nested map panels and can move a valid target under the sticky
+      // modal header; physical pointer/touch coordinates avoid that artefact.
+      if(options.isMobile)await page.touchscreen.tap(point.x,point.y);
+      else await page.mouse.click(point.x,point.y);
+      await page.waitForFunction(name=>[...document.querySelectorAll('.fc-map-filterbar button')]
+        .some(v=>v.textContent.trim()===name&&v.getAttribute('aria-pressed')==='true'),filter,
+        {timeout:5000});
+    };
     for(const [filter,labelText] of [
       ['Caves','Natural Cave Mouth'],['Dungeons','Buried Crypt'],
       ['Treasure','Crypt Treasure Chest'],['Threats','Frostling Territory']
     ]){
-      const control=page.getByRole('button',{name:filter,exact:true});
-      if(options.isMobile)await control.tap({timeout:10000});
-      else await control.click({timeout:10000});
+      await tapMapFilter(filter);
       await page.getByText(labelText,{exact:true}).waitFor({state:'visible',timeout:10000});
     }
-    const allFilter=page.getByRole('button',{name:'All',exact:true});
-    if(options.isMobile)await allFilter.tap({timeout:10000});
-    else await allFilter.click({timeout:10000});
+    await tapMapFilter('All');
     if(options.isMobile)await page.locator('#flurryModal .fc-dialog-close').tap();
     else{await page.locator('#flurryModal .fc-dialog-close').focus();
       await page.keyboard.press('Enter');}
