@@ -105,7 +105,7 @@ export function initSuiMarketUI({game,panel,openDialog,closeDialog,notify,startP
     }
     const wallets=sdk.wallets();
     if(!wallets.length){
-      make('small','Connect from a compatible Sui wallet browser to trade.',bar);
+      make('small','A compatible Sui wallet can be connected for optional read-only inspection. Trading is not available.',bar);
     }else{
       const chooser=make('details',undefined,bar);
       make('summary','Connect Wallet',chooser);
@@ -245,11 +245,24 @@ export function initSuiMarketUI({game,panel,openDialog,closeDialog,notify,startP
     const token=++generation;
     heading('Sui Marketplace');stateNotice();
     if(!pkg){
-      const state=make('section');state.className='fc-market-waiting';
-      make('strong','Testnet launch in preparation',state);
-      make('p','The marketplace contract has not been published to Sui Testnet. No NFT mint, listing or payment is possible yet.',state);
-      make('p','You can still connect a compatible wallet in read-only mode to check Testnet connectivity and balance. A connection never signs a transaction by itself.',state);
-      button(state,readonlyOpen?'Refresh read-only Testnet wallet':'Check Testnet Wallet (read only)',()=>{
+      const state=make('section');state.className='fc-market-waiting fc-market-status';
+      state.setAttribute('role','status');state.setAttribute('aria-live','polite');
+      const statusHead=make('div',undefined,state);statusHead.className='fc-market-status-head';
+      const statusTag=make('span','NOT LIVE',statusHead);statusTag.className='fc-market-status-tag';
+      make('strong','Marketplace has not launched yet',state);
+      make('p','The Sui Testnet marketplace contract has not been published and independently verified. This page is a development status screen, not a working storefront.',state);
+      const availability=make('div',undefined,state);availability.className='fc-market-availability';
+      for(const [label,value] of [
+        ['NFT minting','Disabled'],
+        ['Listings and purchases','Disabled'],
+        ['Marketplace payments','Unavailable'],
+        ['Wallet connection','Optional · read-only check']
+      ]){
+        const row=make('div',undefined,availability);row.className='fc-market-availability-row';
+        make('strong',label,row);make('span',value,row);
+      }
+      make('p','No real-money sales are enabled. Checking a wallet can show Testnet connectivity and balance only; it does not sign or submit a transaction.',state);
+      button(state,readonlyOpen?'Refresh Testnet connection':'Check Testnet connection (read only)',()=>{
         readonlyOpen=true;
         open({tab});
       },'fc-market-secondary');
@@ -259,7 +272,7 @@ export function initSuiMarketUI({game,panel,openDialog,closeDialog,notify,startP
           const sdk=await walletModule();
           const network=await sdk.testnetStatus();
           if(!isCurrent(token))return;
-          status.textContent='Sui '+network.network+' RPC reachable. No contract deployed; trading is disabled.';
+          status.textContent='Sui '+network.network+' RPC reachable. Marketplace remains offline because no verified contract is published.';
           await wallet(sdk);
           if(!isCurrent(token))return;
           text('Connecting a wallet here is optional and cannot initiate a mint, listing, purchase or cancellation.','fc-market-help');
@@ -394,6 +407,13 @@ export function initSuiMarketUI({game,panel,openDialog,closeDialog,notify,startP
     '.fc-market-link{display:inline-block;color:#a2eeff;margin:8px 0;font:700 11px system-ui}',
     '.fc-market-waiting{border:1px solid #477a90;border-radius:13px;background:#153c51;padding:15px;margin:10px 0}',
     '.fc-market-waiting strong{font:800 15px system-ui;color:#ecfaff}.fc-market-waiting p{font:600 12px/1.5 system-ui;color:#b0d0dd}',
+    '.fc-market-status-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}',
+    '.fc-market-status-tag{display:inline-flex;align-items:center;min-height:24px;padding:4px 9px;border:1px solid #cb9872;border-radius:20px;background:#503c32;color:#ffd5ad;font:900 10px system-ui;letter-spacing:.1em}',
+    '.fc-market-status>strong{display:block;font:850 17px/1.25 system-ui;color:#f0fbff}',
+    '.fc-market-availability{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin:12px 0}',
+    '.fc-market-availability-row{display:flex;flex-direction:column;gap:4px;min-width:0;padding:9px;border:1px solid #3d687d;border-radius:10px;background:#0e3146}',
+    '.fc-market-availability-row strong{font:750 10px/1.3 system-ui;color:#d8edf5}',
+    '.fc-market-availability-row span{font:800 10px/1.3 system-ui;color:#f0c49e}',
     '@media(max-height:520px){.fc-market-gallery .fc-market-art{height:83px}.fc-market-art.large{height:118px}#flurryModal .fPanel.fc-sui-panel{padding:10px}}',
   ].join('\n');
   return {open};
