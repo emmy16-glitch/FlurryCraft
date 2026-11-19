@@ -49,7 +49,7 @@ test('unpublished Testnet package shows a calm non-trading experience',async()=>
   assert.match(content,/Check Testnet Wallet \(read only\)/);
   assert.match(content,/not been published and independently verified/);
   assert.match(content,/No real-money sales are enabled/);
-  assert.match(content,/A connection never signs a transaction/);
+  assert.match(content,/it does not sign or submit a transaction/);
   assert.match(content,/Frost Cottage/);
   assert.doesNotMatch(content,/Confirm Purchase|Confirm Mint|Connect Wallet/);
   assert.equal(calls.includes('Sui Marketplace'),true);
