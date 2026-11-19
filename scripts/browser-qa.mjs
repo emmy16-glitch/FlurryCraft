@@ -381,6 +381,19 @@ async function smoke(label,options){
     await page.locator('#fcMiniMap').click({timeout:10000});
     await page.getByText('Exploration & Places',{exact:true})
       .waitFor({state:'visible',timeout:10000});
+    const filterHitTest=await page.evaluate(()=>{
+      const button=[...document.querySelectorAll('.fc-map-filterbar button')]
+        .find(v=>v.textContent.trim()==='Caves');
+      if(!button)return {missing:true};
+      const r=button.getBoundingClientRect(),x=r.left+r.width/2,y=r.top+r.height/2;
+      const hit=document.elementFromPoint(x,y);
+      return {rect:{x:r.x,y:r.y,width:r.width,height:r.height},
+        hit:hit?.tagName,hitId:hit?.id,hitClass:hit?.className,
+        buttonPointer:getComputedStyle(button).pointerEvents,
+        sideRect:(()=>{const v=button.closest('.fc-map-side')?.getBoundingClientRect();return v?{x:v.x,y:v.y,width:v.width,height:v.height}:null;})(),
+        panelRect:(()=>{const v=document.querySelector('#flurryModal .fPanel')?.getBoundingClientRect();return v?{x:v.x,y:v.y,width:v.width,height:v.height}:null;})()};
+    });
+    console.log(label+' map filter pointer diagnostic '+JSON.stringify(filterHitTest));
     for(const [filter,labelText] of [
       ['Caves','Natural Cave Mouth'],['Dungeons','Buried Crypt'],
       ['Treasure','Crypt Treasure Chest'],['Threats','Frostling Territory']
