@@ -232,10 +232,13 @@ async function smoke(label,options){
     await page.getByText('LANDSCAPES DISCOVERED').waitFor({state:'visible',timeout:10000});
     await page.locator('#flurryModal .fc-journal-entry').first().waitFor({state:'visible',timeout:10000});
     if(options.isMobile)await page.locator('#flurryModal .fc-dialog-close').tap();
-    else await page.keyboard.press('Escape');
+    else{
+      await page.locator('#flurryModal .fc-dialog-close').focus();
+      await page.keyboard.press('Enter');
+    }
     await page.locator('#fcMiniMap').click({timeout:10000});
     const diaryMap=await page.evaluate(()=>({
-      stats:window.game.journal?.stats?.(),
+      stats:window.game.journal?.stats?.(),paused:window.game.paused,state:window.game.state,
       pins:window.game.journal?.mapPlaces?.()?.length,
       dialog:document.querySelector('#flurryModal')?.style.display,
       title:document.querySelector('#flurryModal h2')?.textContent,
@@ -246,7 +249,10 @@ async function smoke(label,options){
     await page.getByText('FIELD JOURNAL · VISITED PLACES')
       .waitFor({state:'visible',timeout:10000});
     if(options.isMobile)await page.locator('#flurryModal .fc-dialog-close').tap();
-    else await page.keyboard.press('Escape');
+    else{
+      await page.locator('#flurryModal .fc-dialog-close').focus();
+      await page.keyboard.press('Enter');
+    }
     console.log(label+' real terrain discoveries, journal save/restore and map passed');
     // Browser rAF timing is a software-renderer diagnostic, not a real
     // physical phone FPS claim. Capture a distribution, not one FPS guess.
