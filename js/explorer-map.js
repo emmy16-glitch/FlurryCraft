@@ -72,7 +72,11 @@ export function initExplorerMap({game,panel,openDialog,closeDialog,notify,dialog
     '.fc-map-wait[hidden]{display:none!important}',
     '.fc-map-caption{display:flex;justify-content:space-between;color:#91bccc;font:600 10px system-ui;margin:6px 2px 0;gap:6px}',
     '.fc-map-side h3{font:800 13px system-ui;color:#f0faff;margin:0 0 9px;letter-spacing:0}',
-    '.fc-map-pin-list{display:flex;flex-direction:column;gap:7px}',
+    '.fc-map-pin-list{display:flex;flex-direction:column;gap:7px;min-height:0}',
+    // Keep sidebar actions inside the dialog hit area at desktop and mobile
+    // sizes. Otherwise the modal backdrop catches taps on lower Pin buttons.
+    '.fc-map-side{min-height:0;max-height:min(65dvh,520px);overflow-y:auto;overscroll-behavior:contain;padding-right:5px;scrollbar-width:thin}',
+    '@media(max-height:520px){.fc-map-side{max-height:calc(85dvh - 60px)}}',
     '.fc-map-pin{display:flex;align-items:center;gap:7px;background:#163e55;border:1px solid #416d83;border-radius:11px;padding:8px}',
     '.fc-map-pin-icon{width:30px;height:30px;flex:none;border-radius:8px;background:#274f64;display:grid;place-items:center;color:#d2f2fb;font:700 15px system-ui}',
     '.fc-map-pin-main{flex:1;min-width:0}',
@@ -428,6 +432,13 @@ export function initExplorerMap({game,panel,openDialog,closeDialog,notify,dialog
           remove.setAttribute('aria-label','Remove '+name);
         }
       };
+      // Most useful destinations first: dungeon Pin/Guide buttons should be
+      // immediately tappable, without scrolling past personal utilities.
+      const dungeons=dungeonPins();
+      if(dungeons.length){
+        const heading=$('div','KNOWN DUNGEONS',list);heading.className='fc-map-group';
+        for(const item of dungeons)addRow(item.name,item,'⌂','dungeon');
+      }
       if(places.home)addRow('Home',places.home,'⌂','home');
       else {
         const label=$('p','Set Home to save your current location.',list);
@@ -436,11 +447,6 @@ export function initExplorerMap({game,panel,openDialog,closeDialog,notify,dialog
       if(game.player.spawn){
         const sp=game.player.spawn;
         addRow('Spawn',{id:'spawn',name:'Spawn',x:Math.round(sp.x),z:Math.round(sp.z)},'◇','spawn');
-      }
-      const dungeons=dungeonPins();
-      if(dungeons.length){
-        const heading=$('div','KNOWN DUNGEONS',list);heading.className='fc-map-group';
-        for(const item of dungeons)addRow(item.name,item,'⌂','dungeon');
       }
       const monsters=monsterPins();
       const mobHeading=$('div','NEARBY MONSTERS · LIVE',list);
