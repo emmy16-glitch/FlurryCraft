@@ -163,7 +163,8 @@ const controlOn = () => locked() || lockFail || touchMode;
 document.addEventListener('pointerlockerror', () => { lockFail = true; });
 document.addEventListener('pointerlockchange', () => {
   if (locked()) { everLocked = true; lockFail = false; }
-  if (!locked() && everLocked && game.state === 'play' && !game.tourActive && !ui.isOpen && !player.dead && performance.now() - (ui.lastToggle || 0) > 500) showPause(true);
+  const modalOpen=document.getElementById('flurryModal')?.style.display==='flex';
+  if (!locked() && everLocked && game.state === 'play' && !game.tourActive && !ui.isOpen && !modalOpen && !player.dead && performance.now() - (ui.lastToggle || 0) > 500) showPause(true);
 });
 function showPause(v) { game.paused = v; if (v) game.resetTouchControls?.(); $('pause').style.display = v ? 'flex' : 'none'; if (v) { $('pRender').value = settings.render; $('pRenderV').textContent = settings.render; } }
 document.addEventListener('mousemove', (e) => {
