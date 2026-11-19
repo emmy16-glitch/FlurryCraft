@@ -353,8 +353,34 @@ export function initExplorerMap({game,panel,openDialog,closeDialog,notify,dialog
       if(!persist({...places,home:{id:'home',name:'Home',...me}}))return;
       notify(game,'Home saved');drawOverlay();refreshList();
     },'fc-map-home');
-    const heading=$('h3','Places',side);
+    const heading=$('h3','Exploration & Places',side);
+    const summary=$('p','',side);summary.className='fc-map-discovery-summary';
+    const filterBar=$('div',undefined,side);filterBar.className='fc-map-filterbar';
+    const filterOptions=[
+      ['all','All'],['cave','Caves'],['dungeon','Dungeons'],
+      ['treasure','Treasure'],['threat','Threats'],['landmark','Landmarks']
+    ];
+    const filterButtons=new Map();
     const list=$('div',undefined,side);list.className='fc-map-pin-list';
+    function filterMatches(kind){
+      if(mapFilter==='all')return true;
+      if(mapFilter==='cave')return kind==='cave';
+      if(mapFilter==='dungeon')return kind==='dungeon'||kind==='crypt';
+      if(mapFilter==='treasure')return kind==='treasure';
+      if(mapFilter==='threat')return kind==='territory'||kind==='monster';
+      if(mapFilter==='landmark')return kind==='landmark'||kind==='discovery';
+      return false;
+    }
+    function updateFilterButtons(){
+      for(const [key,button] of filterButtons)button.setAttribute('aria-pressed',String(mapFilter===key));
+    }
+    for(const [key,label] of filterOptions){
+      const b=button(filterBar,label,()=>{
+        mapFilter=key;updateFilterButtons();refreshList();drawOverlay();
+      });
+      b.setAttribute('aria-pressed',String(mapFilter===key));
+      filterButtons.set(key,b);
+    }
     const composer=$('div',undefined,side);composer.className='fc-map-chooser';
     const pickTitle=$('strong','Destination selected',composer);
     const nameInput=$('input',undefined,composer);nameInput.type='text';
@@ -462,15 +488,20 @@ export function initExplorerMap({game,panel,openDialog,closeDialog,notify,dialog
       const oldScroll=list.scrollTop||0;
       list.replaceChildren();
       const addRow=(name,where,icon,kind)=>{
+        if(!filterMatches(kind))return;
         const row=$('div',undefined,list);
-        row.className='fc-map-pin'+(kind==='monster'?' is-monster':kind==='dungeon'?' is-dungeon':kind==='discovery'?' is-discovery':kind==='landmark'?' is-landmark':'');
+        row.className='fc-map-pin'+
+          (kind==='monster'?' is-monster':kind==='dungeon'?' is-dungeon':
+          kind==='discovery'?' is-discovery':kind==='landmark'?' is-landmark':
+          kind==='cave'?' is-cave':kind==='crypt'?' is-crypt':
+          kind==='treasure'?' is-treasure':kind==='territory'?' is-territory':'');
         const symbol=$('span',icon,row);symbol.className='fc-map-pin-icon';
         const main=$('div',undefined,row);main.className='fc-map-pin-main';
         $('strong',name,main);
         $('small',(where.detail?where.detail+' · ':'')+'X '+where.x+' · Z '+where.z,main);
         const go=button(row,'Guide',()=>startNavigation(where));
         go.setAttribute('aria-label','Navigate to '+name);
-        if(kind==='monster'||kind==='dungeon'||kind==='landmark'){
+        if(['monster','dungeon','landmark','cave','crypt','treasure','territory'].includes(kind)){
           const pin=button(row,'Pin',()=>{
             if(places.marks.length>=MAX_PLACES){
               notify(game,'Maximum of '+MAX_PLACES+' saved pins');return;
@@ -494,51 +525,87 @@ export function initExplorerMap({game,panel,openDialog,closeDialog,notify,dialog
           remove.setAttribute('aria-label','Remove '+name);
         }
       };
-      // Most useful destinations first: dungeon Pin/Guide buttons should be
-      // immediately tappable, without scrolling past personal utilities.
-      const dungeons=dungeonPins();
-      if(dungeons.length){
-        const heading=$('div','KNOWN DUNGEONS',list);heading.className='fc-map-group';
-        for(const item of dungeons)addRow(item.name,item,'⌂','dungeon');
+      const discovery=explorationPins();
+      const stats=game.exploration?.stats?.()||{caves:0,crypts:0,treasures:0,territories:0};
+      summary.textContent='Discovered · '+stats.caves+' caves · '+stats.crypts+
+        ' hidden dungeons · '+stats.treasures+' caches · '+stats.territories+' territories';
+      if(mapFilter==='all'||mapFilter==='dungeon'){
+        const dungeons=dungeonPins();
+        if(dungeons.length){
+          const group=$('div','KNOWN DUNGEONS',list);group.className='fc-map-group';
+          for(const item of dungeons)addRow(item.name,item,'⌂','dungeon');
+        }
+        const crypts=discovery.filter(v=>v.kind==='crypt');
+        if(crypts.length){
+          const group=$('div','HIDDEN DUNGEONS · DISCOVERED',list);group.className='fc-map-group';
+          for(const item of crypts)addRow(item.name,item,'▣','crypt');
+        }
       }
-      if(places.home)addRow('Home',places.home,'⌂','home');
-      else {
-        const label=$('p','Set Home to save your current location.',list);
-        label.className='fc-map-empty';
+      if(mapFilter==='all'){
+        if(places.home)addRow('Home',places.home,'⌂','home');
+        else{
+          const label=$('p','Set Home to save your current location.',list);
+          label.className='fc-map-empty';
+        }
+        if(game.player.spawn){
+          const sp=game.player.spawn;
+          addRow('Spawn',{id:'spawn',name:'Spawn',x:Math.round(sp.x),z:Math.round(sp.z)},'◇','spawn');
+        }
       }
-      if(game.player.spawn){
-        const sp=game.player.spawn;
-        addRow('Spawn',{id:'spawn',name:'Spawn',x:Math.round(sp.x),z:Math.round(sp.z)},'◇','spawn');
+      const caves=discovery.filter(v=>v.kind==='cave');
+      if(caves.length){
+        const group=$('div','CAVES · FOUND',list);group.className='fc-map-group';
+        for(const item of caves)addRow(item.name,item,'◒','cave');
+      }else if(mapFilter==='cave'){
+        const empty=$('p','No cave mouths discovered yet. Explore steep snowy ground and inspect natural openings.',list);
+        empty.className='fc-map-empty';
       }
-      const sites=nearbyLandmarks();
-      if(sites.length){
-        const landmarkHeading=$('div','WINTER LANDMARKS · NEARBY',list);
-        landmarkHeading.className='fc-map-group';
-        for(const item of sites)addRow(item.name,item,'✦','landmark');
+      const treasures=discovery.filter(v=>v.kind==='treasure');
+      if(treasures.length){
+        const group=$('div','TREASURE · REAL WORLD CHESTS',list);group.className='fc-map-group';
+        for(const item of treasures)addRow(item.name,item,'✧','treasure');
+      }else if(mapFilter==='treasure'){
+        const empty=$('p','No treasure caches discovered yet. Search cabins and investigate marked crypt entrances.',list);
+        empty.className='fc-map-empty';
       }
-      const visitedSites=visitedLandmarks().filter(site=>!sites.some(s=>s.id===site.id));
-      if(visitedSites.length){
-        const history=$('div','WINTER LANDMARKS · VISITED',list);
-        history.className='fc-map-group';
-        for(const site of visitedSites)addRow(site.name,site,'✧','discovery');
+      const territories=discovery.filter(v=>v.kind==='territory');
+      if(territories.length){
+        const group=$('div','MONSTER TERRITORIES · CONFIRMED',list);group.className='fc-map-group';
+        for(const item of territories)addRow(item.name,item,'⚠','territory');
       }
-      const visited=journalPins();
-      if(visited.length){
-        const journalHeading=$('div','FIELD JOURNAL · VISITED PLACES',list);
-        journalHeading.className='fc-map-group';
-        for(const item of visited)addRow(item.name,item,'◇','discovery');
+      if(mapFilter==='all'||mapFilter==='landmark'){
+        const sites=nearbyLandmarks();
+        if(sites.length){
+          const group=$('div','WINTER LANDMARKS · NEARBY',list);group.className='fc-map-group';
+          for(const item of sites)addRow(item.name,item,'✦','landmark');
+        }
+        const visitedSites=visitedLandmarks().filter(site=>!sites.some(v=>v.id===site.id));
+        if(visitedSites.length){
+          const group=$('div','WINTER LANDMARKS · VISITED',list);group.className='fc-map-group';
+          for(const item of visitedSites)addRow(item.name,item,'✧','discovery');
+        }
+        const visited=journalPins();
+        if(visited.length){
+          const group=$('div','FIELD JOURNAL · VISITED PLACES',list);group.className='fc-map-group';
+          for(const item of visited)addRow(item.name,item,'◇','discovery');
+        }
       }
-      const monsters=monsterPins();
-      const mobHeading=$('div','NEARBY MONSTERS · LIVE',list);
-      mobHeading.className='fc-map-group';
-      if(!monsters.length){
-        const note=$('p','No living hostile monsters detected in loaded nearby chunks.',list);
-        note.className='fc-map-empty';
-      }else for(const item of monsters)addRow(item.name,item,'!','monster');
-      if(places.marks.length){
-        const pinHeading=$('div','YOUR SAVED PINS',list);pinHeading.className='fc-map-group';
+      if(mapFilter==='all'||mapFilter==='threat'){
+        const monsters=monsterPins();
+        const group=$('div','NEARBY MONSTERS · LIVE',list);group.className='fc-map-group';
+        if(!monsters.length){
+          const note=$('p','No living hostile monsters detected in loaded nearby chunks.',list);
+          note.className='fc-map-empty';
+        }else for(const item of monsters)addRow(item.name,item,'!','monster');
       }
-      for(const item of places.marks)addRow(item.name,item,'◆','mark');
+      if(mapFilter==='all'&&places.marks.length){
+        const group=$('div','YOUR SAVED PINS',list);group.className='fc-map-group';
+        for(const item of places.marks)addRow(item.name,item,'◆','mark');
+      }
+      if(!list.children.length){
+        const empty=$('p','Nothing discovered in this category yet. Keep exploring the world to reveal real locations.',list);
+        empty.className='fc-map-empty';
+      }
       list.scrollTop=oldScroll;
     }
     canvas.addEventListener('click',e=>{
