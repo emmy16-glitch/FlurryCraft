@@ -463,6 +463,48 @@ async function smoke(label,options){
       throw new Error('Guide navigation omitted target, distance or direction: '+navigationText);
     console.log(label+' map filters, chapter progression, active expedition and compass Guide passed '+JSON.stringify({mapLayout,navigationText,explorationSaved}));
     console.log(label+' actual 3D landmark, one-time perk and persistent visit passed');
+    // HUD hierarchy must keep level/vitals readable and avoid the minimap.
+    const hudLayout=await page.evaluate(()=>{
+      const rect=id=>{
+        const e=document.querySelector(id),r=e?.getBoundingClientRect();
+        return e&&getComputedStyle(e).display!=='none'&&r?.width>0&&r?.height>0?
+          {left:r.left,right:r.right,top:r.top,bottom:r.bottom,width:r.width,height:r.height}:null;
+      };
+      return {level:rect('#fcAdventurePill'),vitals:rect('#fcSurvivalVitals'),
+        minimap:rect('#fcMiniMap'),expedition:rect('#fcExpeditionTracker'),
+        trackerMeter:!!document.querySelector('#fcExpeditionTracker .fc-expedition-hud-meter i')};
+    });
+    if(!hudLayout.level||!hudLayout.vitals||!hudLayout.minimap||
+       !hudLayout.expedition||!hudLayout.trackerMeter||
+       hudLayout.level.bottom>hudLayout.vitals.top+2)
+      throw new Error('Responsive survival HUD is missing or overlapping: '+JSON.stringify(hudLayout));
+    if(hudLayout.minimap.right>hudLayout.expedition.left&&
+       hudLayout.minimap.bottom>hudLayout.expedition.top&&
+       hudLayout.minimap.top<hudLayout.expedition.bottom)
+      throw new Error('Minimap overlaps the Expedition tracker: '+JSON.stringify(hudLayout));
+    // Verify the marketplace reports the actual disabled state. No buy/mint
+    // button may appear while SUI_PACKAGE_ID is intentionally empty.
+    await page.locator('#fcExpeditionTracker').click({timeout:10000});
+    await page.getByRole('button',{name:'View Sui Testnet NFT marketplace'})
+      .waitFor({state:'visible',timeout:10000});
+    if(options.isMobile)await page.getByRole('button',{name:'View Sui Testnet NFT marketplace'}).tap({timeout:10000});
+    else{await page.getByRole('button',{name:'View Sui Testnet NFT marketplace'}).focus();
+      await page.keyboard.press('Enter');}
+    await page.locator('.fc-market-status').waitFor({state:'visible',timeout:10000});
+    const marketStatus=await page.locator('.fc-market-status').innerText();
+    if(!marketStatus.includes('NOT LIVE')||
+       !marketStatus.includes('NFT minting')||
+       !marketStatus.includes('Listings and purchases')||
+       !marketStatus.includes('Marketplace payments')||
+       !marketStatus.includes('not been published and independently verified'))
+      throw new Error('Marketplace launch status is ambiguous: '+marketStatus);
+    const liveActions=await page.locator('#flurryModal button').evaluateAll(nodes=>
+      nodes.map(v=>v.textContent).filter(v=>/Confirm Mint|Buy for|Review listing|Confirm Purchase/i.test(v)));
+    if(liveActions.length)throw new Error('Trading controls shown before verified contract launch: '+liveActions.join(', '));
+    if(options.isMobile)await page.locator('#flurryModal .fc-dialog-close').tap();
+    else{await page.locator('#flurryModal .fc-dialog-close').focus();
+      await page.keyboard.press('Enter');}
+    console.log(label+' compact HUD layout and honest non-live Sui marketplace status passed '+JSON.stringify({hudLayout,marketStatus:marketStatus.slice(0,220)}));
     // Browser rAF timing is a software-renderer diagnostic, not a real
     // physical phone FPS claim. Capture a distribution, not one FPS guess.
     const timing=await page.evaluate(()=>new Promise(resolve=>{
