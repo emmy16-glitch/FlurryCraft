@@ -379,6 +379,14 @@ async function smoke(label,options){
     if(explorationSaved.after<4||explorationSaved.before!==explorationSaved.after)
       throw new Error('Exploration discoveries did not persist '+JSON.stringify(explorationSaved));
     await page.locator('#fcMiniMap').click({timeout:10000});
+    const mapOpenDiagnostic=await page.evaluate(()=>{
+      const modal=document.querySelector('#flurryModal'),panel=modal?.querySelector('.fPanel');
+      return {display:modal?.style.display,panelScrollTop:panel?.scrollTop,
+        panelText:panel?.innerText?.slice(0,220),
+        layouts:panel?.querySelectorAll('.fc-map-layout').length,
+        mapSide:!!panel?.querySelector('.fc-map-side')};
+    });
+    console.log(label+' exploration map open diagnostic '+JSON.stringify(mapOpenDiagnostic));
     await page.getByText('Exploration & Places',{exact:true})
       .waitFor({state:'visible',timeout:10000});
     const filterHitTest=await page.evaluate(()=>{
