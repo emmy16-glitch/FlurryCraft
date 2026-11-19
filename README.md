@@ -4,6 +4,19 @@ Browser-first, free-to-play voxel sandbox for Android, iPhone and desktop. Flurr
 
 Built on the MIT-licensed [Yet Another VoxelCraft](https://github.com/GoldwinXS/YetAnotherVoxelCraft) engine by GoldwinXS, with a local bundled Three.js r160. Original attribution is preserved in UPSTREAM_LICENSE.txt.
 
+## 📖 Explorer’s Field Journal — real places worth discovering
+
+Discover **Snowy Tundra, Snowy Peaks, Frozen Sea and Ice Shore** by
+walking on actual world terrain. The game also records up to ten
+widely spaced trail markers and acknowledges real visits to built
+dungeon entrances. Each world has its own saved Field Journal,
+accessible through **Menu → Explorer Journal** or Lofi, with one-tap
+map guidance to visited places. The minimap displays those recorded
+discoveries alongside live monsters and dungeons.
+
+Discovery updates are throttled for mobile and never award fake XP,
+local points or cryptocurrency. [Gameplay and QA guide](docs/EXPLORERS_JOURNAL.md).
+
 ## ☀ Always-Day World, Clean Start Menu and Live Map
 
 FlurryCraft now starts with three clear buttons: **Continue Game**,

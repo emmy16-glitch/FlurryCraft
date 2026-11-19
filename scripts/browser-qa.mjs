@@ -126,6 +126,7 @@ async function smoke(label,options){
     });
     if(!(await page.locator('#flurryModal .fc-lofi-dialogue').innerText()).includes('Frost Patrol'))
       throw new Error('Lofi does not react to accepted quest progress');
+    await page.getByRole('button',{name:'📖 Explorer Journal'}).waitFor({state:'visible',timeout:10000});
     await page.getByRole('button',{name:'Open Expedition Board'}).click({timeout:10000});
     await page.getByText('LOCAL GAME POINTS — NOT CRYPTO').waitFor({
       state:'visible',timeout:10000
@@ -154,7 +155,8 @@ async function smoke(label,options){
       g.mobs.push(mob);
       window.__mapSmokeMob=mob;
     });
-    await page.locator('#fcMiniMap').click({timeout:10000});
+    if(options.isMobile)await page.locator('#fcMiniMap').tap({timeout:10000});
+    else await page.keyboard.press('m');
     await page.getByText('KNOWN DUNGEONS',{exact:true})
       .waitFor({state:'visible',timeout:10000});
     const dungeonPin=page.locator('#flurryModal .fc-map-pin.is-dungeon')
@@ -177,7 +179,10 @@ async function smoke(label,options){
     // touch landscape exercises the real visible close button.
     if(options.isMobile)
       await page.locator('#flurryModal .fc-dialog-close').tap({timeout:10000});
-    else await page.keyboard.press('Escape');
+    else{
+      await page.locator('#flurryModal .fc-dialog-close').focus();
+      await page.keyboard.press('Enter');
+    }
     await page.evaluate(()=>{
       const g=window.game,m=window.__mapSmokeMob;
       if(m){const i=g.mobs.indexOf(m);if(i>=0)g.mobs.splice(i,1);m.remove();}
@@ -207,6 +212,53 @@ async function smoke(label,options){
     if(!(travelAfter>travelBefore))
       throw new Error('On-foot Winter Trial did not reflect real movement: '+
         JSON.stringify({travelBefore,travelAfter,travelled}));
+    // A genuine walk in a known procedural terrain biome should populate the
+    // new world-scoped Field Journal without awarding XP or local points.
+    await page.waitForFunction(()=>window.game.journal?.stats()?.terrain>=1,{timeout:12000});
+    const discovery=await page.evaluate(()=>{
+      const g=window.game,raw=g.journal.serialize();
+      const beforePoints=g.rewards.points;
+      if(!g.saveRewards())throw Error('Could not persist journal with world save');
+      const world=JSON.parse(localStorage.getItem('vc_world_'+g.worldId));
+      const saved=world?.journal?.entries||[];
+      if(saved.length!==raw.entries.length)
+        throw Error('Journal not preserved in existing save: '+saved.length);
+      g.journal.load(world.journal); // real loader exercised without a new world
+      return {terrain:g.journal.stats().terrain,saved:saved.length,
+        pointsBefore:beforePoints,pointsAfter:g.rewards.points};
+    });
+    if(discovery.terrain<1||discovery.saved<2||
+      discovery.pointsBefore!==discovery.pointsAfter)
+      throw new Error('Explorer Journal invented progress or lost records: '+
+        JSON.stringify(discovery));
+    await page.evaluate(()=>window.game.journal.open());
+    await page.getByText('Explorer’s Field Journal').waitFor({state:'visible',timeout:10000});
+    await page.getByText('LANDSCAPES DISCOVERED').waitFor({state:'visible',timeout:10000});
+    await page.locator('#flurryModal .fc-journal-entry').first().waitFor({state:'visible',timeout:10000});
+    if(options.isMobile)await page.locator('#flurryModal .fc-dialog-close').tap();
+    else{
+      await page.locator('#flurryModal .fc-dialog-close').focus();
+      await page.keyboard.press('Enter');
+    }
+    if(options.isMobile)await page.locator('#fcMiniMap').tap({timeout:10000});
+    else await page.keyboard.press('m');
+    const diaryMap=await page.evaluate(()=>({
+      stats:window.game.journal?.stats?.(),paused:window.game.paused,state:window.game.state,
+      pins:window.game.journal?.mapPlaces?.()?.length,
+      dialog:document.querySelector('#flurryModal')?.style.display,
+      title:document.querySelector('#flurryModal h2')?.textContent,
+      headings:[...document.querySelectorAll('#flurryModal .fc-map-group')].map(x=>x.textContent),
+      mapPinCount:document.querySelectorAll('#flurryModal .fc-map-pin.is-discovery').length
+    }));
+    console.log(label+' field journal map status '+JSON.stringify(diaryMap));
+    await page.getByText('FIELD JOURNAL · VISITED PLACES')
+      .waitFor({state:'visible',timeout:10000});
+    if(options.isMobile)await page.locator('#flurryModal .fc-dialog-close').tap();
+    else{
+      await page.locator('#flurryModal .fc-dialog-close').focus();
+      await page.keyboard.press('Enter');
+    }
+    console.log(label+' real terrain discoveries, journal save/restore and map passed');
     // Browser rAF timing is a software-renderer diagnostic, not a real
     // physical phone FPS claim. Capture a distribution, not one FPS guess.
     const timing=await page.evaluate(()=>new Promise(resolve=>{
