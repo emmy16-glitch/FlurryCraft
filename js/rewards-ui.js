@@ -32,14 +32,22 @@ export function initRewardsHub({game,panel,openDialog,notify,onOpenMarketplace,
     '#flurryModal .fc-expedition-card{border:1px solid #79cddd;background:#123b50;border-radius:13px;padding:12px;margin:8px 0 13px}',
     '#flurryModal .fc-expedition-meter{height:7px;overflow:hidden;background:#24465b;border-radius:8px;margin-top:10px}',
     '#flurryModal .fc-expedition-fill{height:100%;background:#78e6ed;transition:width .2s;width:0}',
-    '#fcExpeditionTracker{display:none;position:fixed;z-index:27;right:10px;top:77px;width:min(190px,29vw);padding:7px 10px;border:1px solid #77bed1;border-radius:10px;background:#0b3046ee;color:#dbf7ff;font:700 10px/1.4 system-ui;text-align:left;box-shadow:0 4px 14px #00182777;cursor:pointer;touch-action:manipulation}',
-    '#fcExpeditionTracker strong{display:block;color:#92e5f6;font-size:10px}',
+    '#fcExpeditionTracker{display:none;position:fixed;z-index:27;right:10px;top:74px;width:min(210px,29vw);padding:8px 10px;border:1px solid #77bed1;border-radius:10px;background:#0b3046ee;color:#dbf7ff;font:700 10px/1.4 system-ui;text-align:left;box-shadow:0 4px 14px #00182777;cursor:pointer;touch-action:manipulation}',
+    '#fcExpeditionTracker strong{display:block;color:#a8eff8;font:850 10px/1.35 system-ui}
+    '#fcExpeditionTracker small{display:block;color:#c6e3ec;font:650 9px/1.35 system-ui;margin-top:3px}',
+    '#fcExpeditionTracker .fc-expedition-hud-meter{height:4px;margin-top:6px;background:#244d61;border-radius:5px;overflow:hidden}',
+    '#fcExpeditionTracker .fc-expedition-hud-meter i{display:block;height:100%;background:#8be5f2;width:0}'',
     '#fcExpeditionTracker.ready{border-color:#b3f5d0;color:#b8ffe5}',
-    '@media(max-height:520px){#fcExpeditionTracker{right:5px;top:55px;width:min(155px,27vw);font-size:9px;padding:5px 7px}}',
+    '@media(max-height:520px){#fcExpeditionTracker{right:5px;top:6px;width:min(178px,27vw);font-size:9px;padding:5px 7px}#fcExpeditionTracker small{font-size:8px}#fcExpeditionTracker .fc-expedition-hud-meter{margin-top:4px}}',
   ].join('\n');
   const tracker=el('button',undefined,document.body);
   tracker.type='button';tracker.id='fcExpeditionTracker';
   tracker.setAttribute('aria-label','Open current Expedition mission in Rewards Hub');
+  tracker.setAttribute('aria-live','polite');
+  const trackerTitle=el('strong','',tracker);
+  const trackerDetail=el('small','',tracker);
+  const trackerMeter=el('div',undefined,tracker);trackerMeter.className='fc-expedition-hud-meter';
+  const trackerFill=el('i',undefined,trackerMeter);
   tracker.addEventListener('pointerdown',e=>e.stopPropagation());
   tracker.addEventListener('click',e=>{e.stopPropagation();open();});
   let hudTick=0,hudText='';
@@ -55,9 +63,12 @@ export function initRewardsHub({game,panel,openDialog,notify,onOpenMarketplace,
     const view=rewardCards(state,adventure(),false);
     const m=view.expedition.mission;
     if(!m||!m.active){tracker.style.display='none';return;}
-    const label='EXPEDITION '+m.index+'/'+view.expedition.total+' · '+m.title+
-      ' · '+m.progress+'/'+m.target+(m.ready?' · CLAIM REWARD':'');
-    if(hudText!==label){hudText=label;tracker.textContent=label;}
+    const label='EXPEDITION '+m.index+'/'+view.expedition.total+' · '+m.title;
+    if(hudText!==label){hudText=label;trackerTitle.textContent=label;}
+    trackerDetail.textContent=m.detail+' · '+m.progress+'/'+m.target+
+      (m.ready?' · Reward ready':'');
+    trackerFill.style.width=Math.min(100,m.progress/m.target*100)+'%';
+    tracker.setAttribute('aria-label','Open Rewards Hub. '+label+'. '+m.progress+' of '+m.target+' complete');
     tracker.classList.toggle('ready',m.ready);
     tracker.style.display='block';
   }
