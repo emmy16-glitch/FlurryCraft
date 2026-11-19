@@ -432,6 +432,9 @@ export function initFlurry(game) {
   const button = (title, fn, muted=false) => {const el=make('button',title); if(muted)el.className='muted'; el.addEventListener('click',fn); return el;};
   const open = title => {
     setMoreMenu(false);
+    // Release the gameplay pointer lock before opening a modal. Otherwise
+    // browser hit-testing can land on the backdrop instead of its buttons.
+    try{if(document.pointerLockElement)document.exitPointerLock();}catch{}
     // Cancel captured gestures and their timers, not only boolean input flags.
     game.resetTouchControls?.();
     if(game.touch){
