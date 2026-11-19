@@ -472,7 +472,11 @@ export function initExplorerMap({game,panel,openDialog,closeDialog,notify,dialog
       drawOverlay();drawMini();
     });
     refreshList();renderTerrain();
-    refreshOpenMap=()=>{drawOverlay();refreshList();};mapRefreshTick=1;
+    // Keep the action buttons stable on touch devices: gameplay is paused
+    // behind the world-map dialog, so its marker list is a stable snapshot.
+    // The terrain/map overlay may redraw, but never replace a button mid-tap.
+    // Reopening the map refreshes the nearby monster roster.
+    refreshOpenMap=()=>{drawOverlay();};mapRefreshTick=1;
   }
   function reset(){
     renderToken++;mapOpened=false;refreshOpenMap=null;load();
