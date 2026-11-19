@@ -98,7 +98,7 @@ export function initExplorerMap({game,panel,openDialog,closeDialog,notify,dialog
     // Keep sidebar actions inside the dialog hit area at desktop and mobile
     // sizes. Otherwise the modal backdrop catches taps on lower Pin buttons.
     '.fc-map-side{display:flex;flex-direction:column;min-height:0;max-height:min(68dvh,560px);overflow:hidden;overscroll-behavior:contain;padding-right:5px;scrollbar-width:thin}',
-    '@media(max-height:520px){.fc-map-side{max-height:calc(100dvh - 94px)}.fc-map-frame{width:min(100%,min(280px,64dvh));margin:auto}.fc-map-toolbar{gap:4px}.fc-map-caption{font-size:9px}.fc-map-pin{padding:5px}.fc-map-filterbar{padding:4px 1px 6px}#fcNavBeacon{top:calc(env(safe-area-inset-top) + 88px);max-width:64vw}}',
+    '@media(max-height:520px){.fc-map-side{max-height:calc(100dvh - 94px)}.fc-map-frame{width:min(100%,min(280px,64dvh));margin:auto}.fc-map-toolbar{gap:4px}.fc-map-caption{font-size:9px}.fc-map-pin{padding:5px}.fc-map-filterbar{padding:4px 1px 6px}#fcNavBeacon{top:calc(env(safe-area-inset-top) + 100px);max-width:64vw}}',
     '.fc-map-pin{display:flex;align-items:center;gap:7px;background:#163e55;border:1px solid #416d83;border-radius:11px;padding:8px}',
     '.fc-map-pin-icon{width:30px;height:30px;flex:none;border-radius:8px;background:#274f64;display:grid;place-items:center;color:#d2f2fb;font:700 15px system-ui}',
     '.fc-map-pin-main{flex:1;min-width:0}',
@@ -137,7 +137,7 @@ export function initExplorerMap({game,panel,openDialog,closeDialog,notify,dialog
     '.fc-map-chapter{border-style:dashed;background:#13384d}',
     '.fc-map-chapter.is-locked{opacity:.78;border-color:#526a78}',
     '.fc-map-discovery-summary{font:650 10px/1.45 system-ui;color:#9dc6d5;margin:0 0 7px;padding:7px 8px;border:1px solid #315c73;border-radius:9px;background:#10364b}',
-    '#fcNavBeacon{position:fixed;top:calc(env(safe-area-inset-top) + 94px);left:50%;right:auto;transform:translateX(-50%);z-index:24;display:flex;align-items:center;gap:7px;width:max-content;max-width:min(300px,58vw);padding:7px 9px;border:1px solid #4e96b0;border-radius:13px;color:#e9fbff;background:#0b3044ed;box-shadow:0 5px 20px #001a2a80;backdrop-filter:blur(9px);font:700 11px system-ui;pointer-events:none}',
+    '#fcNavBeacon{position:fixed;top:calc(env(safe-area-inset-top) + 110px);left:50%;right:auto;transform:translateX(-50%);z-index:24;display:flex;align-items:center;gap:7px;width:max-content;max-width:min(300px,58vw);padding:7px 9px;border:1px solid #4e96b0;border-radius:13px;color:#e9fbff;background:#0b3044ed;box-shadow:0 5px 20px #001a2a80;backdrop-filter:blur(9px);font:700 11px system-ui;pointer-events:none}',
     '#fcNavBeacon[hidden]{display:none!important}',
     '#fcNavBeacon .fc-nav-arrow{font:900 27px/1 system-ui;color:#8ae7ef;display:block;transform-origin:50% 50%;width:26px;text-align:center}',
     '#fcNavBeacon .fc-nav-text{min-width:0;max-width:120px}',
