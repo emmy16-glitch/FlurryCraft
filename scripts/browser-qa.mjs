@@ -181,8 +181,26 @@ async function smoke(label,options){
     // important for testing the fixed map hit area with the fullscreen dialog.
     const pinBounds=await dungeonPin.boundingBox();
     if(!pinBounds)throw Error('Dungeon Pin is off-screen');
+    await page.mouse.move(pinBounds.x+pinBounds.width/2,
+      pinBounds.y+pinBounds.height/2);
+    const pointerCheck=await page.evaluate(()=>{
+      const r=document.querySelector('.fc-map-pin.is-dungeon .fc-map-pin-save')
+        .getBoundingClientRect();
+      const t=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);
+      return {hoverTarget:t?.className||t?.id||t?.tagName,
+        pointerLocked:!!document.pointerLockElement,
+        modal:document.querySelector('#flurryModal').style.display};
+    });
+    console.log(label+' map pointer after mouse move '+JSON.stringify(pointerCheck));
     await page.mouse.click(pinBounds.x+pinBounds.width/2,
       pinBounds.y+pinBounds.height/2);
+    const afterClick=await page.evaluate(()=>({
+      modal:document.querySelector('#flurryModal').style.display,
+      pinList:!!document.querySelector('#flurryModal .fc-map-group'),
+      savedPins:!!Array.from(document.querySelectorAll('#flurryModal .fc-map-group'))
+        .find(e=>e.textContent==='YOUR SAVED PINS')
+    }));
+    console.log(label+' map after click '+JSON.stringify(afterClick));
     await page.getByText('YOUR SAVED PINS',{exact:true})
       .waitFor({state:'visible',timeout:10000});
     await page.locator('#flurryModal .fc-map-pin.is-monster').first()
